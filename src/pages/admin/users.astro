@@ -1,0 +1,92 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { findUsers, getUserRole, roleHistory, setUserRole } from "../../lib/db";
+import { roleChangeCheck } from "../../lib/moderation";
+import { timeAgo } from "../../lib/util";
+import { plainText } from "../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/users");
+// Roles are granted only here, by an admin, and checked again on the server for every change.
+if (user.role !== "admin") return Astro.rewrite("/403");
+
+const q = plainText(Astro.url.searchParams.get("q"), 100);
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const target = await getUserRole(env.DB, String(form.get("userId") ?? ""));
+  const to = String(form.get("role") ?? "");
+  if (!target) error = "User not found.";
+  else {
+    const check = roleChangeCheck(user, target, to);
+    if (!check.ok) error = check.error;
+    else if (!(await setUserRole(env.DB, target, user.id, to, plainText(form.get("reason"), 200) || null))) error = "That user changed meanwhile. Reload and retry.";
+  }
+  if (!error) return Astro.redirect(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`, 303);
+  Astro.response.status = 400;
+}
+const [users, history] = await Promise.all([findUsers(env.DB, q), roleHistory(env.DB)]);
+---
+<Base title="Roles" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Roles</h1>
+    <AdminNav current="users" />
+    <form method="get" class="admin-filters">
+      <label for="q" class="sr-only">Find a user</label>
+      <input id="q" name="q" type="search" value={q} placeholder="Email, handle or name" />
+      <button class="btn btn-sm" type="submit">Find</button>
+      {q && <a class="btn btn-sm" href="/admin/users">Show team</a>}
+    </form>
+    <p class="muted small-note">{q ? `Users matching “${q}”.` : "Moderators and admins. Search to find anyone else."}</p>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {users.length === 0 ? (
+      <p class="empty">No users found.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>User</th><th>Role</th><th>Change</th></tr></thead>
+          <tbody>
+            {users.map((u) => (
+              <tr>
+                <td><strong>{u.name}</strong>{u.handle && <> · <a href={`/users/${u.handle}`}>@{u.handle}</a></>}<div class="muted small-note">{u.email}</div></td>
+                <td><span class={`status status-role-${u.role}`}>{u.role}</span></td>
+                <td>
+                  {u.id === user.id ? (
+                    <span class="muted small-note">That's you</span>
+                  ) : (
+                    <form method="post" class="inline-form">
+                      <input type="hidden" name="userId" value={u.id} />
+                      <label class="sr-only" for={`role-${u.id}`}>Role for {u.name}</label>
+                      <select id={`role-${u.id}`} name="role">
+                        {["user", "moderator", "admin"].map((r) => <option value={r} selected={u.role === r}>{r}</option>)}
+                      </select>
+                      <label class="sr-only" for={`why-${u.id}`}>Reason</label>
+                      <input id={`why-${u.id}`} name="reason" type="text" maxlength="200" placeholder="Reason" />
+                      <button class="btn btn-sm" type="submit">Save</button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+    {history.length > 0 && (
+      <section>
+        <h2 class="section-heading">Recent role changes</h2>
+        <ul class="history">
+          {history.map((h) => (
+            <li>
+              <strong>{h.subject_name ?? "deleted account"}</strong>: {h.from_status} → {h.to_status} by {h.actor_name ?? "deleted account"}
+              · <time datetime={h.created_at}>{timeAgo(h.created_at)}</time>{h.reason && <span class="muted"> · {h.reason}</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </div>
+</Base>

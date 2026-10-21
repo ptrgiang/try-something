@@ -1,0 +1,83 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { decideToolUpdate, pendingUpdates } from "../../lib/db";
+import { canResurface, isModerator, RESURFACE_COOLDOWN_DAYS } from "../../lib/moderation";
+import { FRESH_DAYS } from "../../lib/picks";
+import { plainText } from "../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/updates");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const action = form.get("action");
+  const note = plainText(form.get("note"), 600) || null;
+  if (action !== "approve" && action !== "reject") {
+    error = "Pick approve or decline.";
+    Astro.response.status = 400;
+  } else if (action === "reject" && !note) {
+    error = "Add a note for the maker before declining.";
+    Astro.response.status = 400;
+  } else {
+    const conflict = await decideToolUpdate(env.DB, String(form.get("updateId") ?? ""), user.id, {
+      approve: action === "approve",
+      resurface: form.get("resurface") === "on",
+      note,
+    });
+    if (!conflict) return Astro.redirect("/admin/updates?done=1", 303);
+    error = conflict;
+    Astro.response.status = 409;
+  }
+}
+const updates = await pendingUpdates(env.DB);
+const changed = (a: string, b: string) => a.trim() !== b.trim();
+---
+<Base title="Product updates" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Product updates</h1>
+    <AdminNav current="updates" />
+    <p class="lede">Makers' updates to their published tools. Approving replaces the listing text and shows the note on the tool page. Tick "Resurface" only for a change worth a second look (a new feature, not a typo): the tool then ranks with new tools in Picks for {FRESH_DAYS} days, at most once every {RESURFACE_COOLDOWN_DAYS} days.</p>
+    {Astro.url.searchParams.get("done") && <p class="notice notice-success" role="status">Done.</p>}
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {updates.length === 0 ? (
+      <p class="empty">No updates waiting.</p>
+    ) : (
+      updates.map((u) => (
+        <section class="panel update-review" aria-labelledby={`u-${u.id}`}>
+          <h2 class="section-title" id={`u-${u.id}`}><a href={`/tools/${u.slug}`}>{u.name}</a></h2>
+          <p class="muted small-note">From {u.submitter_name ?? "a deleted account"} · <time datetime={u.created_at}>{u.created_at.slice(0, 10)}</time></p>
+          <dl class="kv">
+            <dt>What changed</dt><dd>{u.note}</dd>
+            <dt>Description</dt><dd>{changed(u.tagline, u.old_tagline) ? <><del>{u.old_tagline}</del><br /><ins>{u.tagline}</ins></> : <span class="muted">Unchanged</span>}</dd>
+            <dt>Try in 30 seconds</dt><dd>{changed(u.try_this, u.old_try_this) ? <><del>{u.old_try_this}</del><br /><ins>{u.try_this}</ins></> : <span class="muted">Unchanged</span>}</dd>
+            <dt>Why</dt><dd>{changed(u.why, u.old_why) ? <><del>{u.old_why || "—"}</del><br /><ins>{u.why || "—"}</ins></> : <span class="muted">Unchanged</span>}</dd>
+          </dl>
+          {u.user_id === user.id ? (
+            <p class="notice">This is your own update — another moderator has to review it.</p>
+          ) : (
+            <form method="post" class="form">
+              <input type="hidden" name="updateId" value={u.id} />
+              <div class="field">
+                <label for={`n-${u.id}`}>Note to the maker</label>
+                <textarea id={`n-${u.id}`} name="note" maxlength="600" placeholder="Required when declining."></textarea>
+              </div>
+              {canResurface(u.refreshed_at) ? (
+                <label class="check"><input type="checkbox" name="resurface" /> Resurface in Picks</label>
+              ) : (
+                <p class="muted small-note">Resurfaced on {u.refreshed_at!.slice(0, 10)}; can't be resurfaced again yet.</p>
+              )}
+              <div class="decision-buttons">
+                <button class="btn btn-dark" name="action" value="approve">Approve</button>
+                <button class="btn" name="action" value="reject">Decline</button>
+              </div>
+            </form>
+          )}
+        </section>
+      ))
+    )}
+  </div>
+</Base>

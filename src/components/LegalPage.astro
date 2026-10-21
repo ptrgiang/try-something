@@ -1,0 +1,37 @@
+---
+// Layout for Privacy and Terms: a short summary up top, a sticky table of contents on wide screens.
+import Base from "../layouts/Base.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  updated: string;
+  summary: string[];
+  sections: { id: string; label: string }[];
+}
+const { title, description, updated, summary, sections } = Astro.props;
+---
+<Base title={title} description={description}>
+  <div class="page">
+    <header class="page-head">
+      <p class="eyebrow">Last updated {updated}</p>
+      <h1 class="page-title">{title}</h1>
+    </header>
+    <div class="legal">
+      <nav class="legal-toc" aria-label="On this page">
+        <p>On this page</p>
+        <ol>{sections.map((s) => <li><a href={`#${s.id}`}>{s.label}</a></li>)}</ol>
+      </nav>
+      <div class="legal-body">
+        <div class="legal-summary">
+          <h2>The short version</h2>
+          <ul>{summary.map((line) => <li>{line}</li>)}</ul>
+        </div>
+        <div class="prose">
+          <slot />
+        </div>
+        <p class="legal-contact">Questions? Email <a href="mailto:hello@trysometh.ing">hello@trysometh.ing</a>.</p>
+      </div>
+    </div>
+  </div>
+</Base>

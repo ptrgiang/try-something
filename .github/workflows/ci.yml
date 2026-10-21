@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Migration guard
+        run: node scripts/check-migrations.mjs ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+      - name: Repository guard
+        run: node scripts/check-repo.mjs
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - name: Staging build resolves its own bindings
+        run: CLOUDFLARE_ENV=staging npm run build
+      - run: npm run build
+      - name: End-to-end tests (local Workers runtime + local D1)
+        run: |
+          printf 'PUBLIC_SITE_URL=http://localhost:4321\nBETTER_AUTH_SECRET=%s\nTURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA\n' "$(openssl rand -base64 32)" > .dev.vars
+          npm run db:migrate:local
+          npm run db:seed:local
+          npx playwright install --with-deps chromium
+          npm run e2e

@@ -1,0 +1,33 @@
+---
+// Product's official share image (via /media proxy) layered over original generated art.
+// If the image is missing or fails to load, the generated art shows through.
+import type { ToolArt } from "../lib/db";
+import CoverArt from "./CoverArt.astro";
+import { displayHost } from "../lib/url";
+
+interface Props {
+  name: string;
+  art?: ToolArt;
+  url: string;
+  imageSrc?: string | null;
+  eager?: boolean;
+  // Above-the-fold LCP candidate: fetch it before other images.
+  priority?: boolean;
+}
+const { name, art, url, imageSrc, eager = false, priority = false } = Astro.props;
+const host = displayHost(url);
+---
+<div class="cover">
+  <CoverArt name={name} art={art} showTitle={!imageSrc} label={imageSrc ? "" : undefined} />
+  {imageSrc && (
+    <img
+      src={imageSrc}
+      alt={`${name} preview image from ${host}`}
+      loading={eager || priority ? "eager" : "lazy"}
+      fetchpriority={priority ? "high" : undefined}
+      decoding="async"
+      referrerpolicy="no-referrer"
+      data-cover
+    />
+  )}
+</div>

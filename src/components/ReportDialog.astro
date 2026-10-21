@@ -1,0 +1,94 @@
+---
+// One report dialog per page, opened by any [data-report="tool"|"comment"][data-target] button.
+import Icon from "./Icon.astro";
+import { REPORT_REASONS } from "../lib/validation";
+
+const signedIn = Boolean(Astro.locals.user);
+---
+<dialog class="report-dialog" data-report-dialog data-signed-in={signedIn ? "1" : "0"} aria-labelledby="report-title">
+  <form class="report-form" method="dialog" data-report-form>
+    <button type="button" class="report-close" data-report-close aria-label="Close"><Icon name="close" /></button>
+    <h2 id="report-title" data-report-title>Report this</h2>
+    <p class="report-sub">A moderator reviews every report. The person you report isn't told who sent it.</p>
+    <fieldset class="report-reasons">
+      <legend class="sr-only">Reason</legend>
+      {REPORT_REASONS.map((r, i) => (
+        <label class="report-reason">
+          <input type="radio" name="reason" value={r.id} required checked={i === 0} />
+          <span>{r.label}</span>
+        </label>
+      ))}
+    </fieldset>
+    <div class="field">
+      <label for="report-note">Anything we should know? <span class="muted">(optional)</span></label>
+      <textarea id="report-note" name="note" rows="2" maxlength="500"></textarea>
+    </div>
+    <p class="form-error" role="alert" hidden data-report-error></p>
+    <div class="report-foot">
+      <button type="button" class="btn" data-report-close>Cancel</button>
+      <button type="submit" class="btn btn-dark" data-report-send>Send report</button>
+    </div>
+  </form>
+  <div class="report-done" hidden data-report-done>
+    <span class="report-done-icon" aria-hidden="true"><Icon name="check" /></span>
+    <h2>Thanks, we'll take a look</h2>
+    <p>Reports go to the moderators' queue. Repeated reports of the same thing count once.</p>
+    <button type="button" class="btn btn-dark" data-report-close>Done</button>
+  </div>
+</dialog>
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>("[data-report-dialog]");
+  if (dialog) {
+    const form = dialog.querySelector<HTMLFormElement>("[data-report-form]")!;
+    const done = dialog.querySelector<HTMLElement>("[data-report-done]")!;
+    const error = dialog.querySelector<HTMLElement>("[data-report-error]")!;
+    const send = dialog.querySelector<HTMLButtonElement>("[data-report-send]")!;
+    const title = dialog.querySelector<HTMLElement>("[data-report-title]")!;
+    let target: { type: string; id: string } | null = null;
+
+    document.addEventListener("click", (e) => {
+      const btn = (e.target as Element).closest<HTMLElement>("[data-report][data-target]");
+      if (!btn) return;
+      if (dialog.dataset.signedIn !== "1") {
+        location.assign(`/login?next=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
+      target = { type: btn.dataset.report!, id: btn.dataset.target! };
+      title.textContent = target.type === "tool" ? "Report this listing" : "Report this comment";
+      form.reset();
+      form.hidden = false;
+      done.hidden = true;
+      error.hidden = true;
+      dialog.showModal();
+    });
+    dialog.querySelectorAll("[data-report-close]").forEach((b) => b.addEventListener("click", () => dialog.close()));
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!target) return;
+      const data = new FormData(form);
+      send.disabled = true;
+      error.hidden = true;
+      try {
+        const res = await fetch("/api/reports", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ targetType: target.type, targetId: target.id, reason: data.get("reason"), note: data.get("note") }),
+        });
+        const out = (await res.json()) as { error?: string };
+        if (!res.ok) throw new Error(out.error || "Couldn't send the report.");
+        form.hidden = true;
+        done.hidden = false;
+        done.querySelector<HTMLElement>("[data-report-close]")?.focus();
+      } catch (err) {
+        error.textContent = err instanceof Error ? err.message : "Couldn't send the report.";
+        error.hidden = false;
+      } finally {
+        send.disabled = false;
+      }
+    });
+  }
+</script>

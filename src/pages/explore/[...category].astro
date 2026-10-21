@@ -1,0 +1,136 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import Filters from "../../components/Filters.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import Icon from "../../components/Icon.astro";
+import { countTools, listTools, parsePeriod, parseSort } from "../../lib/db";
+import { collectionLd, crumbsLd } from "../../lib/seo";
+import { categoryCard } from "../../lib/og";
+import { CATEGORIES, CATEGORY_IDS, parseTags, plainText } from "../../lib/validation";
+
+const sp = Astro.url.searchParams;
+// Categories live at /explore/<id>; the old ?category= form redirects there, keeping other filters.
+const legacy = sp.get("category");
+if (legacy && !Astro.params.category && CATEGORY_IDS.includes(legacy)) {
+  const rest = new URLSearchParams(sp);
+  rest.delete("category");
+  return Astro.redirect(`/explore/${legacy}${rest.size ? `?${rest}` : ""}`, 301);
+}
+const categoryParam = Astro.params.category ?? null;
+if (categoryParam && !CATEGORY_IDS.includes(categoryParam)) return Astro.rewrite("/404");
+const category = categoryParam;
+const base = category ? `/explore/${category}` : "/explore";
+const q = plainText(sp.get("q"), 80);
+const sort = parseSort(sp.get("sort"));
+const period = sort === "popular" ? parsePeriod(sp.get("period")) : "all";
+const tag = parseTags(sp.get("tag"))[0] ?? null;
+const page = Math.max(1, Math.min(50, Number(sp.get("page")) || 1));
+const perPage = 24;
+const [tools, total] = await Promise.all([
+  listTools(env.DB, { q, category: category ?? undefined, tag: tag ?? undefined, sort, period, limit: perPage + 1, offset: (page - 1) * perPage }),
+  countTools(env.DB, { q, category: category ?? undefined, tag: tag ?? undefined }),
+]);
+const hasMore = tools.length > perPage;
+const cat = CATEGORIES.find((c) => c.id === category);
+const label = cat?.label;
+const heading = q ? `Results for “${q}”` : tag ? `#${tag}${label ? ` in ${label}` : ""}` : label ? `${label} tools` : "Explore all tools";
+const nextHref = (() => {
+  const n = new URLSearchParams(sp);
+  n.set("page", String(page + 1));
+  return `${base}?${n}`;
+})();
+// Filtered/search result pages are not canonical content.
+const noindex = Boolean(q) || Boolean(tag) || page > 1 || sort !== "picks";
+const title = label ? `${label} tools you can try in your browser` : "Explore web tools you can try in your browser";
+const description = cat
+  ? `${cat.blurb} ${total} hand-picked ${total === 1 ? "tool" : "tools"}, each one tried by a person.`
+  : `Browse ${total} hand-picked web tools, experiments and tiny apps. Each one works in your browser and was tried by a person.`;
+const shown = tools.slice(0, perPage);
+const jsonLd = noindex
+  ? undefined
+  : [
+      collectionLd({ path: base, name: label ? `${label} tools` : "Explore all tools", description, tools: shown }),
+      crumbsLd([{ name: "Explore", path: "/explore" }, ...(cat ? [{ name: cat.label, path: base }] : [])]),
+    ];
+---
+<Base title={noindex ? heading : title} description={description} nav="explore" path={base} noindex={noindex} headerSearch={false} jsonLd={jsonLd} og={category && !noindex ? (categoryCard(category, total, shown) ?? undefined) : undefined}>
+  <div class="explore-head">
+    <div>
+      <p class="eyebrow">Explore</p>
+      <h1 class="page-title">{heading}</h1>
+      {cat && !q && !tag && <p class="lede tag-intro">{cat.blurb}</p>}
+      <p class="result-count">{total} {total === 1 ? "tool" : "tools"}</p>
+    </div>
+    <form class="big-search" action={base} method="get" role="search">
+      <label class="sr-only" for="explore-search">Search tools</label>
+      <Icon name="search" />
+      <input id="explore-search" type="search" name="q" value={q} placeholder="Search tools, ideas, or anything…" maxlength="80" />
+      {tag && <input type="hidden" name="tag" value={tag} />}
+      {sort !== "picks" && <input type="hidden" name="sort" value={sort} />}
+      {period !== "all" && <input type="hidden" name="period" value={period} />}
+      <button class="btn btn-coral" type="submit">Search</button>
+    </form>
+  </div>
+  <Filters category={category} sort={sort} period={period} q={q} tag={tag} />
+  {tools.length ? (
+    <div class="grid" data-results data-surface={q ? "search" : tag ? "tag" : category ? "category" : "explore"}>{shown.map((tool, i) => <ToolCard tool={tool} headingLevel="h2" index={i} />)}</div>
+  ) : (
+    <div class="empty">
+      <p>Nothing matches{q ? ` “${q}”` : ""} yet.</p>
+      <p><a href="/submit">Know a tool that fits? Submit it.</a></p>
+    </div>
+  )}
+  {hasMore && <p class="wrap load-more"><a class="btn" href={nextHref} data-load-more>Load more</a></p>}
+</Base>
+<script>
+  import { announceContent, fetchDocument, skeletonCard } from "../../scripts/client";
+
+  // Infinite scroll: the next page is fetched before the visitor reaches the end and appended in place.
+  // The "Load more" link stays as the no-JS fallback and as a manual trigger.
+  const grid = document.querySelector<HTMLElement>("[data-results]");
+  let link = document.querySelector<HTMLAnchorElement>("[data-load-more]");
+  let loading = false;
+
+  async function loadMore() {
+    const current = link;
+    if (!grid || !current || loading) return;
+    loading = true;
+    const placeholders = Array.from({ length: 3 }, skeletonCard);
+    placeholders.forEach((p) => grid.appendChild(p));
+    grid.setAttribute("aria-busy", "true");
+    try {
+      const doc = await fetchDocument(current.href);
+      placeholders.forEach((p) => p.remove());
+      doc.querySelectorAll("[data-results] > .card").forEach((card) => {
+        const node = document.importNode(card, true) as HTMLElement;
+        node.classList.add("card-in");
+        grid.appendChild(node);
+      });
+      const next = doc.querySelector<HTMLAnchorElement>("[data-load-more]");
+      if (next) current.href = next.getAttribute("href")!;
+      else {
+        current.closest(".load-more")?.remove();
+        link = null;
+      }
+      announceContent();
+    } catch {
+      location.assign(current.href);
+    } finally {
+      grid.removeAttribute("aria-busy");
+      loading = false;
+    }
+    if (link && link.getBoundingClientRect().top < innerHeight + 800) loadMore();
+  }
+
+  if (grid && link) {
+    link.addEventListener("click", (e) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      loadMore();
+    });
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && loadMore(), { rootMargin: "800px 0px" }).observe(link);
+    }
+  }
+</script>

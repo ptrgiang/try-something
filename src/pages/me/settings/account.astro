@@ -1,0 +1,76 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import Settings from "../../../layouts/Settings.astro";
+import Icon from "../../../components/Icon.astro";
+import { deleteAccount } from "../../../lib/db";
+import { isAvatarKey } from "../../../lib/avatar";
+import { isToolImageKey } from "../../../lib/tool-image";
+
+const user = Astro.locals.user;
+let deleted = false;
+let error = "";
+if (Astro.request.method === "POST" && user) {
+  const form = await Astro.request.formData();
+  if (String(form.get("confirm") ?? "").trim().toLowerCase() !== "delete") {
+    error = "Type delete to confirm.";
+    Astro.response.status = 400;
+  } else {
+    const res = await deleteAccount(env.DB, user.id, user.email);
+    if (res.ok) {
+      deleted = true;
+      if (isAvatarKey(res.avatar)) await env.AVATARS?.delete(res.avatar);
+      if (res.uploads.length) await env.TOOL_IMAGES?.delete(res.uploads.filter(isToolImageKey));
+      // Sessions went with the user row; drop the now-dead cookie as well.
+      for (const name of ["better-auth.session_token", "__Secure-better-auth.session_token"]) Astro.cookies.delete(name, { path: "/" });
+      Astro.locals.user = null;
+    } else {
+      error = res.error;
+      Astro.response.status = 409;
+    }
+  }
+}
+if (!deleted && !user) return Astro.redirect("/login?next=/me/settings/account");
+---
+{deleted ? (
+  <Base title="Account deleted" noindex>
+    <div class="page app-page">
+      <div class="gate">
+        <h1 class="page-title">Your account is deleted</h1>
+        <p>Your sign-in, saves, hearts and submissions are gone, and your comments were removed. Tools that were already published stay listed without your name.</p>
+        <a class="btn btn-dark" href="/">Back to Try Something</a>
+      </div>
+    </div>
+  </Base>
+) : (
+  <Settings current="account" title="Delete account" lede="This happens right away and can't be undone.">
+    <div class="danger-card">
+      <div class="danger-cols">
+        <div>
+          <h2>Deleted</h2>
+          <ul class="checklist checklist-removed">
+            <li><Icon name="close" />Your sign-in, profile and handle</li>
+            <li><Icon name="close" />Saved tools and hearts</li>
+            <li><Icon name="close" />Your submissions and their review history</li>
+            <li><Icon name="close" />The text of your comments (replies from others stay)</li>
+          </ul>
+        </div>
+        <div>
+          <h2>Kept</h2>
+          <ul class="checklist">
+            <li><Icon name="check" />Tools already published, without your name</li>
+            <li><Icon name="check" />Moderation records that don't name you</li>
+          </ul>
+        </div>
+      </div>
+      <form method="post" class="form danger-form">
+        {error && <p class="form-error" role="alert">{error}</p>}
+        <div class="field">
+          <label for="confirm">Type <strong>delete</strong> to confirm</label>
+          <input id="confirm" name="confirm" type="text" autocomplete="off" spellcheck="false" required />
+        </div>
+        <button class="btn btn-lg btn-danger" type="submit">Delete my account</button>
+      </form>
+    </div>
+  </Settings>
+)}

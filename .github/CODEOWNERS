@@ -1,0 +1,10 @@
+* @ptrgiang
+
+# Changes here need extra care: schema, auth, roles, moderation, deploy config.
+/migrations/ @ptrgiang
+/src/lib/auth.ts @ptrgiang
+/src/lib/moderation.ts @ptrgiang
+/src/lib/metadata.ts @ptrgiang
+/src/middleware.ts @ptrgiang
+/wrangler.jsonc @ptrgiang
+/.github/ @ptrgiang

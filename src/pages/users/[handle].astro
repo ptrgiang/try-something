@@ -1,0 +1,110 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import Icon from "../../components/Icon.astro";
+import Avatar from "../../components/Avatar.astro";
+import { avatarUrl, isAvatarKey } from "../../lib/avatar";
+import { getProfileByHandle, listLikedTools, listSavedTools, profileTools, removeAvatarAsModerator } from "../../lib/db";
+import { isModerator } from "../../lib/moderation";
+import { displayHost } from "../../lib/url";
+import { profileLd } from "../../lib/seo";
+
+const profile = await getProfileByHandle(env.DB, Astro.params.handle ?? "");
+if (!profile) return Astro.rewrite("/404");
+if (Astro.params.handle !== profile.handle) return Astro.redirect(`/users/${profile.handle}`, 301);
+const me = Astro.locals.user;
+const photo = avatarUrl(profile.avatar, profile.image);
+// Moderators can take down anyone's photo but another staff member's, which only an admin can.
+const canRemovePhoto = Boolean(photo && me && me.id !== profile.id && isModerator(me.role) && (profile.role === "user" || me.role === "admin"));
+if (Astro.request.method === "POST") {
+  if (!canRemovePhoto || !me) return new Response("Forbidden", { status: 403 });
+  if (await removeAvatarAsModerator(env.DB, profile, me.id, "Removed from profile page")) {
+    if (isAvatarKey(profile.avatar)) await env.AVATARS?.delete(profile.avatar);
+  }
+  return Astro.redirect(`/users/${profile.handle}`, 303);
+}
+const own = me?.id === profile.id;
+// Saved and Hearted are private (see Privacy): the tabs exist only for the profile's owner.
+const [tools, saved, liked] = await Promise.all([
+  profileTools(env.DB, profile.id),
+  own ? listSavedTools(env.DB, profile.id) : [],
+  own ? listLikedTools(env.DB, profile.id) : [],
+]);
+const made = tools.filter((t) => t.credit_type === "made");
+const found = tools.filter((t) => t.credit_type === "found");
+const TABS = [
+  { id: "made", label: "Made", tools: made, private: false },
+  { id: "found", label: "Found", tools: found, private: false },
+  ...(own
+    ? [
+        { id: "saved", label: "Saved", tools: saved, private: true },
+        { id: "hearted", label: "Hearted", tools: liked, private: true },
+      ]
+    : []),
+];
+const requested = TABS.find((t) => t.id === Astro.url.searchParams.get("tab"));
+// Default to the first public tab with something in it, so a finder's profile doesn't open empty.
+const tab = requested ?? TABS.find((t) => !t.private && t.tools.length) ?? TABS[0];
+// Counts on the tools listed here, so every number on the header can be checked against the tabs below.
+const hearts = tools.reduce((n, t) => n + t.like_count, 0);
+const saves = tools.reduce((n, t) => n + t.save_count, 0);
+const plural = (n: number, one: string, many = `${one}s`) => `${n === 1 ? one : many}`;
+const joined = new Date(profile.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const description = profile.bio ?? `${profile.name} on Try Something: ${made.length} made, ${found.length} found.`;
+---
+<Base title={`${profile.name} (@${profile.handle})`} description={description} path={`/users/${profile.handle}`} noindex={tools.length === 0} jsonLd={profileLd({ path: `/users/${profile.handle}`, name: profile.name, handle: profile.handle, description: profile.bio, image: photo })}>
+  <header class="profile-head">
+    <div class="profile-band" aria-hidden="true"></div>
+    <Avatar class="profile-avatar" name={profile.name} url={photo} seed={profile.handle} size={128} />
+    <h1 class="profile-name">{profile.name}</h1>
+    <p class="profile-handle">@{profile.handle}{profile.role !== "user" && <span class="comment-badge">{profile.role === "admin" ? "Admin" : "Moderator"}</span>}</p>
+    {profile.bio && <p class="profile-bio">{profile.bio}</p>}
+    <ul class="profile-facts">
+      {profile.website && (
+        <li><Icon name="link" /><a href={profile.website} rel="noopener nofollow ugc me" target="_blank">{displayHost(profile.website)}</a></li>
+      )}
+      <li><Icon name="user" />Joined {joined}</li>
+    </ul>
+    <ul class="profile-stats" aria-label="Stats">
+      <li><strong>{made.length}</strong> made</li>
+      <li><strong>{found.length}</strong> found</li>
+      {tools.length > 0 && <li><strong>{hearts}</strong> {plural(hearts, "heart")}</li>}
+      {tools.length > 0 && <li><strong>{saves}</strong> {plural(saves, "save")}</li>}
+    </ul>
+    {(own || canRemovePhoto) && (
+      <div class="profile-actions">
+        {own && <a class="btn" href="/me/settings">Edit profile</a>}
+        {canRemovePhoto && (
+          <form method="post">
+            <button class="btn btn-sm" type="submit">Remove photo</button>
+          </form>
+        )}
+      </div>
+    )}
+  </header>
+
+  <nav class="profile-tabs" aria-label="Profile sections">
+    {TABS.map((t) => (
+      <a href={`/users/${profile.handle}${t.id === "made" ? "" : `?tab=${t.id}`}`} aria-current={t.id === tab.id ? "page" : undefined}>
+        {t.label}<span>{t.tools.length}</span>
+      </a>
+    ))}
+  </nav>
+  <section class="profile-tab">
+    <h2 class="sr-only">{tab.label} by {profile.name}</h2>
+    {tab.private && <p class="section-intro profile-intro"><Icon name="eye" />Only you can see this tab.</p>}
+    {tab.id === "made" && made.length > 0 && <p class="section-intro profile-intro">Listed as the maker. Not verified by Try Something.</p>}
+    {tab.tools.length > 0 ? (
+      <div class="grid" data-surface="profile">{tab.tools.map((t) => <ToolCard tool={t} />)}</div>
+    ) : (
+      tools.length > 0 && <p class="profile-empty">{tab.id === "saved" ? "Nothing saved yet." : tab.id === "hearted" ? "No hearts yet." : `Nothing ${tab.label.toLowerCase()} yet.`}</p>
+    )}
+  </section>
+  {tools.length === 0 && (
+    <div class="profile-empty">
+      <p>{own ? "Nothing published yet. Tools you submit show up here once they're approved." : `${profile.name} hasn't had a tool published yet.`}</p>
+      {own && <a class="btn btn-dark" href="/submit"><Icon name="plus" />Submit a tool</a>}
+    </div>
+  )}
+</Base>

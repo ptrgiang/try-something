@@ -1,0 +1,17 @@
+<script>
+  // Failed share images reveal the generated art underneath; icon-like images are shown whole.
+  const fit = (img: HTMLImageElement) => {
+    if (!img.naturalWidth) return;
+    img.classList.add("is-loaded");
+    if (img.naturalWidth / img.naturalHeight < 1.4) img.classList.add("fit-contain");
+  };
+  const fail = (img: HTMLImageElement) => img.remove();
+  const check = () =>
+    document.querySelectorAll<HTMLImageElement>("img[data-cover]").forEach((img) => {
+      if (img.complete) (img.naturalWidth ? fit(img) : fail(img));
+    });
+  check();
+  document.addEventListener("ts:content", check);
+  document.addEventListener("load", (e) => e.target instanceof HTMLImageElement && e.target.matches("[data-cover]") && fit(e.target), true);
+  document.addEventListener("error", (e) => e.target instanceof HTMLImageElement && e.target.matches("[data-cover]") && fail(e.target), true);
+</script>

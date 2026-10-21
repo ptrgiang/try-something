@@ -1,0 +1,86 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import Icon from "../../../components/Icon.astro";
+import { listMySubmissions, myToolInsights } from "../../../lib/db";
+import { STATUS_LABELS } from "../../../lib/moderation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/submissions");
+const [subs, insights] = await Promise.all([listMySubmissions(env.DB, user.id), myToolInsights(env.DB, user.id)]);
+const fmt = (n: number) => n.toLocaleString("en-US");
+const justSubmitted = Astro.url.searchParams.get("submitted");
+const updateNotice = { sent: "Update sent. An editor will review it before it shows on the tool page.", withdrawn: "Update withdrawn." }[Astro.url.searchParams.get("update") ?? ""];
+const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for review", published: "Last update published", rejected: "Last update declined", withdrawn: "Last update withdrawn" };
+---
+<Base title="My submissions" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Your account</p>
+    <h1 class="page-title">My submissions</h1>
+    {justSubmitted && subs.some((s) => s.id === justSubmitted) && (
+      <p class="notice notice-success submit-body" role="status">Thanks! Your submission is <strong>pending review</strong>. An editor will check the link and the 30-second try before it goes live. You'll see the status here.</p>
+    )}
+    {updateNotice && <p class="notice notice-success submit-body" role="status">{updateNotice}</p>}
+    {insights.length > 0 && (
+      <section class="insights submit-body" aria-labelledby="insights-title">
+        <h2 id="insights-title" class="section-title">Your listed tools</h2>
+        <p class="muted small-note">Counted on this site only. Cards seen are times the tool's card was on someone's screen; a try click means they opened your site, not that they used it. Visitors are counted once per tool per day; saves are from signed-in accounts.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Tool</th><th class="num">Cards seen<br /><span class="muted">30 days</span></th><th class="num">Views<br /><span class="muted">30 days</span></th><th class="num">Try clicks<br /><span class="muted">30 days</span></th><th class="num">Views<br /><span class="muted">all time</span></th><th class="num">Try clicks<br /><span class="muted">all time</span></th><th class="num">Saves</th><th class="num">Hearts</th><th class="num">Comments</th><th>Maker tools</th></tr>
+            </thead>
+            <tbody>
+              {insights.map((t) => (
+                <tr>
+                  <td><a href={`/tools/${t.slug}`}><strong>{t.name}</strong></a></td>
+                  <td class="num">{fmt(t.seen30)}</td>
+                  <td class="num">{fmt(t.views30)}</td>
+                  <td class="num">{fmt(t.tries30)}</td>
+                  <td class="num">{fmt(t.views)}</td>
+                  <td class="num">{fmt(t.tries)}</td>
+                  <td class="num">{fmt(t.saves)}</td>
+                  <td class="num">{fmt(t.hearts)}</td>
+                  <td class="num">{fmt(t.comments)}</td>
+                  <td>
+                    {t.update_status && <span class="muted small-note">{UPDATE_LABELS[t.update_status]}{t.update_status === "rejected" && t.update_note && `: ${t.update_note}`}</span>}
+                    {t.credit_type === "made" && <a class="update-link" href={`/me/tools/${t.slug}/update`}>{t.update_status === "pending" ? "View update" : "Post an update"}</a>}
+                    {t.credit_type === "made" && <a class="update-link" href={`/me/share/${t.slug}`}>Get a badge</a>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+    {subs.length ? (
+      <div class="table-wrap submit-body">
+        <table>
+          <thead><tr><th>Tool</th><th>Type</th><th>Status</th><th>Editor note</th><th>Submitted</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            {subs.map((s) => (
+              <tr>
+                <td><strong>{s.name}</strong><br /><span class="muted small-note">{s.url}</span></td>
+                <td>{s.origin === "made" ? "I made this" : "I found this"}</td>
+                <td><span class={`status status-${s.status}`}>{STATUS_LABELS[s.status]}</span></td>
+                <td>{s.status === "needs_changes" || s.status === "rejected" ? s.moderator_note : ""}</td>
+                <td><time datetime={s.created_at}>{s.created_at.slice(0, 10)}</time></td>
+                <td>
+                  {s.tool_slug ? (
+                    <>
+                      <a href={`/tools/${s.tool_slug}`}>View live</a>
+                      {s.origin === "made" && (s.tool_verified_at ? <span class="verified-chip"><Icon name="check" />Verified</span> : <a class="verify-link" href={`/me/verify/${s.tool_slug}`}>Verify you made it</a>)}
+                    </>
+                  ) : <a href={`/me/submissions/${s.id}`}>{s.status === "needs_changes" ? "Edit & resubmit" : "Details"}</a>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div class="empty submit-body"><p>You haven't submitted anything yet.</p><a class="btn btn-dark" href="/submit">Submit a tool</a></div>
+    )}
+  </div>
+</Base>

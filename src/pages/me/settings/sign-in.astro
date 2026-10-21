@@ -1,0 +1,137 @@
+---
+import { env } from "cloudflare:workers";
+import Settings from "../../../layouts/Settings.astro";
+import Icon from "../../../components/Icon.astro";
+import GoogleLogo from "../../../components/GoogleLogo.astro";
+import { enabledProviders } from "../../../lib/auth";
+import { authErrorMessage } from "../../../lib/auth-errors";
+import { listSignInAccounts } from "../../../lib/db";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/settings/sign-in");
+
+const providers = enabledProviders(env);
+const accounts = await listSignInAccounts(env.DB, user.id);
+const linked = new Set(accounts.map((a) => a.providerId));
+const LABELS: Record<string, string> = { github: "GitHub", google: "Google" };
+const methods = (["google", "github"] as const)
+  .filter((id) => providers[id] || linked.has(id))
+  .map((id) => ({ id, label: LABELS[id], account: accounts.find((a) => a.providerId === id), available: providers[id] }));
+// Better Auth refuses to remove the last linked account, so don't offer it.
+const canRemove = accounts.length > 1;
+
+const q = Astro.url.searchParams;
+const label = (id: string | null) => (id && LABELS[id]) || "";
+const notice = q.has("connected") ? `${label(q.get("connected"))} is connected. You can use it to sign in to this account.` : q.has("removed") ? `${label(q.get("removed"))} is disconnected.` : "";
+const error = authErrorMessage(q.get("error"), "connect");
+const since = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+---
+<Settings current="sign-in" title="Sign-in methods" lede="Every way you sign in leads to this one account, so your saves, hearts, submissions and comments stay together.">
+  {notice && <p class="notice notice-success" role="status">{notice}</p>}
+  {error && <p class="form-error" role="alert">{error}</p>}
+  <p class="form-error" role="alert" hidden data-method-error></p>
+  <ul class="method-list">
+    {methods.map((m) => (
+      <li class="method" data-method={m.id}>
+        <span class="method-icon" aria-hidden="true">{m.id === "google" ? <GoogleLogo /> : <Icon name="github" />}</span>
+        <div class="method-text">
+          <strong>{m.label}</strong>
+          <span class="muted">
+            {m.account ? `Connected since ${since(m.account.createdAt)}` : m.available ? "Not connected" : "Not available on this server"}
+          </span>
+        </div>
+        {m.account ? (
+          canRemove ? (
+            <button class="btn btn-sm" type="button" data-unlink={m.id} data-account={m.account.id} data-label={m.label}><span data-btn-text>Disconnect</span></button>
+          ) : (
+            <span class="method-note">Your only connected account</span>
+          )
+        ) : m.available ? (
+          <button class="btn btn-sm btn-dark" type="button" data-link={m.id} data-label={m.label}><span data-btn-text>Connect</span></button>
+        ) : null}
+      </li>
+    ))}
+    {providers.email && (
+      <li class="method">
+        <span class="method-icon" aria-hidden="true"><Icon name="mail" /></span>
+        <div class="method-text">
+          <strong>Email code</strong>
+          <span class="muted">{user.email}</span>
+        </div>
+        <span class="method-note">Always on</span>
+      </li>
+    )}
+  </ul>
+  <div class="settings-note">
+    <p><strong>How accounts join up.</strong> Signing in with Google or GitHub using the same verified email as this account lands you here automatically.</p>
+    <p>If that account uses a different email, connect it here once while signed in. An account that already signs in somewhere else can't be connected until that other account is deleted.</p>
+  </div>
+</Settings>
+<script>
+  import { askConfirm } from "../../../scripts/client";
+
+  const box = document.querySelector<HTMLElement>("[data-method-error]");
+  const show = (msg: string) => {
+    if (!box) return;
+    box.textContent = msg;
+    box.hidden = false;
+  };
+  const post = (path: string, body: unknown) =>
+    fetch(`/api/auth${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const busy = (btn: HTMLButtonElement, text: string) => {
+    const span = btn.querySelector<HTMLElement>("[data-btn-text]");
+    const before = span?.textContent ?? "";
+    btn.disabled = true;
+    btn.classList.add("is-busy");
+    if (span) span.textContent = text;
+    return () => {
+      btn.disabled = false;
+      btn.classList.remove("is-busy");
+      if (span) span.textContent = before;
+    };
+  };
+
+  document.querySelectorAll<HTMLButtonElement>("[data-link]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const provider = btn.dataset.link!;
+      const restore = busy(btn, `Opening ${btn.dataset.label}…`);
+      try {
+        const res = await post("/link-social", { provider, callbackURL: `/me/settings/sign-in?connected=${provider}`, errorCallbackURL: "/me/settings/sign-in" });
+        const data = (await res.json()) as { url?: string; message?: string };
+        if (data.url) return void (window.location.href = data.url);
+        show(data.message || "Couldn't start connecting. Please try again.");
+      } catch {
+        show("Network error. Please try again.");
+      }
+      restore();
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>("[data-unlink]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const providerId = btn.dataset.unlink!;
+      const ok = await askConfirm({
+        title: `Disconnect ${btn.dataset.label}?`,
+        body: `You won't be able to sign in with ${btn.dataset.label} until you connect it again. Your saves, submissions and comments stay with this account.`,
+        confirm: "Disconnect",
+        danger: true,
+      });
+      if (!ok) return;
+      const restore = busy(btn, "Disconnecting…");
+      try {
+        const res = await post("/unlink-account", { accountId: btn.dataset.account });
+        if (res.ok) return void window.location.assign(`/me/settings/sign-in?removed=${providerId}`);
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        show(data.message || "Couldn't disconnect it. Please try again.");
+      } catch {
+        show("Network error. Please try again.");
+      }
+      restore();
+    });
+  });
+
+  // Back from the provider restores this page from bfcache with the button still spinning.
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) window.location.reload();
+  });
+</script>

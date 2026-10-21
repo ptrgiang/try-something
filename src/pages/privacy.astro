@@ -1,0 +1,62 @@
+---
+import LegalPage from "../components/LegalPage.astro";
+
+const sections = [
+  { id: "browsing", label: "Browsing without an account" },
+  { id: "counts", label: "Views, Try clicks and site statistics" },
+  { id: "account", label: "If you sign in" },
+  { id: "activity", label: "Hearts, saves and submissions" },
+  { id: "public", label: "Profiles, comments and reports" },
+  { id: "cookies", label: "Cookies and local storage" },
+  { id: "providers", label: "Who processes data" },
+  { id: "delete", label: "Deleting your data" },
+];
+---
+<LegalPage
+  title="Privacy"
+  description="What Try Something stores, why, and how to delete it."
+  updated="23 October 2026"
+  summary={[
+    "No ads and no advertising trackers.",
+    "You can browse and try everything without an account.",
+    "Views, Try clicks and site visits are counted with a daily-changing hash of your IP address; the IP itself is never stored, and there are no analytics cookies.",
+    "If you sign in, your email is never shown publicly, and you can delete your account yourself at any time.",
+  ]}
+  sections={sections}
+>
+  <h2 id="browsing">Browsing without an account</h2>
+  <p>You can explore, search and try tools without signing in. Tools you save while signed out are kept only in your browser's local storage and never sent to us.</p>
+
+  <h2 id="counts">Views, Try clicks and site statistics</h2>
+  <p>When you open a tool's page or click “Try it”, we add one to that tool's daily view or try count. These totals, together with hearts and saves, power the Trending and Popular sorts and the numbers shown on each tool.</p>
+  <p>To count each visitor only once per tool per day, we use a salted hash of your IP address that changes every day. The raw IP address isn't stored, and the hash is deleted within a few days.</p>
+  <p>We also keep daily site totals on our own servers, with no outside analytics service: how many people visited, which public pages they opened, which tools' cards scrolled into view and where on the site, whether a visit went on to a “Try it” click, the site that linked to them (or <code>utm_source</code>, <code>utm_medium</code> and <code>utm_campaign</code> tags), their country as reported by our hosting network, and whether they used a phone. Only the totals are stored, never the full address of the page you came from or anything that identifies you. To count each step of a visit once per day, the day's hash is kept with where the visit came from for two days, then deleted. Visits from signed-in staff and automated browsers aren't counted. When you search on Explore we also count the words you searched for, once per visitor per day, so we can see what people look for and don't find; searches that look like an email address, a link or a long number are dropped, and daily search totals are deleted after 180 days. If your browser sends Global Privacy Control or Do Not Track, your visits, views, Try clicks and searches aren't counted at all.</p>
+  <p>If you're signed in, we also note which days your account was active, so we can see whether people come back. That record is deleted with your account and after 180 days.</p>
+  <p>Your notifications (reviews of your submissions, replies to your comments and comments on tools you listed) are kept on our servers for 90 days, or until your account is deleted. They are only shown on the site; we don't email them.</p>
+
+  <h2 id="account">If you sign in</h2>
+  <p>When you sign in with GitHub, Google or an email code, we store your name, email address, profile picture URL and the sign-in provider's account ID. Your email is never shown publicly.</p>
+  <p>For each session we keep the IP address and browser user agent, for security and rate limiting.</p>
+
+  <h2 id="activity">Hearts, saves and submissions</h2>
+  <p>Hearts and saves are stored with your account so you can undo them. Tools show only the totals, never who hearted or saved them.</p>
+  <p>What you submit (the link, descriptions and credits) and its review history are stored so editors can review it. Published listings are public. Editor notes are visible only to you and the editors.</p>
+
+  <h2 id="public">Profiles, comments and reports</h2>
+  <p>You get a public profile only if you choose a handle. It shows your display name, handle, the optional bio and website you add, the month you joined and the published tools you made or found. Saved tools and hearts never appear on it for anyone else; when you are signed in, your own profile shows them in tabs only you can see.</p>
+  <p>Your profile photo shows on your profile and next to your comments. It is the photo from your Google or GitHub account unless you upload your own or choose initials in Settings. Uploads are cropped and resized in your browser, which also drops embedded details such as location, and are stored on Cloudflare R2. Replacing or removing a photo, or deleting your account, deletes the uploaded file. Photos from Google or GitHub are loaded from their servers without telling them which page you are on.</p>
+  <p>A cover image you upload with a submission is resized in your browser (dropping embedded details such as location) and stored on Cloudflare R2. Only you and the moderators can see it until the tool is published with it. Replacing or removing it, or deleting your account before it is published, deletes the file; once published it stays with the listing, and the maker or you can ask us to remove it.</p>
+  <p>Comments are public and show your display name (linked to your profile if you have one). Editors can hide a comment that breaks the rules, and the reason is kept in our moderation records.</p>
+  <p>When you report a tool or a comment, the moderators see who sent it so they can follow up; the person you reported is not told.</p>
+  <p>If you verify that you made a tool, we load the page or file you point us to to check your token. We don't keep a copy.</p>
+
+  <h2 id="cookies">Cookies and local storage</h2>
+  <p>We use one session cookie (HttpOnly, Secure) to keep you signed in. Local storage remembers your signed-out saves and whether you've closed the “Know a cool tool?” prompt. Session storage, cleared when you close the tab, remembers which cards were already counted and which tools you opened, so Surprise me doesn't repeat them. We don't use advertising or analytics cookies.</p>
+
+  <h2 id="providers">Who processes data</h2>
+  <p>The site runs on Cloudflare: Workers, the D1 database, KV cache, R2 storage for uploaded profile photos and tool covers, and Turnstile bot protection. Cloudflare processes requests on our behalf. Sign-in through GitHub or Google is handled by those services under their own privacy policies.</p>
+
+  <h2 id="delete">Deleting your data</h2>
+  <p>Delete your account yourself under <a href="/me/settings/account">Settings → Delete account</a>. It happens right away: your sign-in, profile, saves, hearts and submissions are deleted, and the text of your comments is removed. Tools that were already published stay listed without your name.</p>
+  <p>If you can't sign in any more, email <a href="mailto:hello@trysometh.ing">hello@trysometh.ing</a> from the address on your account and we'll do it for you.</p>
+</LegalPage>

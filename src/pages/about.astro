@@ -1,0 +1,62 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+---
+<Base title="About" nav="about" description="Try Something is an open-source, community-submitted home for web tools and experiments you can try in 30 seconds.">
+  <div class="page">
+    <header class="page-head">
+      <p class="eyebrow">About</p>
+      <h1 class="page-title">Try it, not just look at it.</h1>
+      <p class="lede">Try Something is a small, open-source home for tools, toys, experiments and tiny web apps. Each one does something you can enjoy in about 30 seconds, right in your browser.</p>
+    </header>
+
+    <section class="about-section" aria-labelledby="how">
+      <h2 class="section-heading" id="how">How it works</h2>
+      <div class="feature-grid">
+        <div class="feature">
+          <span class="feature-icon"><Icon name="search" /></span>
+          <h3>Browse freely</h3>
+          <p>Explore, search and Surprise me work without an account. “Try it” always opens the maker's official site.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="plus" /></span>
+          <h3>Anyone can share</h3>
+          <p>Makers (“I made this”) and fans (“I found this”) can both submit, and both get credit.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="check" /></span>
+          <h3>People review everything</h3>
+          <p>An editor opens every link, does the 30-second try and checks the description before it's published.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="heart" /></span>
+          <h3>No paid ranking</h3>
+          <p>No ads, no pay-to-rank, no fake votes. If sponsorships ever happen, they'll be labeled and kept apart from curation.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="about-section about-columns">
+      <div>
+        <h2 class="section-heading">How sorting works</h2>
+        <p><strong>New</strong> shows the latest listings first. <strong>Trending</strong> and <strong>Popular</strong> use the same score built from real activity: views, “Try it” clicks, hearts and saves. Trending looks at the last 7 days, Popular at all time. Each visitor counts once per tool per day.</p>
+      </div>
+      <div>
+        <h2 class="section-heading">Where the pictures come from</h2>
+        <p>Covers are each product's own share image, the picture its site shows when the link is posted. When there isn't one, we draw an original illustration. Names, images and marks belong to their owners, and makers can ask us to take an image down at any time.</p>
+      </div>
+      <div>
+        <h2 class="section-heading">Open source</h2>
+        <p>The code is MIT licensed and runs on Cloudflare Workers and D1. Anyone can read it, and contributions are welcome. See <a href="/contribute">how to contribute</a>.</p>
+      </div>
+    </section>
+
+    <section class="cta-band">
+      <h2>Ready to try something?</h2>
+      <div class="hero-ctas">
+        <a class="btn btn-dark btn-lg" href="/explore">Explore tools <Icon name="arrow" /></a>
+        <a class="btn btn-lg" href="/surprise"><Icon name="shuffle" />Surprise me</a>
+      </div>
+    </section>
+  </div>
+</Base>

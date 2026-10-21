@@ -1,0 +1,62 @@
+---
+// Small, dismissible corner card inviting visitors to submit a tool. Shown once the visitor has
+// scrolled down a bit; dismissing it hides it for 7 days on this browser.
+import Icon from "./Icon.astro";
+
+interface Props {
+  path: string;
+}
+const { path } = Astro.props;
+const hidden = ["/submit", "/login", "/admin", "/me"].some((p) => path === p || path.startsWith(`${p}/`));
+---
+{!hidden && (
+  <aside class="nudge" aria-label="Submit a tool" data-nudge hidden>
+    <button type="button" class="nudge-close" data-nudge-close aria-label="Dismiss"><Icon name="close" /></button>
+    <p class="nudge-title">Know a cool tool?</p>
+    <p class="nudge-text">Made it or found it, share it here.</p>
+    <a class="btn btn-dark btn-sm" href="/submit" data-nudge-cta><Icon name="plus" />Submit a tool</a>
+  </aside>
+)}
+<script>
+  const KEY = "ts:submit-nudge";
+  const SNOOZE_MS = 7 * 86400_000;
+  const nudge = document.querySelector<HTMLElement>("[data-nudge]");
+  const dismissedAt = (() => {
+    try {
+      return Number(localStorage.getItem(KEY) || 0);
+    } catch {
+      return 0;
+    }
+  })();
+  if (nudge && Date.now() - dismissedAt > SNOOZE_MS) {
+    let lastY = window.scrollY;
+    const show = () => {
+      nudge.hidden = false;
+      requestAnimationFrame(() => nudge.classList.add("is-in"));
+      window.removeEventListener("scroll", onScroll);
+    };
+    // Downward scrolling only, past 40% of a screen, or the bottom of a page too short for that.
+    const onScroll = () => {
+      const y = window.scrollY;
+      const down = y > lastY;
+      lastY = y;
+      if (!down) return;
+      const nearEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 40;
+      if (y > window.innerHeight * 0.4 || nearEnd) show();
+    };
+    const dismiss = () => {
+      nudge.classList.remove("is-in");
+      nudge.hidden = true;
+      try {
+        localStorage.setItem(KEY, String(Date.now()));
+      } catch {}
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    nudge.querySelector("[data-nudge-close]")?.addEventListener("click", dismiss);
+    nudge.querySelector("[data-nudge-cta]")?.addEventListener("click", dismiss);
+    document.addEventListener("keydown", (e) => {
+      // Escape belongs to an open dialog (quick view) first.
+      if (e.key === "Escape" && !nudge.hidden && !document.querySelector("dialog[open]")) dismiss();
+    });
+  }
+</script>

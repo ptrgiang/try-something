@@ -1,0 +1,338 @@
+---
+import { env } from "cloudflare:workers";
+import Icon from "./Icon.astro";
+import { CATEGORIES, type FieldErrors } from "../lib/validation";
+import { TOOL_IMAGE_MAX_BYTES, TOOL_IMAGE_TARGET_SIDE } from "../lib/tool-image";
+
+interface Props {
+  values?: Record<string, string>;
+  errors?: FieldErrors;
+  submitLabel: string;
+  withMetadata?: boolean;
+  /** URL of the cover already uploaded with this submission, when editing. */
+  currentCover?: string | null;
+}
+const { values = {}, errors = {}, submitLabel, withMetadata = true, currentCover = null } = Astro.props;
+const uploads = Boolean(env.TOOL_IMAGES);
+const v = (k: string) => values[k] ?? "";
+// Field errors are also listed at the top, in form order, each linking to its field.
+type FieldKey = keyof FieldErrors;
+const FIELD_LABELS: Partial<Record<FieldKey, string>> = {
+  origin: "Made or found",
+  url: "Official URL",
+  name: "Product name",
+  tagline: "One-line description",
+  tryThis: "What to try",
+  category: "Category",
+  cover: "Cover image",
+  makerUrl: "Maker link",
+};
+const fieldErrors = (Object.keys(FIELD_LABELS) as FieldKey[]).filter((k) => errors[k]);
+const invalid = (k: FieldKey) => (errors[k] ? "true" : undefined);
+const describedBy = (...ids: (string | false | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
+let step = 0;
+const nextStep = () => ++step;
+---
+<form class="form submission-form" method="post" enctype="multipart/form-data" data-submission-form novalidate>
+  {(errors.form || fieldErrors.length > 0) && (
+    <div class="form-error error-summary" role="alert">
+      {errors.form && <p>{errors.form}</p>}
+      {fieldErrors.length > 0 && (
+        <p>
+          <strong>{fieldErrors.length === 1 ? "One field needs a fix" : `${fieldErrors.length} fields need a fix`}:</strong>{" "}
+          {fieldErrors.map((k, i) => <>{i > 0 && ", "}<a href={`#${k === "origin" ? "origin-made" : k}`}>{FIELD_LABELS[k]}</a></>)}
+        </p>
+      )}
+    </div>
+  )}
+
+  <section class="form-section" aria-labelledby="step-link">
+    <h2 class="form-step" id="step-link"><span>{nextStep()}</span>The link</h2>
+    <fieldset class="field" aria-describedby={describedBy(errors.origin && "origin-error")}>
+      <legend>Did you make it, or find it?</legend>
+      <div class="origin-choice">
+        <label class="choice">
+          <input id="origin-made" type="radio" name="origin" value="made" checked={v("origin") === "made"} required />
+          <span class="choice-text">
+            <span class="choice-title">I made this</span>
+            <span class="choice-note">You built it or work on it. It shows as maker-submitted until you verify it.</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="origin" value="found" checked={v("origin") === "found"} />
+          <span class="choice-text">
+            <span class="choice-title">I found this</span>
+            <span class="choice-note">Someone else made it. You get credit for the find.</span>
+          </span>
+        </label>
+      </div>
+      {errors.origin && <p class="error" id="origin-error">{errors.origin}</p>}
+    </fieldset>
+
+    <div class="field">
+      <label for="url">Official URL</label>
+      <p class="hint" id="url-hint">The product's own page, not an article or a social post.</p>
+      <div class="url-row">
+        <input id="url" name="url" type="url" inputmode="url" autocomplete="url" placeholder="https://" value={v("url")} required maxlength="2048" aria-invalid={invalid("url")} aria-describedby={describedBy("url-hint", errors.url && "url-error")} />
+        {withMetadata && <button class="btn" type="button" data-fetch-meta>Fetch details</button>}
+      </div>
+      {withMetadata && <p class="hint meta-status" data-meta-status aria-live="polite">Fetch details fills in the name and description from the page.</p>}
+      {errors.url && <p class="error" id="url-error">{errors.url}</p>}
+    </div>
+    <figure class="share-preview" data-share-preview hidden={!v("metaImage")}>
+      <img alt="" referrerpolicy="no-referrer" src={v("metaImage") || undefined} />
+      <figcaption class="hint">The site's own share image. It's used when there's no uploaded cover, credited to the site.</figcaption>
+    </figure>
+  </section>
+
+  <section class="form-section" aria-labelledby="step-details">
+    <h2 class="form-step" id="step-details"><span>{nextStep()}</span>The details</h2>
+    <div class="field">
+      <label for="name">Product name</label>
+      <input id="name" name="name" type="text" value={v("name")} required maxlength="60" aria-invalid={invalid("name")} aria-describedby={describedBy(errors.name && "name-error")} />
+      {errors.name && <p class="error" id="name-error">{errors.name}</p>}
+    </div>
+
+    <div class="field">
+      <label for="tagline">One-line description</label>
+      <p class="hint" id="tagline-hint">What it is, in plain words.</p>
+      <input id="tagline" name="tagline" type="text" value={v("tagline")} required maxlength="120" data-counted aria-invalid={invalid("tagline")} aria-describedby={describedBy("tagline-hint", errors.tagline && "tagline-error")} />
+      {errors.tagline && <p class="error" id="tagline-error">{errors.tagline}</p>}
+    </div>
+
+    <div class="field">
+      <label for="tryThis">What can someone try in 30 seconds?</label>
+      <p class="hint" id="tryThis-hint">One concrete thing to do as soon as the page opens.</p>
+      <textarea id="tryThis" name="tryThis" rows="3" required maxlength="200" data-counted placeholder="e.g. Paste some JSON and watch it turn into a graph." aria-invalid={invalid("tryThis")} aria-describedby={describedBy("tryThis-hint", errors.tryThis && "tryThis-error")}>{v("tryThis")}</textarea>
+      {errors.tryThis && <p class="error" id="tryThis-error">{errors.tryThis}</p>}
+    </div>
+
+    <div class="field">
+      <label for="why">Why is it worth trying? <span class="optional">Optional</span></label>
+      <p class="hint" id="why-hint">What makes it stand out, in a sentence or two.</p>
+      <textarea id="why" name="why" rows="3" maxlength="400" data-counted aria-describedby="why-hint">{v("why")}</textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category" name="category" required aria-invalid={invalid("category")} aria-describedby={describedBy(errors.category && "category-error")}>
+          <option value="">Choose one…</option>
+          {CATEGORIES.map((c) => <option value={c.id} selected={v("category") === c.id}>{c.label}</option>)}
+        </select>
+        {errors.category && <p class="error" id="category-error">{errors.category}</p>}
+      </div>
+      <div class="field">
+        <label for="tags">Tags <span class="optional">Optional, up to 5</span></label>
+        <input id="tags" name="tags" type="text" value={v("tags")} maxlength="140" placeholder="svg, generative, music" />
+      </div>
+    </div>
+  </section>
+
+  {uploads && (
+    <section class="form-section cover-field" aria-labelledby="step-cover">
+      <h2 class="form-step" id="step-cover"><span>{nextStep()}</span>Cover image <span class="optional">Optional</span></h2>
+      <p class="hint" id="cover-hint">A screenshot of the tool in action works best. It's shown instead of the site's share image.</p>
+      {currentCover && (
+        <figure class="share-preview">
+          <img alt="Cover uploaded with this submission" src={currentCover} />
+          <figcaption><label class="check"><input type="checkbox" name="removeCover" /> Remove this cover</label></figcaption>
+        </figure>
+      )}
+      <div class="dropzone" data-dropzone>
+        <label for="cover" class="sr-only">Cover image</label>
+        <input id="cover" name="cover" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="cover-hint cover-formats" data-cover-input data-max-bytes={TOOL_IMAGE_MAX_BYTES} data-side={TOOL_IMAGE_TARGET_SIDE} />
+        <span class="dropzone-icon" aria-hidden="true"><Icon name="image" /></span>
+        <span class="dropzone-title" aria-hidden="true"><span data-dropzone-title>{currentCover ? "Choose a new image" : "Choose an image"}</span> <span class="dropzone-or">or drop it here</span></span>
+        <span class="hint" id="cover-formats">JPEG, PNG or WebP, at least 200px. We resize it to {TOOL_IMAGE_TARGET_SIDE}px.</span>
+      </div>
+      <figure class="share-preview cover-preview" data-cover-preview hidden>
+        <img alt="Preview of the new cover" />
+        <figcaption><button class="btn btn-sm" type="button" data-cover-clear>Remove image</button></figcaption>
+      </figure>
+      <label class="check check-wrap" data-cover-rights-wrap><input type="checkbox" name="coverRights" data-cover-rights /><span>I have the right to share this image (my own, or used with permission), and it shows the product honestly.</span></label>
+      <p class="error" data-cover-error hidden={!errors.cover}>{errors.cover}</p>
+    </section>
+  )}
+
+  <section class="form-section" aria-labelledby="step-credit">
+    <h2 class="form-step" id="step-credit"><span>{nextStep()}</span>Credit <span class="optional">Optional</span></h2>
+    <p class="hint">Who should be credited as the maker. If you made it, you can leave this empty.</p>
+    <div class="field-row">
+      <div class="field">
+        <label for="makerName">Who made it?</label>
+        <input id="makerName" name="makerName" type="text" autocomplete="off" value={v("makerName")} maxlength="80" placeholder="Person, team or company" />
+      </div>
+      <div class="field">
+        <label for="makerUrl">Their link</label>
+        <input id="makerUrl" name="makerUrl" type="url" inputmode="url" value={v("makerUrl")} maxlength="2048" placeholder="https://" aria-invalid={invalid("makerUrl")} aria-describedby={describedBy(errors.makerUrl && "makerUrl-error")} />
+        {errors.makerUrl && <p class="error" id="makerUrl-error">{errors.makerUrl}</p>}
+      </div>
+    </div>
+  </section>
+
+  <input type="hidden" name="metaTitle" value={v("metaTitle")} />
+  <input type="hidden" name="metaDescription" value={v("metaDescription")} />
+  <input type="hidden" name="metaFavicon" value={v("metaFavicon")} />
+  <input type="hidden" name="metaImage" value={v("metaImage")} />
+
+  <div class="form-footer">
+    <div class="cf-turnstile" data-sitekey={env.TURNSTILE_SITE_KEY} data-action="submit"></div>
+    <div class="form-submit">
+      <button class="btn btn-dark btn-lg" type="submit">{submitLabel}</button>
+      <p class="hint">An editor checks every submission before it goes live. Follow it under <a href="/me/submissions">My submissions</a>.</p>
+    </div>
+  </div>
+</form>
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-submission-form]");
+  const btn = form?.querySelector<HTMLButtonElement>("[data-fetch-meta]");
+  const status = form?.querySelector<HTMLElement>("[data-meta-status]");
+  const field = (name: string) => form?.elements.namedItem(name) as HTMLInputElement | null;
+
+  // "12 / 120" under limited fields once they have text; maxlength already stops typing past the limit.
+  form?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-counted]").forEach((el) => {
+    const counter = document.createElement("span");
+    counter.className = "char-count";
+    counter.setAttribute("aria-hidden", "true");
+    el.insertAdjacentElement("afterend", counter);
+    const update = () => {
+      counter.textContent = `${el.value.length} / ${el.maxLength}`;
+      counter.hidden = !el.value.length;
+      counter.classList.toggle("is-near", el.value.length >= el.maxLength * 0.9);
+    };
+    el.addEventListener("input", update);
+    update();
+  });
+
+  // Covers are resized and re-encoded in the browser (smaller upload, no EXIF/GPS) before the form posts.
+  const coverInput = form?.querySelector<HTMLInputElement>("[data-cover-input]");
+  const coverRights = form?.querySelector<HTMLInputElement>("[data-cover-rights]");
+  const rightsWrap = form?.querySelector<HTMLElement>("[data-cover-rights-wrap]");
+  const coverError = form?.querySelector<HTMLElement>("[data-cover-error]");
+  const coverPreview = form?.querySelector<HTMLElement>("[data-cover-preview]");
+  const dropzone = form?.querySelector<HTMLElement>("[data-dropzone]");
+  const dropTitle = form?.querySelector<HTMLElement>("[data-dropzone-title]");
+  const defaultTitle = dropTitle?.textContent ?? "";
+  const showCoverError = (msg: string) => {
+    if (!coverError) return;
+    coverError.textContent = msg;
+    coverError.hidden = !msg;
+  };
+  // The rights box only matters once a file is picked; without script it stays visible.
+  const syncCover = () => {
+    const picked = Boolean(coverInput?.files?.length);
+    if (rightsWrap) rightsWrap.hidden = !picked;
+    if (coverRights) coverRights.required = picked;
+    if (dropTitle) dropTitle.textContent = picked ? "Choose a different image" : defaultTitle;
+    dropzone?.classList.toggle("has-file", picked);
+    if (!picked) coverPreview?.setAttribute("hidden", "");
+  };
+  syncCover();
+  async function shrink(file: File, side: number): Promise<Blob | null> {
+    const bmp = await createImageBitmap(file).catch(() => null);
+    if (!bmp) return null;
+    const scale = Math.min(1, side / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const encode = (type: string, q: number) => new Promise<Blob | null>((r) => canvas.toBlob(r, type, q));
+    const webp = await encode("image/webp", 0.85);
+    return webp?.type === "image/webp" ? webp : encode("image/jpeg", 0.88);
+  }
+  const clearCover = () => {
+    if (coverInput) coverInput.value = "";
+    syncCover();
+  };
+  coverInput?.addEventListener("change", async () => {
+    showCoverError("");
+    const file = coverInput.files?.[0];
+    if (!file || !coverPreview) return syncCover();
+    const blob = await shrink(file, Number(coverInput.dataset.side));
+    if (!blob) {
+      clearCover();
+      return showCoverError("Couldn't read that image. Try a JPEG, PNG or WebP file.");
+    }
+    if (blob.size > Number(coverInput.dataset.maxBytes)) {
+      clearCover();
+      return showCoverError("That image is too large even after resizing.");
+    }
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], blob.type === "image/webp" ? "cover.webp" : "cover.jpg", { type: blob.type }));
+    coverInput.files = dt.files;
+    syncCover();
+    const reader = new FileReader();
+    reader.onload = () => {
+      coverPreview.querySelector("img")!.src = String(reader.result);
+      coverPreview.hidden = false;
+    };
+    reader.readAsDataURL(blob);
+  });
+  form?.querySelector("[data-cover-clear]")?.addEventListener("click", () => {
+    clearCover();
+    showCoverError("");
+    coverInput?.focus();
+  });
+  coverInput?.addEventListener("dragenter", () => dropzone?.classList.add("is-over"));
+  for (const type of ["dragleave", "drop"]) coverInput?.addEventListener(type, () => dropzone?.classList.remove("is-over"));
+
+  form?.addEventListener("submit", (e) => {
+    if (coverInput?.files?.length && coverRights && !coverRights.checked) {
+      e.preventDefault();
+      showCoverError("Confirm you may share this image, or remove it.");
+      coverRights.focus();
+    }
+  });
+
+  btn?.addEventListener("click", async () => {
+    const url = field("url")?.value.trim();
+    if (!status) return;
+    if (!url) {
+      status.textContent = "Paste the link first, then fetch its details.";
+      field("url")?.focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    status.textContent = "Fetching the page's public details…";
+    try {
+      const res = await fetch("/api/metadata", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as { error?: string; title?: string | null; description?: string | null; favicon?: string | null; image?: string | null; duplicate?: { kind: string; slug?: string } | null };
+      if (!res.ok) {
+        status.textContent = `${data.error ?? "Couldn't fetch details."} You can fill in the fields yourself.`;
+        return;
+      }
+      if (data.duplicate) {
+        status.textContent = data.duplicate.kind === "tool" ? `Heads up: this is already listed at /tools/${data.duplicate.slug}.` : "Heads up: someone already submitted this and it's waiting for review.";
+      } else {
+        status.textContent = "Filled in from the page. Check the wording before you submit.";
+      }
+      const name = field("name");
+      const tagline = field("tagline");
+      if (name && !name.value && data.title) name.value = data.title.split(/\s[|–—-]\s/)[0].slice(0, 60);
+      if (tagline && !tagline.value && data.description) tagline.value = data.description.slice(0, 120);
+      tagline?.dispatchEvent(new Event("input"));
+      field("metaTitle")!.value = data.title ?? "";
+      field("metaDescription")!.value = data.description ?? "";
+      field("metaFavicon")!.value = data.favicon ?? "";
+      field("metaImage")!.value = data.image ?? "";
+      const preview = form?.querySelector<HTMLElement>("[data-share-preview]");
+      const img = preview?.querySelector("img");
+      if (preview && img) {
+        preview.hidden = !data.image;
+        if (data.image) img.src = data.image;
+      }
+    } catch {
+      status.textContent = "Couldn't fetch details. You can fill in the fields yourself.";
+    } finally {
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+    }
+  });
+</script>

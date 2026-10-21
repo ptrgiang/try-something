@@ -1,0 +1,56 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+const repo = env.PUBLIC_GITHUB_REPO;
+const repoUrl = repo ? `https://github.com/${repo}` : null;
+---
+<Base title="Contribute" description="Help build Try Something: share tools, improve the open-source code, or report a problem.">
+  <div class="page">
+    <header class="page-head">
+      <p class="eyebrow">Contribute</p>
+      <h1 class="page-title">Help build Try Something</h1>
+      <p class="lede">It's open source from the first commit. Pick whichever way of helping suits you.</p>
+    </header>
+
+    <div class="feature-grid feature-grid-3">
+      <div class="feature">
+        <span class="feature-icon"><Icon name="plus" /></span>
+        <h2>Share a tool</h2>
+        <p>Point us at something you made or found. The best picks link to the official site and say exactly what to try first.</p>
+        <a class="btn btn-dark" href="/submit">Submit a tool</a>
+      </div>
+      <div class="feature">
+        <span class="feature-icon"><Icon name="github" /></span>
+        <h2>Improve the code</h2>
+        {repoUrl ? (
+          <p>Fix a bug, polish the UI or add a feature. The code is MIT licensed and lives on GitHub.</p>
+        ) : (
+          <p>The code is MIT licensed. The public repository link will appear here once it's published.</p>
+        )}
+        {repoUrl && <a class="btn" href={repoUrl} target="_blank" rel="noopener"><Icon name="github" />View on GitHub</a>}
+      </div>
+      <div class="feature">
+        <span class="feature-icon"><Icon name="spark" /></span>
+        <h2>Report a problem</h2>
+        <p>A broken link, a wrong description, or your own tool or image you'd like removed? Tell us and we'll fix it.</p>
+        <a class="btn" href="mailto:hello@trysometh.ing">hello@trysometh.ing</a>
+      </div>
+    </div>
+
+    <section class="about-section" aria-labelledby="code">
+      <h2 class="section-heading" id="code">How code contributions work</h2>
+      <p class="section-intro">We don't take pull requests on the main repository. Instead:</p>
+      <ol class="steps steps-row">
+        <li><strong>Fork the repo</strong> and open the pull request on your own fork.</li>
+        <li><strong>Email us the link</strong> at <a href="mailto:hello@trysometh.ing">hello@trysometh.ing</a>.</li>
+        <li><strong>We review it.</strong> If we merge it, you're credited as a co-author on the commit.</li>
+      </ol>
+      <p class="muted small-note">We read everything but can't promise a reply or a timeline. {repoUrl ? <>The full checklist is in <a href={`${repoUrl}/blob/main/CONTRIBUTING.md`} target="_blank" rel="noopener">CONTRIBUTING.md</a>.</> : "The full checklist is in CONTRIBUTING.md in the repository."}</p>
+    </section>
+
+    <aside class="callout">
+      <strong>Found a security issue?</strong> Please report it privately through GitHub's vulnerability reporting, as described in {repoUrl ? <a href={`${repoUrl}/blob/main/SECURITY.md`} target="_blank" rel="noopener">SECURITY.md</a> : "SECURITY.md"}. Don't email it or post it publicly.
+    </aside>
+  </div>
+</Base>

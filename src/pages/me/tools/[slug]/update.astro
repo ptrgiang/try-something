@@ -1,0 +1,86 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../../layouts/Base.astro";
+import { createToolUpdate, getPublishedTool, updateContext, withdrawToolUpdate } from "../../../../lib/db";
+import { updateCheck, UPDATE_LIMIT, UPDATE_WINDOW_DAYS } from "../../../../lib/moderation";
+import { parseToolUpdate } from "../../../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
+const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
+// Same response for missing and not-yours, so slugs can't be probed for ownership.
+if (!tool || tool.submitted_by !== user.id || tool.credit_type !== "made") return Astro.rewrite("/404");
+
+let ctx = await updateContext(env.DB, tool.id);
+let values: Record<string, string> = { note: "", tagline: tool.tagline, tryThis: tool.try_this, why: tool.why };
+let errors: Record<string, string> = {};
+let formError = "";
+if (Astro.request.method === "POST") {
+  const form = Object.fromEntries(await Astro.request.formData());
+  if (form.intent === "withdraw" && ctx.pending) {
+    await withdrawToolUpdate(env.DB, ctx.pending, user.id);
+    return Astro.redirect("/me/submissions?update=withdrawn", 303);
+  }
+  const check = updateCheck(user.id, tool, ctx.recent, Boolean(ctx.pending));
+  const parsed = parseToolUpdate(form);
+  values = { ...parsed.value };
+  if (!check.ok) {
+    formError = check.error;
+    Astro.response.status = check.status;
+  } else if (!parsed.ok) {
+    errors = parsed.errors;
+    Astro.response.status = 400;
+  } else if (await createToolUpdate(env.DB, tool.id, user.id, parsed.value)) {
+    return Astro.redirect("/me/submissions?update=sent", 303);
+  } else {
+    formError = "An update for this tool is already waiting for review.";
+    Astro.response.status = 409;
+    ctx = await updateContext(env.DB, tool.id);
+  }
+}
+const blocked = updateCheck(user.id, tool, ctx.recent, Boolean(ctx.pending));
+---
+<Base title={`Post an update: ${tool.name}`} noindex>
+  <div class="page app-page narrow">
+    <p class="eyebrow"><a href="/me/submissions">My submissions</a></p>
+    <h1 class="page-title">Post an update to {tool.name}</h1>
+    <p class="muted submit-body">Shipped something new? Tell visitors what changed and, if needed, refresh the listing text. An editor reviews it first. A meaningful update can also bring the tool back near the top of Picks for a couple of weeks, at most once every few months.</p>
+    {formError && <p class="form-error" role="alert">{formError}</p>}
+    {ctx.pending ? (
+      <div class="panel submit-body">
+        <p><span class="status status-pending">Waiting for review</span> · sent <time datetime={ctx.pending.created_at}>{ctx.pending.created_at.slice(0, 10)}</time></p>
+        <p><strong>What changed:</strong> {ctx.pending.note}</p>
+        <form method="post">
+          <input type="hidden" name="intent" value="withdraw" />
+          <button class="btn" type="submit">Withdraw this update</button>
+        </form>
+      </div>
+    ) : !blocked.ok ? (
+      <p class="notice submit-body">You can post {UPDATE_LIMIT} updates per tool every {UPDATE_WINDOW_DAYS} days. Try again later.</p>
+    ) : (
+      <form method="post" class="form submit-body" novalidate>
+        <div class="field">
+          <label for="note">What changed</label>
+          <p class="hint" id="note-hint">One or two sentences visitors will see on the tool page, e.g. "Now exports to PNG and works offline."</p>
+          <textarea id="note" name="note" required minlength="10" maxlength="300" aria-invalid={errors.note ? "true" : undefined} aria-describedby={errors.note ? "note-hint note-error" : "note-hint"}>{values.note}</textarea>
+          {errors.note && <p class="error" id="note-error">{errors.note}</p>}
+        </div>
+        <div class="field">
+          <label for="tagline">Description</label>
+          <input id="tagline" name="tagline" type="text" required maxlength="120" value={values.tagline} aria-invalid={errors.tagline ? "true" : undefined} aria-describedby={errors.tagline ? "tagline-error" : undefined} />
+          {errors.tagline && <p class="error" id="tagline-error">{errors.tagline}</p>}
+        </div>
+        <div class="field">
+          <label for="tryThis">What to try in 30 seconds</label>
+          <textarea id="tryThis" name="tryThis" required maxlength="200" aria-invalid={errors.tryThis ? "true" : undefined} aria-describedby={errors.tryThis ? "tryThis-error" : undefined}>{values.tryThis}</textarea>
+          {errors.tryThis && <p class="error" id="tryThis-error">{errors.tryThis}</p>}
+        </div>
+        <div class="field">
+          <label for="why">Why it's worth trying <span class="muted">(optional)</span></label>
+          <textarea id="why" name="why" maxlength="400">{values.why}</textarea>
+        </div>
+        <button class="btn btn-dark" type="submit">Send for review</button>
+      </form>
+    )}
+  </div>
+</Base>

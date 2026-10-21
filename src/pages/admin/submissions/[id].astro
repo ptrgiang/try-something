@@ -1,0 +1,136 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import { applyModeration, findDuplicate, getSubmission, submissionHistory } from "../../../lib/db";
+import { isModerator, moderatorTransition, STATUS_LABELS, type ModeratorAction } from "../../../lib/moderation";
+import { plainText } from "../../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+let sub = await getSubmission(env.DB, Astro.params.id ?? "");
+if (!sub) return Astro.rewrite("/404");
+
+let error = "";
+let notice = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const action = String(form.get("action") ?? "") as ModeratorAction;
+  const reason = plainText(form.get("reason"), 600);
+  const useImage = form.get("useImage") === "on";
+  const useUpload = form.get("useUpload") === "on";
+  const t = moderatorTransition(user, sub, action, reason);
+  if (!t.ok) {
+    error = t.error;
+    Astro.response.status = t.status;
+  } else {
+    const result = await applyModeration(env.DB, sub, user.id, action, t.to, reason, useImage, useUpload);
+    if (result.conflict) {
+      error = result.conflict;
+      Astro.response.status = 409;
+    } else {
+      return Astro.redirect(`/admin/submissions/${sub.id}?done=${action}${result.slug ? `&slug=${result.slug}` : ""}`, 303);
+    }
+  }
+}
+const done = Astro.url.searchParams.get("done");
+const slug = Astro.url.searchParams.get("slug");
+if (done) notice = done === "approve" && slug ? `Published at /tools/${slug}.` : `Done: ${done.replace("_", " ")}.`;
+sub = (await getSubmission(env.DB, sub.id))!;
+const history = await submissionHistory(env.DB, sub.id);
+const dup = await findDuplicate(env.DB, sub.canonical_key, sub.id);
+const own = sub.user_id === user.id;
+const meta = sub.source_meta as { title?: string | null; description?: string | null; favicon?: string | null };
+const submitter = await env.DB.prepare(`SELECT name, email FROM "user" WHERE id = ?`).bind(sub.user_id).first<{ name: string; email: string }>();
+const can = (a: ModeratorAction) => !own && moderatorTransition(user, sub!, a, "reason ok").ok;
+---
+<Base title={`Review: ${sub.name}`} noindex>
+  <div class="page app-page review">
+    <p class="eyebrow"><a href="/admin/submissions">Review queue</a></p>
+    <h1 class="page-title">{sub.name}</h1>
+    <p><span class={`status status-${sub.status}`}>{STATUS_LABELS[sub.status]}</span> · {sub.origin === "made" ? "Submitted by the maker (unverified claim)" : "Submitted by a discoverer"}</p>
+    {notice && <p class="notice notice-success" role="status">{notice}</p>}
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {dup && <p class="notice">Possible duplicate: {dup.kind === "tool" ? <a href={`/tools/${dup.slug}`}>/tools/{dup.slug}</a> : "another open submission has the same URL"}.</p>}
+    {own && <p class="notice">This is your own submission — another moderator has to review it.</p>}
+
+    <div class="review-grid">
+      <section class="panel">
+        <h2 class="section-title">Submitted details</h2>
+        <dl class="kv">
+          <dt>Official URL</dt>
+          <dd><a href={sub.url} target="_blank" rel="noopener noreferrer nofollow">{sub.url}</a> <span class="muted small-note">(opens in a new tab; verify it is the real product)</span></dd>
+          <dt>Canonical key</dt><dd><code>{sub.canonical_key}</code></dd>
+          <dt>Description</dt><dd>{sub.tagline}</dd>
+          <dt>Try in 30 seconds</dt><dd>{sub.try_this}</dd>
+          <dt>Why</dt><dd>{sub.why || "—"}</dd>
+          <dt>Category</dt><dd>{sub.category}</dd>
+          <dt>Tags</dt><dd>{sub.tags.join(", ") || "—"}</dd>
+          <dt>Maker credit</dt><dd>{sub.maker_name ?? "—"}{sub.maker_url && <> · <a href={sub.maker_url} target="_blank" rel="noopener noreferrer nofollow">{sub.maker_url}</a></>}</dd>
+          <dt>Submitter</dt><dd>{submitter?.name} ({submitter?.email})</dd>
+          <dt>Submitted</dt><dd>{sub.created_at}</dd>
+        </dl>
+        <h2 class="section-title">Uploaded cover</h2>
+        {sub.image_key ? (
+          <figure class="share-preview">
+            <img src={`/media/submission/${sub.id}?src=upload`} alt={`Uploaded cover for ${sub.name}`} />
+            <figcaption class="hint">Uploaded by the submitter, who confirmed on {(sub.image_rights_at ?? sub.created_at).slice(0, 10)} that they may share it. Check it shows the real product and isn't misleading, unsafe or someone else's artwork.</figcaption>
+          </figure>
+        ) : (
+          <p class="muted">None.</p>
+        )}
+        <h2 class="section-title">Share image</h2>
+        {sub.image_url ? (
+          <figure class="share-preview">
+            <img src={`/media/submission/${sub.id}?src=share`} alt={`Share image for ${sub.name}`} />
+            <figcaption class="hint">From <code>{sub.image_url}</code>. Check it represents the product and isn't misleading or unsafe.</figcaption>
+          </figure>
+        ) : (
+          <p class="muted">None.</p>
+        )}
+        <h2 class="section-title">Source metadata (untrusted)</h2>
+        <dl class="kv">
+          <dt>Page title</dt><dd>{meta.title ?? "—"}</dd>
+          <dt>Page description</dt><dd>{meta.description ?? "—"}</dd>
+          <dt>Favicon URL</dt><dd>{meta.favicon ?? "—"}</dd>
+        </dl>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Decision</h2>
+        <p class="muted small-note">Before approving: open the URL, do the 30-second try yourself, check the description is accurate and the credit is fair.</p>
+        <form method="post" class="form">
+          <div class="field">
+            <label for="reason">Reason / note to submitter</label>
+            <textarea id="reason" name="reason" maxlength="600" placeholder="Required for “needs changes” and “reject”. Visible to the submitter."></textarea>
+          </div>
+          {sub.image_key && (
+            <label class="check"><input type="checkbox" name="useUpload" checked /> Publish with the uploaded cover</label>
+          )}
+          {sub.image_url && (
+            <label class="check"><input type="checkbox" name="useImage" checked /> Keep the site's share image{sub.image_key ? " (used if the upload is left out)" : ""}</label>
+          )}
+          {!sub.image_key && !sub.image_url && <p class="muted small-note">No image: the generated illustration will be used.</p>}
+          <div class="decision-buttons">
+            {can("start_review") && <button class="btn" name="action" value="start_review">Start review</button>}
+            {can("approve") && <button class="btn btn-dark" name="action" value="approve">Approve & publish</button>}
+            {can("request_changes") && <button class="btn" name="action" value="request_changes">Request changes</button>}
+            {can("reject") && <button class="btn" name="action" value="reject">Reject</button>}
+          </div>
+        </form>
+        {sub.tool_id && <p><a href={`/admin/tools#${sub.tool_id}`}>Manage the published tool</a></p>}
+
+        <h2 class="section-title">History</h2>
+        <ol class="timeline">
+          {history.map((e) => (
+            <li>
+              <strong>{e.action.replace("_", " ")}</strong> by {e.actor_name ?? "system"} · <time datetime={e.created_at}>{e.created_at.replace("T", " ").slice(0, 16)}</time>
+              {e.from_status && e.to_status && <span class="muted"> ({e.from_status} → {e.to_status})</span>}
+              {e.reason && <div class="muted">“{e.reason}”</div>}
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  </div>
+</Base>

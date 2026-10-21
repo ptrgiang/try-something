@@ -1,0 +1,26 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import { getCollection } from "../../lib/db";
+import { collectionLd, crumbsLd } from "../../lib/seo";
+import { collectionCard } from "../../lib/og";
+
+const collection = await getCollection(env.DB, Astro.params.slug ?? "");
+if (!collection) return Astro.rewrite("/404");
+const path = `/collections/${collection.slug}`;
+const jsonLd = [
+  collectionLd({ path, name: collection.title, description: collection.description, tools: collection.tools }),
+  crumbsLd([{ name: "Collections", path: "/collections" }, { name: collection.title, path }]),
+];
+---
+<Base title={collection.title} description={collection.description} nav="collections" path={path} jsonLd={jsonLd} og={collectionCard(collection)}>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow"><a href="/collections">Collection</a></p>
+      <h1 class="page-title">{collection.title}</h1>
+      <p class="lede">{collection.description}</p>
+    </div>
+  </div>
+  <div class="grid" data-surface={`collection:${collection.slug}`}>{collection.tools.map((tool) => <ToolCard tool={tool} headingLevel="h2" />)}</div>
+</Base>

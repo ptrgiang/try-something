@@ -1,0 +1,13 @@
+---
+// One themed stand-in for window.confirm(); scripts open it with askConfirm() from scripts/client.
+---
+<dialog class="report-dialog confirm-dialog" data-confirm-dialog aria-labelledby="confirm-title" aria-describedby="confirm-body">
+  <form class="report-form" method="dialog">
+    <h2 id="confirm-title" data-confirm-title></h2>
+    <p class="report-sub" id="confirm-body" data-confirm-body></p>
+    <div class="confirm-actions">
+      <button class="btn" value="cancel" data-confirm-cancel>Cancel</button>
+      <button class="btn btn-dark" value="ok" data-confirm-ok></button>
+    </div>
+  </form>
+</dialog>

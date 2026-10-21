@@ -1,0 +1,81 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import SubmissionForm from "../../../components/SubmissionForm.astro";
+import { getSubmission, auditStmt } from "../../../lib/db";
+import { ownerCanEdit, ownerTransition, STATUS_LABELS } from "../../../lib/moderation";
+import { handleEdit } from "../../../lib/submissions";
+import type { FieldErrors } from "../../../lib/validation";
+import { nowIso } from "../../../lib/util";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
+const sub = await getSubmission(env.DB, Astro.params.id ?? "");
+// Same response for missing and not-owned, so IDs can't be probed.
+if (!sub || sub.user_id !== user.id) return Astro.rewrite("/404");
+
+let errors: FieldErrors = {};
+let values: Record<string, string> = {
+  origin: sub.origin,
+  url: sub.url,
+  name: sub.name,
+  tagline: sub.tagline,
+  tryThis: sub.try_this,
+  why: sub.why,
+  category: sub.category,
+  tags: sub.tags.join(", "),
+  makerName: sub.maker_name ?? "",
+  makerUrl: sub.maker_url ?? "",
+};
+let actionError = "";
+if (Astro.request.method === "POST") {
+  if (Astro.url.searchParams.get("intent") === "withdraw") {
+    const t = ownerTransition(user.id, sub, "withdraw");
+    if (t.ok) {
+      const now = nowIso();
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE submission SET status = ?, updated_at = ? WHERE id = ? AND user_id = ? AND status = ?`).bind(t.to, now, sub.id, user.id, sub.status),
+        auditStmt(env.DB, { submissionId: sub.id, actorId: user.id, action: "withdraw", from: sub.status, to: t.to, reason: null }),
+      ]);
+      return Astro.redirect("/me/submissions", 303);
+    }
+    actionError = t.error;
+  } else {
+    const outcome = await handleEdit(env, Astro.request, user, sub);
+    if (outcome.ok) return Astro.redirect("/me/submissions", 303);
+    errors = outcome.errors;
+    values = outcome.values;
+    Astro.response.status = 400;
+  }
+}
+const editable = ownerCanEdit(sub.status);
+const canWithdraw = ownerTransition(user.id, sub, "withdraw").ok;
+---
+<Base title={`Submission: ${sub.name}`} noindex>
+  <div class="page app-page narrow">
+    <p class="eyebrow"><a href="/me/submissions">My submissions</a></p>
+    <h1 class="page-title">{sub.name}</h1>
+    <p><span class={`status status-${sub.status}`}>{STATUS_LABELS[sub.status]}</span></p>
+    {actionError && <p class="form-error" role="alert">{actionError}</p>}
+    {sub.moderator_note && (sub.status === "needs_changes" || sub.status === "rejected") && (
+      <div class="notice"><strong>Note from the editors:</strong> {sub.moderator_note}</div>
+    )}
+    {editable ? (
+      <div class="submit-body">
+        <SubmissionForm values={values} errors={errors} submitLabel={sub.status === "needs_changes" ? "Save & resubmit for review" : "Save changes"} withMetadata={false} currentCover={sub.image_key ? `/media/submission/${sub.id}` : null} />
+      </div>
+    ) : (
+      <dl class="kv panel submit-body">
+        <dt>URL</dt><dd>{sub.url}</dd>
+        <dt>Description</dt><dd>{sub.tagline}</dd>
+        <dt>Try in 30s</dt><dd>{sub.try_this}</dd>
+        <dt>Submitted</dt><dd>{sub.created_at.slice(0, 10)}</dd>
+      </dl>
+    )}
+    {canWithdraw && (
+      <form method="post" action={`/me/submissions/${sub.id}?intent=withdraw`} class="submit-body">
+        <button class="btn" type="submit">Withdraw this submission</button>
+      </form>
+    )}
+  </div>
+</Base>

@@ -1,0 +1,51 @@
+name: Promote to production
+
+# Production deploys only from the `release` branch (Cloudflare Workers Builds watches it).
+# This fast-forwards `release` to a commit that is already on main and green in CI,
+# after approval in the `production` environment. It never force-pushes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit on main to release (default: latest main)"
+        required: false
+
+permissions:
+  contents: write
+  checks: read
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Resolve and verify commit
+        id: target
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse --verify "${INPUT_SHA:-origin/main}^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha is not on main"; exit 1; }
+          conclusion=$(gh api "repos/${{ github.repository }}/commits/$sha/check-runs?check_name=test" --jq '.check_runs[0].conclusion')
+          [ "$conclusion" = "success" ] || { echo "::error::CI is not green for $sha ($conclusion)"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Fast-forward release
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          if git ls-remote --exit-code origin refs/heads/release >/dev/null; then
+            git fetch origin release
+            git merge-base --is-ancestor origin/release "$SHA" || { echo "::error::release is not an ancestor of $SHA; refusing to rewrite history"; exit 1; }
+          fi
+          git push origin "$SHA:refs/heads/release"
+          echo "Promoted $SHA to release. Workers Builds deploys it to production." >> "$GITHUB_STEP_SUMMARY"

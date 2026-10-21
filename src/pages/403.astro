@@ -1,0 +1,19 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+Astro.response.status = 403;
+---
+<Base title="Not allowed" noindex>
+  <div class="page app-page">
+    <div class="gate">
+      <span class="gate-icon" aria-hidden="true"><Icon name="eye" /></span>
+      <p class="eyebrow">403</p>
+      <h1 class="page-title">This area is for moderators.</h1>
+      <p>You're signed in, but this page is only for the people who review submissions and comments.</p>
+      <div class="gate-actions">
+        <a class="btn btn-dark" href="/explore">Explore tools</a>
+        <a class="btn" href="/">Back home</a>
+      </div>
+    </div>
+  </div>
+</Base>

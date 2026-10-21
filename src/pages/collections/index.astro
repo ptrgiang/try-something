@@ -1,0 +1,34 @@
+---
+import { toolImageSrc } from "../../lib/tool-image";
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import ToolCover from "../../components/ToolCover.astro";
+import { collectionPreviews, listCollections } from "../../lib/db";
+
+const [collections, previews] = await Promise.all([listCollections(env.DB), collectionPreviews(env.DB)]);
+---
+<Base title="Collections" nav="collections" description="Small, editor-curated sets of tools worth trying together.">
+  <div class="page">
+    <p class="eyebrow">Collections</p>
+    <h1 class="page-title">Little bundles of good stuff</h1>
+    <p class="lede">Hand-curated sets of tools that go well together.</p>
+    {collections.length ? (
+      <div class="collection-list">
+        {collections.map((c) => (
+          <a class="collection-card" href={`/collections/${c.slug}`}>
+            <div class="collection-mosaic" aria-hidden="true">
+              {(previews.get(c.id) ?? []).map((t) => (
+                <ToolCover name={t.name} art={t.art} url={t.url} imageSrc={toolImageSrc(t)} />
+              ))}
+            </div>
+            <h2>{c.title}</h2>
+            <p class="muted">{c.description}</p>
+            <span class="collection-count">{c.tool_count} {c.tool_count === 1 ? "tool" : "tools"}</span>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <p class="empty">No collections yet.</p>
+    )}
+  </div>
+</Base>

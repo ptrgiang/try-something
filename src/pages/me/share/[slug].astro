@@ -1,0 +1,76 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import { BADGE_SIZE, BADGE_THEMES, badgeEmbed, pickBadge } from "../../../lib/badges";
+import { getPublishedTool } from "../../../lib/db";
+import { SITE } from "../../../lib/seo";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
+const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
+// Same response for missing and not-yours, so slugs can't be probed for ownership.
+if (!tool || tool.submitted_by !== user.id || tool.credit_type !== "made") return Astro.rewrite("/404");
+
+const verified = Boolean(tool.maker_verified_at);
+const { style, theme } = pickBadge({ status: "published", maker_verified_at: tool.maker_verified_at }, Astro.url.searchParams.get("style") ?? (verified ? "verified" : "pill"), Astro.url.searchParams.get("theme"));
+const embed = badgeEmbed(tool, style, theme);
+const { width, height } = BADGE_SIZE[style];
+const pageUrl = `${SITE}/tools/${tool.slug}`;
+const link = (s: string, t: string) => `?style=${s}&theme=${t}`;
+const styles = [{ id: "pill", label: "Listed on" }, ...(verified ? [{ id: "verified", label: "Verified maker" }] : [])];
+---
+<Base title={`Share ${tool.name}`} noindex>
+  <div class="page app-page settings">
+    <header class="page-head">
+      <p class="eyebrow"><a href="/me/submissions">My submissions</a></p>
+      <h1 class="page-title">Share {tool.name}</h1>
+      <p class="lede">Add a badge to your site or README. It links to your listing, so people can see what to try before they open your tool.</p>
+    </header>
+    <div class="share-badge">
+      <div class="share-controls">
+        {styles.length > 1 && (
+          <nav class="chips" aria-label="Badge style">
+            {styles.map((s) => <a class="chip" href={link(s.id, theme)} aria-current={style === s.id ? "true" : undefined}>{s.label}</a>)}
+          </nav>
+        )}
+        <nav class="chips" aria-label="Your site's background">
+          {BADGE_THEMES.map((t) => <a class="chip" href={link(style, t)} aria-current={theme === t ? "true" : undefined}>{t === "light" ? "Light site" : "Dark site"}</a>)}
+        </nav>
+      </div>
+      <div class:list={["badge-preview", theme === "dark" && "badge-preview-dark"]}>
+        <img src={`/badge/${tool.slug}.svg?style=${style}&theme=${theme}`} alt={`${tool.name} on Try Something`} width={width} height={height} />
+      </div>
+      {!verified && (
+        <p class="muted small-note">Verified makers also get a <strong>Verified maker</strong> badge. <a href={`/me/verify/${tool.slug}`}>Verify you made {tool.name}</a></p>
+      )}
+      <div class="side-card">
+        <h2>HTML, for your website</h2>
+        <div class="copy-field"><code data-copy-src>{embed.html}</code><button type="button" class="btn btn-sm" data-copy>Copy</button></div>
+      </div>
+      <div class="side-card">
+        <h2>Markdown, for a README</h2>
+        <div class="copy-field"><code data-copy-src>{embed.markdown}</code><button type="button" class="btn btn-sm" data-copy>Copy</button></div>
+      </div>
+      <div class="side-card">
+        <h2>Link to your listing</h2>
+        <p>For your own posts. The page has its own share image.</p>
+        <div class="copy-field"><code data-copy-src>{pageUrl}</code><button type="button" class="btn btn-sm" data-copy>Copy</button></div>
+      </div>
+      <p class="muted small-note">The badge is a plain image: no cookies or tracking. Clicks are counted only when someone follows the link.</p>
+    </div>
+  </div>
+</Base>
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const text = btn.parentElement?.querySelector("[data-copy-src]")?.textContent ?? "";
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied";
+        setTimeout(() => (btn.textContent = "Copy"), 1600);
+      } catch {
+        btn.textContent = "Select and copy";
+      }
+    });
+  });
+</script>

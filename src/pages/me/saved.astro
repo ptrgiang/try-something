@@ -1,0 +1,32 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import Icon from "../../components/Icon.astro";
+import { listSavedTools } from "../../lib/db";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/saved");
+const tools = await listSavedTools(env.DB, user.id);
+---
+<Base title="Saved tools" noindex>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Your account</p>
+      <h1 class="page-title">Saved tools</h1>
+      {tools.length > 0 && <p class="section-intro">{tools.length === 1 ? "1 tool" : `${tools.length} tools`} saved to come back to. Only you can see this list.</p>}
+    </div>
+  </div>
+  {tools.length ? (
+    <div class="grid" data-surface="saved">{tools.map((t) => <ToolCard tool={t} headingLevel="h2" />)}</div>
+  ) : (
+    <div class="page app-page">
+      <div class="gate">
+        <span class="gate-icon" aria-hidden="true"><Icon name="bookmark" /></span>
+        <h2>Nothing saved yet</h2>
+        <p>Hit <strong>Save</strong> on any tool to keep it here for later. Only you can see this list.</p>
+        <a class="btn btn-dark" href="/explore">Explore tools</a>
+      </div>
+    </div>
+  )}
+</Base>

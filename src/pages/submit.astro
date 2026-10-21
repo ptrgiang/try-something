@@ -1,0 +1,60 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import SubmissionForm from "../components/SubmissionForm.astro";
+import { handleCreate } from "../lib/submissions";
+import type { FieldErrors } from "../lib/validation";
+
+const user = Astro.locals.user;
+let errors: FieldErrors = {};
+let values: Record<string, string> = {};
+if (Astro.request.method === "POST") {
+  if (!user) return Astro.redirect("/login?next=/submit", 303);
+  const outcome = await handleCreate(env, Astro.request, user);
+  if (outcome.ok) return Astro.redirect(`/me/submissions?submitted=${outcome.id}`, 303);
+  errors = outcome.errors;
+  values = outcome.values;
+  Astro.response.status = 400;
+}
+---
+<Base title="Submit a tool" noindex>
+  <div class="page app-page">
+    <header class="page-head">
+      <p class="eyebrow">Submit a tool</p>
+      <h1 class="page-title">Share something worth trying</h1>
+      <p class="lede">Made it or found it? Paste the link, say what to try first, and an editor will check it before it goes live.</p>
+    </header>
+    {user ? (
+      <div class="split">
+        <div class="split-main"><SubmissionForm values={values} errors={errors} submitLabel="Submit for review" /></div>
+        <aside class="split-side" aria-label="How review works">
+          <div class="side-card">
+            <h2>What happens next</h2>
+            <ol class="steps">
+              <li><strong>An editor opens the link</strong> and does the 30-second try themselves.</li>
+              <li><strong>They check the details</strong> and may ask you for changes.</li>
+              <li><strong>It goes live</strong> with credit to you and the maker.</li>
+            </ol>
+            <p class="muted small-note">Follow the status under <a href="/me/submissions">My submissions</a>.</p>
+          </div>
+          <div class="side-card">
+            <h2>What gets picked</h2>
+            <ul class="checklist">
+              <li><Icon name="check" />Works in the browser, no install</li>
+              <li><Icon name="check" />Something to do in about 30 seconds</li>
+              <li><Icon name="check" />The official site, not a review or repost</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    ) : (
+      <div class="gate">
+        <span class="gate-icon"><Icon name="plus" /></span>
+        <h2>Sign in to submit a tool</h2>
+        <p>An account lets you follow the review and get credit when it's published. Browsing and trying tools never needs one.</p>
+        <a class="btn btn-dark btn-lg" href="/login?next=/submit">Sign in to continue</a>
+      </div>
+    )}
+  </div>
+</Base>

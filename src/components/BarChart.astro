@@ -1,0 +1,48 @@
+---
+// Daily bar chart rendered on the server: one series, a hover title per day, and the same numbers as a table.
+interface Props {
+  title: string;
+  unit: string;
+  rows: { day: string; value: number }[];
+}
+const { title, unit, rows } = Astro.props;
+const max = Math.max(1, ...rows.map((r) => r.value));
+const total = rows.reduce((n, r) => n + r.value, 0);
+const W = 10;
+const H = 100;
+const gap = rows.length > 45 ? 1 : 2;
+const label = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+---
+<figure class="chart">
+  <figcaption class="chart-head">
+    <span class="chart-title">{title}</span>
+    <span class="chart-total">{total.toLocaleString("en-US")} {unit}</span>
+  </figcaption>
+  <div class="chart-plot">
+    <span class="chart-max" aria-hidden="true">{max.toLocaleString("en-US")}</span>
+    <svg viewBox={`0 0 ${rows.length * W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`${title}: ${total} ${unit} over ${rows.length} days, peak ${max}`}>
+      <line class="chart-grid" x1="0" x2={rows.length * W} y1="0.5" y2="0.5" />
+      {rows.map((r, i) => {
+        const h = r.value ? Math.max(1.5, (r.value / max) * (H - 2)) : 0;
+        return (
+          <g class="chart-col">
+            <title>{`${label(r.day)}: ${r.value.toLocaleString("en-US")} ${unit}`}</title>
+            <rect class="chart-hit" x={i * W} y="0" width={W} height={H} />
+            {h > 0 && <rect class="chart-bar" x={i * W + gap / 2} y={H - h} width={W - gap} height={h} />}
+          </g>
+        );
+      })}
+      <line class="chart-base" x1="0" x2={rows.length * W} y1={H - 0.5} y2={H - 0.5} />
+    </svg>
+  </div>
+  <div class="chart-axis" aria-hidden="true"><span>{label(rows[0].day)}</span><span>{label(rows[rows.length - 1].day)}</span></div>
+  <details class="chart-table">
+    <summary>Show as table</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Day</th><th class="num">{unit[0].toUpperCase() + unit.slice(1)}</th></tr></thead>
+        <tbody>{[...rows].reverse().map((r) => <tr><td>{label(r.day)}</td><td class="num">{r.value.toLocaleString("en-US")}</td></tr>)}</tbody>
+      </table>
+    </div>
+  </details>
+</figure>

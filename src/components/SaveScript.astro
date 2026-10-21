@@ -1,0 +1,142 @@
+---
+// Save/bookmark: works anonymously via localStorage, syncs to the account when signed in.
+// Hearts need an account; signed-out visitors are sent to sign in. Only account saves and hearts
+// are counted, so the visible counts change only for signed-in visitors.
+const signedIn = Boolean(Astro.locals.user);
+---
+<div id="save-config" data-signed-in={signedIn ? "1" : "0"} hidden></div>
+<script>
+  import { surfaceOf, trackingAllowed } from "../scripts/discovery";
+
+  const KEY = "ts:saved";
+  const cfg = document.getElementById("save-config");
+  const signedIn = cfg?.dataset.signedIn === "1";
+
+  function readLocal(): Set<string> {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+    } catch {
+      return new Set();
+    }
+  }
+  function writeLocal(ids: Set<string>) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify([...ids]));
+    } catch {}
+  }
+  let saved = readLocal();
+  let liked = new Set<string>();
+  // Clicks made while the first sync is in flight; its response predates them, so they win.
+  let edits: { save: Map<string, boolean>; like: Map<string, boolean> } | null = signedIn ? { save: new Map(), like: new Map() } : null;
+  const overlay = (ids: Set<string>, changes: Map<string, boolean>) => {
+    changes.forEach((on, id) => (on ? ids.add(id) : ids.delete(id)));
+    return ids;
+  };
+
+  const formatCount = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/, "")}k`);
+
+  function paint() {
+    document.querySelectorAll<HTMLButtonElement>("[data-save]").forEach((btn) => {
+      const on = saved.has(btn.dataset.save!);
+      btn.setAttribute("aria-pressed", String(on));
+      const label = btn.querySelector("span");
+      if (label) label.textContent = on ? "Saved" : "Save";
+    });
+    document.querySelectorAll<HTMLButtonElement>("[data-like]").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(liked.has(btn.dataset.like!)));
+    });
+  }
+
+  function bump(kind: "like" | "save", id: string, delta: number) {
+    document.querySelectorAll<HTMLElement>(`[data-count="${kind}:${CSS.escape(id)}"]`).forEach((el) => {
+      const n = Math.max(0, Number(el.dataset.n || 0) + delta);
+      el.dataset.n = String(n);
+      el.textContent = formatCount(n);
+    });
+  }
+
+  async function sync() {
+    if (!signedIn) return;
+    try {
+      const [savesRes, likesRes] = await Promise.all([
+        fetch("/api/bookmarks", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ merge: [...saved] }),
+        }),
+        fetch("/api/likes"),
+      ]);
+      if (savesRes.ok) {
+        saved = overlay(new Set(((await savesRes.json()) as { ids: string[] }).ids), edits!.save);
+        writeLocal(saved);
+      }
+      if (likesRes.ok) liked = overlay(new Set(((await likesRes.json()) as { ids: string[] }).ids), edits!.like);
+      paint();
+    } catch {}
+    edits = null;
+  }
+
+  // Count "Try it" clicks (aggregate only; see /api/try), with the surface the button sits on.
+  // auxclick catches a middle-click, which opens the site in a new tab without firing "click".
+  const countTry = (e: MouseEvent) => {
+    if (e.type === "auxclick" && e.button !== 1) return;
+    const link = (e.target as Element).closest<HTMLAnchorElement>("a[data-try]");
+    if (!link || !trackingAllowed) return;
+    const body = { toolId: link.dataset.try, surface: surfaceOf(link) };
+    navigator.sendBeacon("/api/try", new Blob([JSON.stringify(body)], { type: "application/json" }));
+  };
+  document.addEventListener("click", countTry);
+  document.addEventListener("auxclick", countTry);
+
+  document.addEventListener("click", async (e) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-save]");
+    if (!btn) return;
+    const id = btn.dataset.save!;
+    const on = !saved.has(id);
+    on ? saved.add(id) : saved.delete(id);
+    edits?.save.set(id, on);
+    writeLocal(saved);
+    paint();
+    if (signedIn) {
+      bump("save", id, on ? 1 : -1);
+      fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ toolId: id, saved: on }),
+      }).catch(() => {});
+    }
+  });
+
+  document.addEventListener("click", async (e) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-like]");
+    if (!btn) return;
+    if (!signedIn) {
+      location.assign(`/login?next=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    const id = btn.dataset.like!;
+    const on = !liked.has(id);
+    on ? liked.add(id) : liked.delete(id);
+    edits?.like.set(id, on);
+    bump("like", id, on ? 1 : -1);
+    paint();
+    try {
+      const res = await fetch("/api/likes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ toolId: id, liked: on }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      on ? liked.delete(id) : liked.add(id);
+      edits?.like.set(id, !on);
+      bump("like", id, on ? -1 : 1);
+      paint();
+    }
+  });
+
+  // Lists swapped in without a reload (home filters, quick view) need their buttons painted.
+  document.addEventListener("ts:content", paint);
+  paint();
+  sync();
+</script>

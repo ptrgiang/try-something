@@ -1,0 +1,291 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import GoogleLogo from "../components/GoogleLogo.astro";
+import ToolCover from "../components/ToolCover.astro";
+import { enabledProviders } from "../lib/auth";
+import { featuredTools } from "../lib/db";
+import { safeNext } from "../lib/redirect";
+import { authErrorMessage } from "../lib/auth-errors";
+
+const next = safeNext(Astro.url.searchParams.get("next"));
+if (Astro.locals.user) return Astro.redirect(next);
+const providers = enabledProviders(env);
+const anyProvider = providers.github || providers.google || providers.email;
+const social = providers.github || providers.google;
+// Only local servers run on plain http; staging and production never show the setup note.
+const setupNote = !env.PUBLIC_SITE_URL.startsWith("https://") && !(providers.github && providers.google);
+const error = authErrorMessage(Astro.url.searchParams.get("error"), "sign-in");
+const covers = (await featuredTools(env.DB, 4)).filter((t) => t.image_key || t.image_url);
+---
+<Base title="Sign in" noindex>
+  <div class="auth">
+    {covers.length >= 3 && (
+      <div class="auth-art" aria-hidden="true">
+        <div class="auth-covers">
+          {covers.slice(0, 4).map((t) => <ToolCover name={t.name} art={t.art} url={t.url} imageSrc={`/media/tool/${t.id}`} />)}
+        </div>
+        <p class="auth-quote">Tools, toys and tiny apps you can try in 30 seconds.</p>
+        <ul class="auth-perks">
+          <li><Icon name="heart" />Heart the ones you love</li>
+          <li><Icon name="bookmark" />Save them on every device</li>
+          <li><Icon name="plus" />Share what you make or find</li>
+        </ul>
+      </div>
+    )}
+    <div class="auth-panel">
+      <div class="auth-card">
+        <span class="auth-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M12 10.5v17.2l4.6-4.3 3.3 6.6 3.2-1.6-3.3-6.5h6.2z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><g stroke="#ff6a45" stroke-width="2.6" stroke-linecap="round"><path d="M8.6 7.4 6 4.8M12 6V2.6M15.4 7.4 18 4.8" /></g></svg>
+        </span>
+        <h1 class="auth-title" data-auth-title>Sign in</h1>
+        <p class="auth-sub" data-auth-sub>New here? The same steps create your account. Browsing never needs one.</p>
+        {error && <p class="form-error" role="alert">{error}</p>}
+        <div class="login-options" data-next={next}>
+          {providers.google && (
+            <button class="btn btn-lg btn-social" type="button" data-provider="google" data-label="Google">
+              <GoogleLogo />
+              <span data-btn-text>Continue with Google</span>
+              <span class="last-used" hidden>Last used</span>
+            </button>
+          )}
+          {providers.github && (
+            <button class="btn btn-lg btn-social" type="button" data-provider="github" data-label="GitHub">
+              <Icon name="github" />
+              <span data-btn-text>Continue with GitHub</span>
+              <span class="last-used" hidden>Last used</span>
+            </button>
+          )}
+          {providers.email && (
+            <>
+              {social && <p class="divider"><span>or</span></p>}
+              <form class="form email-login" data-email-form novalidate>
+                <div class="email-step" data-email-step>
+                  <div class="field">
+                    <label for="email">Email address <span class="last-used" data-provider-badge="email" hidden>Last used</span></label>
+                    <input id="email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com" />
+                  </div>
+                  <div class="cf-turnstile" data-sitekey={env.TURNSTILE_SITE_KEY} data-action="email-otp" data-appearance="interaction-only"></div>
+                  <button class="btn btn-lg btn-dark" type="submit" data-send><Icon name="mail" /><span data-btn-text>Continue with email</span></button>
+                </div>
+                <div class="otp-step" hidden data-otp-step>
+                  <p class="otp-sent">We sent a 6-digit code to <strong data-otp-email></strong>. It expires in 10 minutes.</p>
+                  <div class="field">
+                    <label for="otp">Sign-in code</label>
+                    <input id="otp" class="otp-input" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" placeholder="000000" />
+                  </div>
+                  <button class="btn btn-lg btn-dark" type="button" data-verify><span data-btn-text>Sign in</span></button>
+                  <div class="otp-actions">
+                    <button class="link-btn" type="button" data-change-email><Icon name="left" />Use a different email</button>
+                    <button class="link-btn" type="button" data-resend disabled>Resend code</button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+          {!anyProvider && <p class="form-error">Sign-in isn't set up on this server yet.</p>}
+          <p class="form-error" role="alert" hidden data-login-error></p>
+        </div>
+        {setupNote && (
+          <p class="auth-setup">
+            <strong>Local setup:</strong> GitHub and Google buttons appear once <code>GITHUB_CLIENT_ID</code>/<code>_SECRET</code> and <code>GOOGLE_CLIENT_ID</code>/<code>_SECRET</code> are set in <code>.dev.vars</code>. Steps in docs/DEPLOYMENT.md, “GitHub and Google sign-in”.
+          </p>
+        )}
+      </div>
+      <p class="auth-legal">By continuing you agree to the <a href="/terms">Terms</a> and <a href="/privacy">Privacy policy</a>. Your email is never shown publicly.</p>
+    </div>
+  </div>
+</Base>
+{providers.email && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+<script>
+  declare global {
+    interface Window {
+      turnstile?: { reset: (el?: Element | string) => void };
+    }
+  }
+
+  const LAST_KEY = "ts:last-login";
+  const RESEND_SECONDS = 30;
+  const root = document.querySelector<HTMLElement>(".login-options");
+  const next = root?.dataset.next || "/";
+  const errorBox = document.querySelector<HTMLElement>("[data-login-error]");
+  const showError = (msg: string) => {
+    if (!errorBox) return;
+    errorBox.textContent = msg;
+    errorBox.hidden = false;
+  };
+  const clearError = () => {
+    if (errorBox) errorBox.hidden = true;
+  };
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
+    fetch(`/api/auth${path}`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+
+  const remember = (method: string) => {
+    try {
+      localStorage.setItem(LAST_KEY, method);
+    } catch {}
+  };
+  let last: string | null = null;
+  try {
+    last = localStorage.getItem(LAST_KEY);
+  } catch {}
+  if (last) {
+    const badge = root?.querySelector<HTMLElement>(`[data-provider="${last}"] .last-used, [data-provider-badge="${last}"]`);
+    if (badge) badge.hidden = false;
+  }
+
+  // Swaps a button into its loading state and returns a function that restores it.
+  const busy = (btn: HTMLButtonElement, label: string) => {
+    const text = btn.querySelector<HTMLElement>("[data-btn-text]");
+    const before = text?.textContent ?? "";
+    btn.disabled = true;
+    btn.classList.add("is-busy");
+    if (text) text.textContent = label;
+    return () => {
+      btn.disabled = false;
+      btn.classList.remove("is-busy");
+      if (text) text.textContent = before;
+    };
+  };
+
+  const socialButtons = root?.querySelectorAll<HTMLButtonElement>("[data-provider]") ?? [];
+  socialButtons.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      clearError();
+      const restore = busy(btn, `Opening ${btn.dataset.label}…`);
+      try {
+        const res = await post("/sign-in/social", { provider: btn.dataset.provider, callbackURL: next, errorCallbackURL: "/login" });
+        const data = (await res.json()) as { url?: string; message?: string };
+        if (data.url) {
+          remember(btn.dataset.provider!);
+          window.location.href = data.url;
+          return;
+        }
+        showError(data.message || "Could not start sign-in.");
+      } catch {
+        showError("Network error. Please try again.");
+      }
+      restore();
+    });
+  });
+  // Coming back from the provider with the Back button restores the page from bfcache, mid-spinner.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    socialButtons.forEach((btn) => {
+      btn.disabled = false;
+      btn.classList.remove("is-busy");
+      const text = btn.querySelector<HTMLElement>("[data-btn-text]");
+      if (text) text.textContent = `Continue with ${btn.dataset.label}`;
+    });
+  });
+
+  const form = document.querySelector<HTMLFormElement>("[data-email-form]");
+  if (form) {
+    const emailStep = form.querySelector<HTMLElement>("[data-email-step]")!;
+    const otpStep = form.querySelector<HTMLElement>("[data-otp-step]")!;
+    const emailInput = form.querySelector<HTMLInputElement>("#email")!;
+    const otpInput = form.querySelector<HTMLInputElement>("#otp")!;
+    const sendBtn = form.querySelector<HTMLButtonElement>("[data-send]")!;
+    const verifyBtn = form.querySelector<HTMLButtonElement>("[data-verify]")!;
+    const resendBtn = form.querySelector<HTMLButtonElement>("[data-resend]")!;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const title = document.querySelector<HTMLElement>("[data-auth-title]");
+    const sub = document.querySelector<HTMLElement>("[data-auth-sub]");
+    const titleBefore = title?.textContent ?? "";
+    // While a code is pending, the other sign-in options only get in the way.
+    const showOtp = (on: boolean) => {
+      root?.classList.toggle("is-otp", on);
+      emailStep.hidden = on;
+      otpStep.hidden = !on;
+      if (title) title.textContent = on ? "Check your email" : titleBefore;
+      if (sub) sub.hidden = on;
+    };
+
+    // The widget is invisible unless Cloudflare wants an interaction, so its token may still be on its way.
+    const captchaToken = async () => {
+      const field = () => form.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value || "";
+      for (let i = 0; i < 40 && !field(); i++) await new Promise((r) => setTimeout(r, 200));
+      return field();
+    };
+
+    const cooldown = () => {
+      let left = RESEND_SECONDS;
+      resendBtn.disabled = true;
+      clearInterval(timer);
+      const tick = () => {
+        resendBtn.textContent = left > 0 ? `Resend code in ${left}s` : "Resend code";
+        if (left-- <= 0) {
+          clearInterval(timer);
+          resendBtn.disabled = false;
+        }
+      };
+      tick();
+      timer = setInterval(tick, 1000);
+    };
+
+    const sendCode = async (btn: HTMLButtonElement) => {
+      clearError();
+      const email = emailInput.value.trim();
+      if (!emailInput.checkValidity()) {
+        showError("Enter a valid email address.");
+        emailInput.focus();
+        return;
+      }
+      const restore = busy(btn, "Sending code…");
+      const token = await captchaToken();
+      const res = token ? await post("/email-otp/send-verification-otp", { email, type: "sign-in" }, { "x-captcha-response": token }).catch(() => null) : null;
+      // Turnstile tokens are single-use; get a fresh one ready for a resend.
+      window.turnstile?.reset(form.querySelector(".cf-turnstile") ?? undefined);
+      restore();
+      if (!res?.ok) {
+        showError(token ? "Couldn't send a code. Check the address and try again in a minute." : "Still checking your browser. Please try again.");
+        return;
+      }
+      form.querySelector<HTMLElement>("[data-otp-email]")!.textContent = email;
+      showOtp(true);
+      otpInput.value = "";
+      otpInput.focus();
+      cooldown();
+    };
+
+    const verify = async () => {
+      clearError();
+      const otp = otpInput.value.trim();
+      if (!/^\d{6}$/.test(otp)) {
+        showError("Enter the 6-digit code from the email.");
+        otpInput.focus();
+        return;
+      }
+      const restore = busy(verifyBtn, "Signing in…");
+      const res = await post("/sign-in/email-otp", { email: emailInput.value.trim(), otp }).catch(() => null);
+      if (res?.ok) {
+        remember("email");
+        window.location.href = next;
+        return;
+      }
+      restore();
+      showError("That code is invalid or expired.");
+      otpInput.select();
+    };
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (otpStep.hidden) sendCode(sendBtn);
+      else verify();
+    });
+    verifyBtn.addEventListener("click", verify);
+    resendBtn.addEventListener("click", () => sendCode(resendBtn));
+    // No maxlength on the input: it would truncate a pasted "482 913" before the digits are pulled out.
+    otpInput.addEventListener("input", () => {
+      otpInput.value = otpInput.value.replace(/\D/g, "").slice(0, 6);
+      if (otpInput.value.length === 6 && !verifyBtn.disabled) verify();
+    });
+    form.querySelector("[data-change-email]")?.addEventListener("click", () => {
+      clearError();
+      clearInterval(timer);
+      showOtp(false);
+      emailInput.select();
+    });
+  }
+</script>

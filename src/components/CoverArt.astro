@@ -1,0 +1,110 @@
+---
+// Original, deterministic cover illustration generated from the tool name.
+// It is decorative art, not a screenshot of the product.
+import type { ToolArt } from "../lib/db";
+import { artFor } from "../lib/db";
+
+interface Props {
+  name: string;
+  art?: ToolArt;
+  showTitle?: boolean;
+  label?: string;
+}
+const { name, art = {}, showTitle = true, label } = Astro.props;
+const fallback = artFor(name);
+const palette = art.palette?.length === 4 ? art.palette : fallback.palette!;
+const motif = art.motif ?? fallback.motif!;
+const [c1, c2, c3, bg] = palette;
+
+let seed = 0;
+for (const ch of name) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+function rand() {
+  seed = (seed + 0x6d2b79f5) >>> 0;
+  let t = seed;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+const r = (min: number, max: number) => Math.round(min + rand() * (max - min));
+
+function blob(cx: number, cy: number, radius: number) {
+  const n = 7;
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2;
+    const rr = radius * (0.78 + rand() * 0.4);
+    return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr];
+  });
+  let d = "";
+  for (let i = 0; i < n; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[(i + 1) % n];
+    const [x2, y2] = pts[(i + 2) % n];
+    if (i === 0) d += `M${((x0 + x1) / 2).toFixed(1)},${((y0 + y1) / 2).toFixed(1)} `;
+    d += `Q${x1.toFixed(1)},${y1.toFixed(1)} ${((x1 + x2) / 2).toFixed(1)},${((y1 + y2) / 2).toFixed(1)} `;
+  }
+  return d + "Z";
+}
+
+function wave(y: number, amp: number, phase: number) {
+  let d = `M0,${y}`;
+  for (let x = 0; x <= 400; x += 50) {
+    d += ` Q${x + 25},${y + (Math.sin(x / 60 + phase) > 0 ? -amp : amp)} ${x + 50},${y}`;
+  }
+  return d + " V200 H0 Z";
+}
+
+const face = { x: r(80, 120), y: r(125, 145) };
+const blobs = [
+  { d: blob(face.x, face.y, r(55, 70)), fill: c1 },
+  { d: blob(r(200, 250), r(130, 160), r(60, 75)), fill: c2 },
+  { d: blob(r(320, 360), r(90, 130), r(50, 70)), fill: c3 },
+];
+const waves = [wave(110, 22, rand() * 6), wave(140, 18, rand() * 6), wave(165, 14, rand() * 6)];
+const cells = Array.from({ length: 24 }, (_, i) => ({
+  x: 24 + (i % 8) * 46,
+  y: 30 + Math.floor(i / 8) * 50,
+  fill: [c1, c2, c3, "#ffffff"][r(0, 3)],
+  rot: r(-8, 8),
+}));
+const sparks = Array.from({ length: 9 }, () => ({ x: r(20, 380), y: r(20, 180), s: r(8, 18), fill: [c1, c2, c3][r(0, 2)] }));
+const cards = [0, 1, 2].map((i) => ({ x: 120 + i * 60, y: 40 + i * 14, rot: -10 + i * 9, fill: [c1, c2, c3][i] }));
+const title = name.length > 16 ? name.slice(0, 15) + "…" : name;
+const titleSize = title.length > 11 ? 34 : 42;
+const ink = "#17141f";
+---
+<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice" role={label === "" ? undefined : "img"} aria-hidden={label === "" ? "true" : undefined} aria-label={label === "" ? undefined : (label ?? `Illustrative cover art for ${name} (not a screenshot)`)}>
+  <rect width="400" height="200" fill={bg} />
+  {motif === "blobs" && blobs.map((b) => <path d={b.d} fill={b.fill} />)}
+  {motif === "blobs" && (
+    <g fill={ink}>
+      <circle cx={face.x - 9} cy={face.y - 4} r="3.5" />
+      <circle cx={face.x + 9} cy={face.y - 4} r="3.5" />
+      <path d={`M${face.x - 8} ${face.y + 8} q8 7 16 0`} stroke={ink} stroke-width="3" fill="none" stroke-linecap="round" />
+    </g>
+  )}
+  {motif === "waves" && waves.map((d, i) => <path d={d} fill={[c3, c2, c1][i]} />)}
+  {motif === "waves" && <circle cx={r(280, 340)} cy={r(40, 70)} r="26" fill={c2} />}
+  {motif === "grid" && cells.map((c) => (
+    <rect x={c.x} y={c.y} width="36" height="36" rx="9" fill={c.fill} transform={`rotate(${c.rot} ${c.x + 18} ${c.y + 18})`} />
+  ))}
+  {motif === "sparks" && (
+    <path d={`M10,${r(140, 170)} C90,${r(60, 110)} 160,${r(170, 200)} 240,${r(110, 140)} S360,${r(60, 100)} 400,${r(110, 150)}`} stroke={c1} stroke-width="14" fill="none" stroke-linecap="round" />
+  )}
+  {motif === "sparks" && sparks.map((s) => (
+    <path d={`M${s.x},${s.y - s.s} L${s.x + s.s * 0.3},${s.y - s.s * 0.3} L${s.x + s.s},${s.y} L${s.x + s.s * 0.3},${s.y + s.s * 0.3} L${s.x},${s.y + s.s} L${s.x - s.s * 0.3},${s.y + s.s * 0.3} L${s.x - s.s},${s.y} L${s.x - s.s * 0.3},${s.y - s.s * 0.3} Z`} fill={s.fill} />
+  ))}
+  {motif === "stack" && cards.map((c) => (
+    <g transform={`rotate(${c.rot} ${c.x + 80} ${c.y + 60})`}>
+      <rect x={c.x} y={c.y} width="160" height="120" rx="14" fill={c.fill} />
+      <rect x={c.x + 14} y={c.y + 14} width="70" height="10" rx="5" fill="#ffffff" opacity="0.8" />
+      <rect x={c.x + 14} y={c.y + 32} width="110" height="8" rx="4" fill="#ffffff" opacity="0.55" />
+    </g>
+  ))}
+  <g stroke={ink} stroke-width="3" stroke-linecap="round" fill="none" opacity="0.85">
+    {!showTitle && <path d={`M${r(18, 40)},${r(20, 34)} l10,8 M${r(18, 40)},${r(44, 52)} l14,0`} />}
+    <path d={`M${r(340, 372)},${r(160, 180)} q8,-10 16,0 t16,0`} />
+  </g>
+  {showTitle && (
+    <text x="22" y="62" font-family="Fraunces Variable, Georgia, serif" font-weight="800" font-size={titleSize} letter-spacing="-1" fill={ink} stroke="#ffffff" stroke-width="7" paint-order="stroke" stroke-linejoin="round">{title}</text>
+  )}
+</svg>

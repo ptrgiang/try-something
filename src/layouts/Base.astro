@@ -1,0 +1,206 @@
+---
+import "../styles/global.css";
+import { env } from "cloudflare:workers";
+import Logo from "../components/Logo.astro";
+import Icon from "../components/Icon.astro";
+import SaveScript from "../components/SaveScript.astro";
+import CoverScript from "../components/CoverScript.astro";
+import QuickView from "../components/QuickView.astro";
+import SearchPalette from "../components/SearchPalette.astro";
+import SubmitNudge from "../components/SubmitNudge.astro";
+import ReportDialog from "../components/ReportDialog.astro";
+import ConfirmDialog from "../components/ConfirmDialog.astro";
+import PageView from "../components/PageView.astro";
+import { getStars, formatCount } from "../lib/github";
+import { unreadNotifications } from "../lib/db";
+import { isModerator } from "../lib/moderation";
+import { unreadLabel } from "../lib/notifications";
+import { ldJson, siteGraph, SITE, type LdNode } from "../lib/seo";
+import { ogAlt, ogPath, type OgCard } from "../lib/og";
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+  noindex?: boolean;
+  nav?: "explore" | "collections" | "about" | null;
+  ogType?: "website" | "article";
+  /** Page-specific schema.org nodes, added to the site-wide WebSite and Organization graph. */
+  jsonLd?: LdNode | LdNode[];
+  /** Share card drawn for this page; without one the site-wide image is used. */
+  og?: OgCard;
+  headerSearch?: boolean;
+}
+
+const {
+  title,
+  description = "Curated web tools, experiments and tiny apps you can try in 30 seconds. Open source and community submitted.",
+  path = Astro.url.pathname,
+  noindex = false,
+  nav = null,
+  ogType = "website",
+  jsonLd,
+  og,
+  headerSearch = true,
+} = Astro.props;
+
+const site = SITE;
+const fullTitle = title ? `${title} - Try Something` : "Try Something - Discover tools worth trying";
+const canonical = new URL(path, site).toString();
+const ogImage = og ? ogPath(og) : "/og-default.png";
+const ogImageAlt = og ? ogAlt(og) : "Try Something: discover tools worth trying";
+// Staff and account pages stay out of site analytics; not-found pages count as one bucket.
+const trackPath =
+  Astro.routePattern === "/404" ? "/404" : Astro.routePattern === "/403" || /^\/(admin|me|api)(\/|$)/.test(Astro.url.pathname) ? null : Astro.url.pathname;
+const repo = env.PUBLIC_GITHUB_REPO;
+const stars = repo ? await getStars(repo, env.CACHE, { token: env.GITHUB_TOKEN }) : null;
+const user = Astro.locals.user;
+// A failed count shouldn't take the page down with it.
+const unread = user ? await unreadNotifications(env.DB, user.id).catch(() => 0) : 0;
+const q = Astro.url.searchParams.get("q") ?? "";
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#fffdf9" />
+    <meta property="og:site_name" content="Try Something" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title ?? "Try Something"} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(ogImage, site).toString()} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    {!noindex && <script type="application/ld+json" set:html={ldJson(siteGraph(jsonLd ? [jsonLd].flat() : []))} />}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="sheet">
+      <header class="site-header">
+        <div class="brand">
+          <Logo />
+        </div>
+        <nav class="main-nav" aria-label="Main">
+          <a href="/explore" aria-current={nav === "explore" ? "page" : undefined}>Explore</a>
+          <a href="/collections" aria-current={nav === "collections" ? "page" : undefined}>Collections</a>
+          <a href="/about" aria-current={nav === "about" ? "page" : undefined}>About</a>
+        </nav>
+        {headerSearch ? (
+          <form class="header-search" action="/explore" method="get" role="search">
+            <label class="sr-only" for="site-search">Search tools</label>
+            <Icon name="search" />
+            <input id="site-search" type="search" name="q" value={q} placeholder="Search tools, ideas, or anything…" maxlength="80" />
+            <button type="button" class="header-kbd" data-palette-open><span class="sr-only">Quick search, </span><kbd>Ctrl K</kbd></button>
+          </form>
+        ) : <div class="header-spacer"></div>}
+        <div class="header-actions">
+          {repo && (
+            <a class="gh-badge" href={`https://github.com/${repo}`} target="_blank" rel="noopener" aria-label={stars ? `Open source on GitHub — ${stars.count} stars` : "Open source on GitHub"}>
+              <Icon name="github" />
+              {stars ? <span>{formatCount(stars.count)}</span> : <span class="gh-label">GitHub</span>}
+              {stars && <Icon name="star" class="gh-star" />}
+            </a>
+          )}
+          {user && (
+            <a class="bell" href="/me/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}>
+              <Icon name="bell" />
+              {unread > 0 && <span class="bell-count" aria-hidden="true">{unreadLabel(unread)}</span>}
+            </a>
+          )}
+          {user ? (
+            <details class="user-menu" data-menu>
+              <summary aria-label="Account menu">
+                {user.image ? <img src={user.image} alt="" referrerpolicy="no-referrer" /> : <span>{user.name.slice(0, 1).toUpperCase()}</span>}
+              </summary>
+              <div class="menu-panel">
+                <div class="who">Signed in as<br /><strong>{user.name}</strong></div>
+                <a href={user.handle ? `/users/${user.handle}` : "/me/settings"}>Your profile</a>
+                <a href="/me/notifications">Notifications{unread > 0 && ` (${unread})`}</a>
+                <a href="/me/submissions">My submissions</a>
+                <a href="/me/saved">Saved tools</a>
+                <a href="/submit">Submit a tool</a>
+                {isModerator(user.role) && <a href="/admin/submissions">Moderation</a>}
+                <a href="/me/settings">Settings</a>
+                <form method="post" action="/logout"><button type="submit">Sign out</button></form>
+              </div>
+            </details>
+          ) : Astro.url.pathname !== "/login" && (
+            <a class="btn hide-mobile" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>
+          )}
+          <details class="user-menu mobile-menu" data-menu>
+            <summary aria-label="Menu"><Icon name="menu" /></summary>
+            <div class="menu-panel">
+              <a href="/explore">Explore</a>
+              <a href="/collections">Collections</a>
+              <a href="/about">About</a>
+              <a href="/surprise">Surprise me</a>
+              <a href="/submit">Submit a tool</a>
+              {!user && <a href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
+            </div>
+          </details>
+        </div>
+      </header>
+
+      <main id="main">
+        <slot />
+      </main>
+
+      <footer class="site-footer">
+        <div>
+          <Logo />
+          <p>An open-source home for things worth trying.</p>
+          {repo && (
+            <div class="star-cta">
+              <a class="btn btn-sm" href={`https://github.com/${repo}`} target="_blank" rel="noopener"><Icon name="github" /> Star on GitHub</a>
+              {stars && <span>★ {stars.count.toLocaleString("en-US")} stars</span>}
+            </div>
+          )}
+        </div>
+        <nav aria-label="Footer">
+          <a href="/explore">Explore</a>
+          <a href="/collections">Collections</a>
+          <a href="/submit">Submit a tool</a>
+          <a href="/contribute">Contribute</a>
+          <a href="/about">About</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </nav>
+      </footer>
+    </div>
+    <SubmitNudge path={Astro.url.pathname} />
+    <SaveScript />
+    <CoverScript />
+    <QuickView />
+    <SearchPalette />
+    <ReportDialog />
+    <ConfirmDialog />
+    <PageView path={trackPath} />
+    <script>
+      const openMenus = () => document.querySelectorAll<HTMLDetailsElement>("details[data-menu][open]");
+      document.addEventListener("click", (e) => {
+        openMenus().forEach((menu) => {
+          if (!menu.contains(e.target as Node)) menu.open = false;
+        });
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        openMenus().forEach((menu) => {
+          menu.open = false;
+          menu.querySelector("summary")?.focus();
+        });
+      });
+    </script>
+  </body>
+</html>

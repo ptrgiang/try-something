@@ -1,0 +1,377 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import BarChart from "../../components/BarChart.astro";
+import {
+  collectionStats,
+  funnelTotals,
+  makerValue,
+  quietTools,
+  retentionCohorts,
+  sourceFunnel,
+  statBreakdown,
+  statDaily,
+  statTotals,
+  surfaceFunnel,
+  surfaceStats,
+  topSearches,
+  topTools,
+} from "../../lib/db";
+import { change, dateRange, funnelSteps, MIN_SAMPLE, rateOf, RANGES, withUnattributed, type RangeDays } from "../../lib/analytics";
+import { isModerator } from "../../lib/moderation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/stats");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+const raw = Number(Astro.url.searchParams.get("days"));
+const days = (RANGES as readonly number[]).includes(raw) ? (raw as RangeDays) : 30;
+const range = dateRange(days);
+const [now, before, daily, tools, pages, countries, cohorts, searches, surfaceRows, collections, quiet, funnel, sources, reach, makers] = await Promise.all([
+  statTotals(env.DB, range.from, range.to),
+  statTotals(env.DB, range.prevFrom, range.prevTo),
+  statDaily(env.DB, range.days),
+  topTools(env.DB, range.from, range.to),
+  statBreakdown(env.DB, "pages", range.from, range.to),
+  statBreakdown(env.DB, "countries", range.from, range.to),
+  retentionCohorts(env.DB),
+  topSearches(env.DB, range.from, range.to),
+  surfaceStats(env.DB, range.from, range.to),
+  collectionStats(env.DB, range.from, range.to),
+  quietTools(env.DB, range.from, range.to),
+  funnelTotals(env.DB, range.from, range.to),
+  sourceFunnel(env.DB, range.from, range.to),
+  surfaceFunnel(env.DB, range.from, range.to),
+  makerValue(env.DB, range.from, range.to),
+]);
+
+// Each environment has its own database; only the production host holds real audience numbers.
+const production = Astro.url.hostname === "trysometh.ing";
+const fmt = (n: number) => n.toLocaleString("en-US");
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+/** A rate, or "too few" below the minimum sample so small numbers don't read as findings. */
+const rate = (num: number, den: number) => {
+  const r = rateOf(num, den);
+  return r === null ? (den ? `too few (${fmt(den)})` : "–") : pct(r);
+};
+const tile = (label: string, key: keyof typeof now, hint?: string) => ({ label, value: fmt(now[key]), change: change(now[key], before[key]), hint });
+const traffic = [
+  tile("Visitor-days", "visitors", "Once per visitor per UTC day, summed: not distinct people"),
+  tile("Page views", "pageViews", "Every counted page load"),
+  tile("Tool views", "toolViews", "Once per visitor per tool per day"),
+  tile("Try clicks", "tries", "Once per visitor per tool per day"),
+];
+const steps = funnelSteps([
+  { label: "Visited", count: funnel.visits },
+  { label: "Engaged", count: funnel.engaged },
+  { label: "Clicked Try", count: funnel.tried },
+]);
+const SURFACES: Record<string, string> = {
+  hero: "Home hero",
+  picks: "Home picks",
+  top: "Top today",
+  home: "Home list",
+  explore: "Explore",
+  category: "Category pages",
+  search: "Search results",
+  tag: "Tag pages",
+  collection: "Collections",
+  related: "Related on tool pages",
+  profile: "Profiles",
+  saved: "Saved tools",
+  palette: "Quick search",
+  surprise: "Surprise me",
+  direct: "Tool page, arrived directly",
+  unattributed: "Unattributed",
+};
+const surfaces = withUnattributed(surfaceRows, { views: now.toolViews, tries: now.tries });
+const community = [
+  tile("New accounts", "newUsers"),
+  tile("Submissions", "submissions"),
+  tile("Submissions approved", "approved"),
+  tile("Hearts", "hearts"),
+  tile("Saves", "saves", "Signed-in only"),
+  tile("Comments", "comments"),
+];
+const pagesPerVisit = now.visitors ? (now.pageViews / now.visitors).toFixed(1) : "–";
+const mobileShare = now.visitors ? pct(now.mobileVisitors / now.visitors) : "–";
+let regions: Intl.DisplayNames | null = null;
+try {
+  regions = new Intl.DisplayNames(["en"], { type: "region" });
+} catch {}
+const countryName = (code: string) => (code === "unknown" ? "Unknown" : (regions?.of(code) ?? code));
+const sourceName = (s: string) => (s === "direct" ? "Direct or unknown" : s);
+const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const funnelPartial = funnel.since && funnel.since > range.from;
+---
+<Base title="Stats" noindex>
+  <div class="page app-page stats-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Stats</h1>
+    <AdminNav current="stats" />
+    {!production && (
+      <p class="notice" role="note"><strong>Not production data.</strong> These numbers come from the {Astro.url.hostname} database, which holds only test and staff traffic.</p>
+    )}
+    <nav class="chips admin-tabs" aria-label="Time range">
+      {RANGES.map((d) => <a class="chip" href={`/admin/stats?days=${d}`} aria-current={days === d ? "true" : undefined}>Last {d} days</a>)}
+    </nav>
+    <p class="muted small-note">{dayLabel(range.from)} – {dayLabel(range.to)} (UTC), compared with the {days} days before. Rates based on fewer than {MIN_SAMPLE} show as "too few".</p>
+
+    <section class="stats-group" aria-labelledby="stats-funnel">
+      <h2 id="stats-funnel">Discovery funnel</h2>
+      <p class="muted small-note">
+        Visited = a counted page load; Engaged = saw a card or opened a tool; Clicked Try = opened a tool's site (not proof they used it).
+        Each visitor counts once per UTC day per step, and the steps nest: everyone who clicked Try also counts as engaged.
+        {funnelPartial && <> Tracked since {dayLabel(funnel.since!)}, so earlier days in this range aren't included.</>}
+      </p>
+      {funnel.visits ? (
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Step</th><th class="num">Visitor-days</th><th class="num">Of previous step</th><th class="num">Of visits</th><th class="num">Dropped</th></tr></thead>
+            <tbody>
+              {steps.map((s, i) => (
+                <tr>
+                  <td>{s.label}</td>
+                  <td class="num">{fmt(s.count)}</td>
+                  <td class="num">{i ? (s.fromPrev === null ? <span class="muted">too few</span> : pct(s.fromPrev)) : "–"}</td>
+                  <td class="num">{i ? (s.fromStart === null ? <span class="muted">too few</span> : pct(s.fromStart)) : "–"}</td>
+                  <td class="num">{i ? fmt(s.dropped) : "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p class="muted">No funnel data in this period{funnel.since ? "" : " yet: it starts counting from the first visit after this release"}.</p>}
+
+      <h3 class="stats-sub">By place</h3>
+      <p class="muted small-note">Cards seen are counted when half a card is on screen, once per tool and place per browser tab. Tool views and try clicks are credited to the place the tool was opened from; "Unattributed" is the rest (counted before places were tracked, or from a button outside any place). Visitor-day columns and the try rate start with the funnel.</p>
+      {surfaces.length ? (
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Place</th><th class="num">Cards seen</th><th class="num">Tool views</th><th class="num">Try clicks</th><th class="num">Visitor-days engaged</th><th class="num">Visitor-days tried</th><th class="num">Try rate</th></tr></thead>
+            <tbody>
+              {surfaces.map((s) => {
+                const r = reach.get(s.surface);
+                return (
+                  <tr class={s.surface === "unattributed" ? "stats-unattributed" : undefined}>
+                    <td>{SURFACES[s.surface] ?? s.surface}</td>
+                    <td class="num">{s.surface === "unattributed" ? "–" : fmt(s.impressions)}</td>
+                    <td class="num">{fmt(s.views)}</td>
+                    <td class="num">{fmt(s.tries)}</td>
+                    <td class="num">{r ? fmt(r.engaged) : "–"}</td>
+                    <td class="num">{r ? fmt(r.tried) : "–"}</td>
+                    <td class="num">{r ? rate(r.tried, r.engaged) : "–"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : <p class="muted">Nothing recorded in this period.</p>}
+      <p class="muted small-note">Try rate = visitor-days that clicked Try from a place ÷ visitor-days that engaged with it.</p>
+    </section>
+
+    <section class="stats-group" aria-labelledby="stats-sources">
+      <h2 id="stats-sources">Acquisition</h2>
+      <p class="muted small-note">Source is <code>utm_source</code> (or <code>ref</code>) when the link has one, otherwise the referring site. "Direct or unknown" covers typed addresses, bookmarks, apps and browsers that hide the referrer; it is never guessed. Medium and campaign appear only when the link sets <code>utm_medium</code> / <code>utm_campaign</code>.</p>
+      {sources.length ? (
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Source</th><th>Medium</th><th>Campaign</th><th class="num">Visits</th><th class="num">Engaged</th><th class="num">Clicked Try</th><th class="num">Try rate</th></tr></thead>
+            <tbody>
+              {sources.map((s) => (
+                <tr>
+                  <td class="stats-key">{sourceName(s.source)}</td>
+                  <td>{s.medium || <span class="muted">–</span>}</td>
+                  <td>{s.campaign || <span class="muted">–</span>}</td>
+                  <td class="num">{fmt(s.visits)}</td>
+                  <td class="num">{fmt(s.engaged)}</td>
+                  <td class="num">{fmt(s.tried)}</td>
+                  <td class="num">{rate(s.tried, s.visits)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p class="muted">No visits with a known funnel in this period.</p>}
+      <p class="muted small-note">All columns are visitor-days. Try rate = clicked Try ÷ visits.</p>
+    </section>
+
+    <section class="stats-group" aria-labelledby="stats-traffic">
+      <h2 id="stats-traffic">Traffic</h2>
+      <div class="stat-tiles">
+        {traffic.map((t) => (
+          <div class="stat-tile">
+            <span class="stat-label">{t.label}</span>
+            <strong class="stat-value">{t.value}</strong>
+            {t.change && <span class="stat-change">{t.change}</span>}
+            {t.hint && <span class="stat-hint">{t.hint}</span>}
+          </div>
+        ))}
+      </div>
+      <div class="stat-charts">
+        <BarChart title="Visitors per day" unit="visitor-days" rows={daily.map((d) => ({ day: d.day, value: d.visitors }))} />
+        <BarChart title="Try clicks per day" unit="try clicks" rows={daily.map((d) => ({ day: d.day, value: d.tries }))} />
+      </div>
+      <p class="muted small-note">{now.visitors > 0 && <>{pagesPerVisit} page views per visitor-day · {mobileShare} of visitor-days on phones. </>}Tool views and try clicks aren't a funnel on their own: a try can come straight from a card without a view.</p>
+    </section>
+
+    <section class="stats-group" aria-labelledby="stats-collections">
+      <h2 id="stats-collections">Collections and tools</h2>
+      <div class="stats-split stats-split-2">
+        <div>
+          <h3 class="stats-sub">Collections</h3>
+          {collections.length ? (
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Collection</th><th class="num">Page views</th><th class="num">Engaged</th><th class="num">Clicked Try</th><th class="num">Try rate</th></tr></thead>
+                <tbody>
+                  {collections.map((c) => (
+                    <tr>
+                      <td class="stats-key"><a href={`/collections/${c.slug}`}>{c.title}</a></td>
+                      <td class="num">{fmt(c.pageViews)}</td>
+                      <td class="num">{fmt(c.engaged)}</td>
+                      <td class="num">{fmt(c.tried)}</td>
+                      <td class="num">{rate(c.tried, c.engaged)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p class="muted">No published collections.</p>}
+          <p class="muted small-note">Engaged and Clicked Try are visitor-days on the collection page or its home picks.</p>
+        </div>
+        <div>
+          <h3 class="stats-sub">Seen often, rarely tried</h3>
+          {quiet.length ? (
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Tool</th><th class="num">Cards seen</th><th class="num">Try clicks</th><th class="num">Per 100 seen</th></tr></thead>
+                <tbody>
+                  {quiet.map((t) => (
+                    <tr>
+                      <td class="stats-key"><a href={`/tools/${t.slug}`}>{t.name}</a></td>
+                      <td class="num">{fmt(t.impressions)}</td>
+                      <td class="num">{fmt(t.tries)}</td>
+                      <td class="num">{((t.tries / t.impressions) * 100).toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p class="muted">No tool was seen 50 times in this period, too few to compare.</p>}
+          <p class="muted small-note">Only tools seen at least 50 times. Candidates for a better tagline, cover or try-this, not verdicts.</p>
+        </div>
+      </div>
+      <h3 class="stats-sub">Top tools</h3>
+      {tools.length ? (
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tool</th><th class="num">Try clicks</th><th class="num">Views</th><th class="num">Hearts</th><th class="num">Saves</th></tr></thead>
+            <tbody>
+              {tools.map((t) => (
+                <tr>
+                  <td><a href={`/tools/${t.slug}`}>{t.name}</a></td>
+                  <td class="num">{fmt(t.tries)}</td>
+                  <td class="num">{fmt(t.views)}</td>
+                  <td class="num">{fmt(t.hearts)}</td>
+                  <td class="num">{fmt(t.saves)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p class="muted">No tool views or try clicks in this period.</p>}
+      <p class="muted small-note">Try clicks and views count each visitor once per tool per day (unique engaged visitor-days), ranked by try clicks.</p>
+    </section>
+
+    <div class="stats-split">
+      {[
+        { id: "pages", title: "Pages", col: "Page", unit: "Views", rows: pages.map((p) => ({ label: p.key, count: p.count })), empty: "No page views yet." },
+        { id: "countries", title: "Countries", col: "Country", unit: "Visitor-days", rows: countries.map((c) => ({ label: countryName(c.key), count: c.count })), empty: "No visitors yet." },
+      ].map((b) => (
+        <section class="stats-group" aria-labelledby={`stats-${b.id}`}>
+          <h2 id={`stats-${b.id}`}>{b.title}</h2>
+          {b.rows.length ? (
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>{b.col}</th><th class="num">{b.unit}</th></tr></thead>
+                <tbody>{b.rows.map((r) => <tr><td class="stats-key">{r.label}</td><td class="num">{fmt(r.count)}</td></tr>)}</tbody>
+              </table>
+            </div>
+          ) : <p class="muted">{b.empty}</p>}
+        </section>
+      ))}
+    </div>
+
+    <section class="stats-group" aria-labelledby="stats-searches">
+      <h2 id="stats-searches">Searches</h2>
+      <p class="muted small-note">Terms typed into Explore, once per visitor per term per day. "Results now" is today's match count; None means people looked for something we don't list yet.</p>
+      {searches.length ? (
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Term</th><th class="num">Searches</th><th class="num">Results now</th><th>Tag page</th></tr></thead>
+            <tbody>
+              {searches.map((s) => (
+                <tr class={s.results === 0 ? "stats-miss" : undefined}>
+                  <td class="stats-key"><a href={`/explore?${new URLSearchParams({ q: s.term })}`}>{s.term}</a></td>
+                  <td class="num">{fmt(s.searches)}</td>
+                  <td class="num">{s.results === 0 ? <strong>None</strong> : fmt(s.results)}</td>
+                  <td>{s.tag ? <a href={`/tags/${s.tag}`}>#{s.tag}</a> : <span class="muted">–</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p class="muted">No searches in this period.</p>}
+    </section>
+
+    <section class="stats-group" aria-labelledby="stats-community">
+      <h2 id="stats-community">Community and makers</h2>
+      <div class="stat-tiles">
+        {community.map((t) => (
+          <div class="stat-tile">
+            <span class="stat-label">{t.label}</span>
+            <strong class="stat-value">{t.value}</strong>
+            {t.change && <span class="stat-change">{t.change}</span>}
+            {t.hint && <span class="stat-hint">{t.hint}</span>}
+          </div>
+        ))}
+        <div class="stat-tile">
+          <span class="stat-label">Verified makers with try clicks</span>
+          <strong class="stat-value">{fmt(makers.withTries)}</strong>
+          <span class="stat-hint">of {fmt(makers.verifiedMakers)} verified makers; {fmt(makers.withSaves)} got saves</span>
+        </div>
+      </div>
+      <p class="muted small-note">Maker counts include only "I made this" listings whose maker verified ownership; unverified claims and found tools are left out.</p>
+    </section>
+
+    <section class="stats-group" aria-labelledby="stats-retention">
+      <h2 id="stats-retention">Retention</h2>
+      <p class="muted small-note">Signed-in accounts (staff excluded) by signup week, and the share active in each following week. Signed-out retention is <strong>unavailable</strong>: visitors can't be recognized across days, by design.</p>
+      {cohorts.length ? (
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Signed up week of</th><th class="num">Accounts</th><th class="num">Week 1</th><th class="num">Week 2</th><th class="num">Week 3</th><th class="num">Week 4</th></tr></thead>
+            <tbody>
+              {cohorts.map((c) => (
+                <tr>
+                  <td>{dayLabel(c.week)}</td>
+                  <td class="num">{fmt(c.size)}</td>
+                  {c.weeks.map((w) => <td class="num">{w === null ? <span class="muted">not yet</span> : pct(w)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p class="muted">No signups in the last 8 weeks.</p>}
+    </section>
+
+    <p class="muted small-note stats-foot">
+      Counted on our own servers, without cookies: a visitor is a daily-changing hash of the IP address, so a household or office on one network counts as one, and one person on two networks as two.
+      Not counted: browsers that block JavaScript or send Global Privacy Control / Do Not Track, crawlers, scripted browsers (screenshots, test runs), signed-in staff, and staff pages.
+      Only daily totals are kept; the per-visitor state behind the funnel is deleted after two days. See docs/runbooks/moderation.md for every definition.
+    </p>
+  </div>
+</Base>

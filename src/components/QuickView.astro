@@ -1,0 +1,183 @@
+---
+// Quick view: tool cards open their detail page in a dialog over the list.
+// The URL changes to /tools/<slug>, so sharing, reloading and Back all behave like the real page.
+import Icon from "./Icon.astro";
+---
+<dialog class="quick-view" data-quick-view aria-label="Tool details">
+  <button type="button" class="quick-close" data-quick-close aria-label="Close"><Icon name="close" /></button>
+  <div class="quick-panel">
+    <div class="quick-body" data-quick-body></div>
+    <nav class="quick-foot" data-quick-foot aria-label="Browse tools" hidden>
+      <a class="btn" data-quick-step="-1" href="#"><Icon name="arrow" /><span>Previous</span></a>
+      <p class="quick-keys"><kbd>←</kbd> <kbd>→</kbd> to browse · <kbd>Esc</kbd> to close</p>
+      <a class="btn" data-quick-step="1" href="#"><span>Next</span><Icon name="arrow" /></a>
+    </nav>
+  </div>
+</dialog>
+<script>
+  import { announceContent, fetchDocument, sendView } from "../scripts/client";
+  import { noteToolSeen, originFor } from "../scripts/discovery";
+  import "../scripts/comments";
+  import "../scripts/share";
+
+  const dialog = document.querySelector<HTMLDialogElement>("[data-quick-view]");
+  const body = dialog?.querySelector<HTMLElement>("[data-quick-body]");
+  const foot = dialog?.querySelector<HTMLElement>("[data-quick-foot]");
+  const TOOL_PATH = /^\/tools\/[^/]+\/?$/;
+  let baseTitle = document.title;
+  let depth = 0; // history entries this dialog has pushed
+  let shownPath = "";
+  let controller: AbortController | null = null;
+
+  function loader() {
+    const wrap = document.createElement("div");
+    wrap.className = "skeleton quick-loading";
+    for (const cls of ["sk sk-cover", "sk sk-title", "sk sk-line", "sk sk-line sk-short"]) {
+      const el = document.createElement("div");
+      el.className = cls;
+      wrap.appendChild(el);
+    }
+    return wrap;
+  }
+
+  // Previous/Next follow the order of the cards on the page behind the dialog (read fresh each time,
+  // since filters and infinite scroll change it). A tool opened from inside the view has no neighbours.
+  function listPaths(): string[] {
+    const paths: string[] = [];
+    document.querySelectorAll<HTMLAnchorElement>(".card a[href]").forEach((a) => {
+      if (dialog?.contains(a)) return;
+      const url = new URL(a.href);
+      if (url.origin === location.origin && TOOL_PATH.test(url.pathname) && !paths.includes(url.pathname)) paths.push(url.pathname);
+    });
+    return paths;
+  }
+
+  function neighbour(step: number): string | null {
+    const paths = listPaths();
+    const i = paths.indexOf(shownPath);
+    return i < 0 ? null : (paths[i + step] ?? null);
+  }
+
+  function paintFoot() {
+    if (!foot) return;
+    let any = false;
+    foot.querySelectorAll<HTMLAnchorElement>("[data-quick-step]").forEach((link) => {
+      const path = neighbour(Number(link.dataset.quickStep));
+      link.hidden = !path;
+      if (path) link.href = path;
+      any ||= Boolean(path);
+    });
+    foot.hidden = !any;
+  }
+
+  async function show(url: string, mode: "push" | "replace" | "none") {
+    if (!dialog || !body) return location.assign(url);
+    controller?.abort();
+    const mine = (controller = new AbortController());
+    if (!dialog.open) {
+      baseTitle = document.title;
+      dialog.showModal();
+    }
+    if (mode === "push") {
+      depth++;
+      history.pushState({ quickView: depth }, "", url);
+    } else if (mode === "replace") {
+      history.replaceState({ quickView: depth }, "", url);
+    }
+    shownPath = new URL(url).pathname;
+    paintFoot();
+    body.replaceChildren(loader());
+    dialog.scrollTop = 0;
+    try {
+      const doc = await fetchDocument(url, mine.signal);
+      // The whole page layout, comments dock included, so the view and the page read the same.
+      const layout = doc.querySelector(".detail-layout");
+      if (!layout) throw new Error("no detail");
+      const sections = doc.querySelectorAll("main > section");
+      const nodes = [layout, ...sections].map((n) => document.importNode(n, true));
+      if (mine.signal.aborted) return;
+      body.replaceChildren(...nodes);
+      document.title = doc.title;
+      // The view and its Try button count toward the surface the tool was opened from.
+      const surface = originFor(shownPath) ?? "direct";
+      body.querySelector<HTMLElement>(".detail-layout")!.dataset.surface = surface;
+      const id = body.querySelector<HTMLElement>(".detail[data-tool-id]")?.dataset.toolId;
+      if (id) sendView(id, surface);
+      noteToolSeen(shownPath);
+      dialog.querySelector<HTMLElement>(".page-title")?.setAttribute("tabindex", "-1");
+      announceContent();
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") location.assign(url);
+    }
+  }
+
+  // Stepping replaces the current entry, so Back and Close still return straight to the list.
+  function step(by: number) {
+    const path = neighbour(by);
+    if (path) show(new URL(path, location.origin).href, depth > 0 ? "replace" : "push");
+  }
+
+  function close() {
+    controller?.abort();
+    dialog?.close();
+    body?.replaceChildren();
+    if (foot) foot.hidden = true;
+    document.title = baseTitle;
+    depth = 0;
+  }
+
+  // Closing walks back past every entry the dialog pushed; popstate then does the actual close.
+  function requestClose() {
+    if (depth > 0) history.go(-depth);
+    else close();
+  }
+
+  if (dialog) {
+    document.addEventListener("click", (e) => {
+      const link = (e.target as Element).closest<HTMLAnchorElement>(".card a[href]");
+      if (!link || link.target === "_blank" || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const url = new URL(link.href);
+      if (url.origin !== location.origin || !TOOL_PATH.test(url.pathname)) return;
+      e.preventDefault();
+      show(url.href, "push");
+    });
+    foot?.addEventListener("click", (e) => {
+      const link = (e.target as Element).closest<HTMLAnchorElement>("[data-quick-step]");
+      if (!link || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      step(Number(link.dataset.quickStep));
+    });
+    dialog.addEventListener("click", (e) => {
+      const el = e.target as Element;
+      // #comments would be a fragment of the list page behind; scroll the view's own section instead.
+      if (!el.closest(".detail-comments")) return;
+      e.preventDefault();
+      dialog.querySelector("[data-comments]")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    dialog.addEventListener("keydown", (e) => {
+      if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if ((e.target as Element).closest("input, textarea, select, [contenteditable]")) return;
+      e.preventDefault();
+      step(e.key === "ArrowLeft" ? -1 : 1);
+    });
+    dialog.querySelector("[data-quick-close]")?.addEventListener("click", requestClose);
+    dialog.addEventListener("click", (e) => e.target === dialog && requestClose());
+    dialog.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      requestClose();
+    });
+    window.addEventListener("popstate", (e) => {
+      const entry = (e.state as { quickView?: number } | null)?.quickView;
+      if (entry && TOOL_PATH.test(location.pathname)) {
+        depth = entry;
+        show(location.href, "none");
+      } else if (dialog.open && location.pathname === shownPath) {
+        // A hash link inside the view (e.g. #comments) is a fragment navigation of the list page:
+        // load the real tool page, which has the sections the view leaves out.
+        location.reload();
+      } else if (dialog.open) {
+        close();
+      }
+    });
+  }
+</script>

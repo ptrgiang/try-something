@@ -1,0 +1,25 @@
+---
+// Heart, view and save counts for a tool. The heart is a toggle (signed-in only, see SaveScript);
+// counts are real all-time totals and update in place when this visitor hearts or saves.
+import type { ToolWithCredit } from "../lib/db";
+import { formatCount } from "../lib/github";
+import Icon from "./Icon.astro";
+
+interface Props {
+  tool: ToolWithCredit;
+  class?: string;
+}
+const { tool, class: cls } = Astro.props;
+const plural = (n: number, word: string) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
+---
+<div class:list={["stats", cls]}>
+  <button type="button" class="stat stat-like" data-like={tool.id} aria-pressed="false" title={plural(tool.like_count, "heart")}>
+    <Icon name="heart" /><span class="sr-only">Heart {tool.name}, </span><span data-count={`like:${tool.id}`} data-n={tool.like_count}>{formatCount(tool.like_count)}</span><span class="sr-only"> hearts</span>
+  </button>
+  <span class="stat" title={plural(tool.view_count, "view")}>
+    <Icon name="eye" /><span data-n={tool.view_count}>{formatCount(tool.view_count)}</span><span class="sr-only"> views</span>
+  </span>
+  <span class="stat" title={plural(tool.save_count, "save")}>
+    <Icon name="bookmark" /><span data-count={`save:${tool.id}`} data-n={tool.save_count}>{formatCount(tool.save_count)}</span><span class="sr-only"> saves</span>
+  </span>
+</div>

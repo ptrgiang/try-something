@@ -1,0 +1,85 @@
+---
+import { CATEGORIES } from "../lib/validation";
+import { PERIODS } from "../lib/db";
+import Icon from "./Icon.astro";
+
+interface Props {
+  category?: string | null;
+  sort?: string;
+  period?: string;
+  q?: string;
+  tag?: string | null;
+  base?: string;
+  /** Fragment added to every link, so a page with content above the filters reopens at them. */
+  anchor?: string;
+}
+const SORTS = [
+  { id: "picks", label: "Picks" },
+  { id: "new", label: "New" },
+  { id: "trending", label: "Trending" },
+  { id: "popular", label: "Popular" },
+];
+const { category = null, sort = "picks", period = "all", q = "", tag = null, base = "/explore", anchor = "" } = Astro.props;
+const href = (params: Record<string, string | null>) => {
+  const sp = new URLSearchParams();
+  const merged = { q: q || null, tag, category, sort: sort === "picks" ? null : sort, period: sort === "popular" && period !== "all" ? period : null, ...params };
+  if (merged.sort !== "popular") merged.period = null;
+  // Explore categories are their own pages (/explore/<id>); elsewhere the category is a filter.
+  const path = base === "/explore" && merged.category ? `/explore/${merged.category}` : base;
+  if (path !== base) merged.category = null;
+  for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
+  const s = sp.toString();
+  return `${s ? `${path}?${s}` : path}${anchor}`;
+};
+const sortLabel = SORTS.find((s) => s.id === sort)?.label ?? "Picks";
+const periodLabel = sort === "popular" && period !== "all" ? PERIODS.find((p) => p.id === period)?.label : null;
+---
+<div class="filters" id={anchor ? anchor.slice(1) : undefined}>
+  <details class="sort-menu" data-sort-menu>
+    <summary class="chip sort-summary"><span class="sr-only">Sort: </span>{sortLabel}{periodLabel && <span class="sort-period"> · {periodLabel}</span>}<span class="sort-caret" aria-hidden="true"></span></summary>
+    <div class="sort-panel">
+      <nav aria-label="Sort">
+        {SORTS.map((s) => (
+          <a href={href({ sort: s.id === "picks" ? null : s.id, period: null })} aria-current={sort === s.id ? "true" : undefined}>{s.label}<Icon name="check" /></a>
+        ))}
+      </nav>
+      {sort === "picks" && <p class="sort-panel-note">Featured first, then new or recently updated tools, then ones fewer people have seen. Reshuffled daily.</p>}
+      {sort === "popular" && (
+        <nav aria-label="Timeframe">
+          <p class="sort-panel-label">Timeframe</p>
+          {PERIODS.map((p) => (
+            <a href={href({ period: p.id === "all" ? null : p.id })} aria-current={period === p.id ? "true" : undefined}>{p.label}<Icon name="check" /></a>
+          ))}
+        </nav>
+      )}
+    </div>
+  </details>
+  <nav class="chips" aria-label="Categories">
+    <a class="chip" href={href({ category: null })} aria-current={!category ? "true" : undefined}><Icon name="grid" />All</a>
+    {CATEGORIES.map((c) => (
+      <a class="chip" href={href({ category: c.id })} aria-current={category === c.id ? "true" : undefined}><Icon name={c.id} />{c.label}</a>
+    ))}
+  </nav>
+  {tag && (
+    <p class="active-filters">
+      <span>Tagged</span>
+      <a class="chip chip-removable" href={href({ tag: null })} aria-label={`Remove tag ${tag}`}>#{tag}<Icon name="close" /></a>
+    </p>
+  )}
+</div>
+<script>
+  // The home list re-renders the filters in place, so listen on the document rather than on one menu.
+  const openMenus = () => document.querySelectorAll<HTMLDetailsElement>("details[data-sort-menu][open]");
+  document.addEventListener("click", (e) => {
+    openMenus().forEach((menu) => {
+      if (!menu.contains(e.target as Node) || (e.target as Element).closest(".sort-panel a")) menu.open = false;
+    });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    openMenus().forEach((menu) => {
+      menu.open = false;
+      menu.querySelector("summary")?.focus();
+    });
+  });
+</script>

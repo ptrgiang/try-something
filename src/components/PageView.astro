@@ -1,0 +1,25 @@
+---
+// Site analytics beacon: one per full page load, nothing stored in the browser. Visitors who send
+// Global Privacy Control or Do Not Track aren't counted at all.
+interface Props {
+  path: string | null;
+}
+const { path } = Astro.props;
+---
+{path && <span hidden data-pv={path}></span>}
+<script>
+  const el = document.querySelector<HTMLElement>("[data-pv]");
+  const nav = navigator as Navigator & { globalPrivacyControl?: boolean };
+  if (el && navigator.sendBeacon && !nav.globalPrivacyControl && navigator.doNotTrack !== "1") {
+    const q = new URLSearchParams(location.search);
+    const body = {
+      path: el.dataset.pv,
+      referrer: document.referrer,
+      tag: q.get("utm_source") ?? q.get("ref"),
+      medium: q.get("utm_medium"),
+      campaign: q.get("utm_campaign"),
+      q: q.get("q"),
+    };
+    navigator.sendBeacon("/api/pv", new Blob([JSON.stringify(body)], { type: "application/json" }));
+  }
+</script>

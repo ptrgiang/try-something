@@ -1,0 +1,104 @@
+---
+// Comment threads under a tool. Text is plain and rendered escaped; links are never made clickable,
+// which takes most of the value out of comment spam.
+import type { CommentRow, CommentThread } from "../lib/db";
+import { timeAgo } from "../lib/util";
+import { avatarUrl } from "../lib/avatar";
+import Avatar from "./Avatar.astro";
+import { COMMENT_MAX } from "../lib/validation";
+
+interface Props {
+  tool: { id: string; slug: string; submitted_by: string | null; credit_type: string | null };
+  threads: CommentThread[];
+  count: number;
+  me: { id: string } | null;
+}
+const { tool, threads, count, me } = Astro.props;
+const next = encodeURIComponent(`/tools/${tool.slug}#comments`);
+const badge = (c: CommentRow) =>
+  c.user_id && c.user_id === tool.submitted_by ? (tool.credit_type === "made" ? "Maker" : tool.credit_type === "found" ? "Found it" : null) : null;
+---
+<section class="comments" id="comments" data-comments data-tool={tool.id} data-slug={tool.slug} data-me={me?.id ?? ""}>
+  <div class="section-head">
+    <h2>Comments <span class="comments-count">{count}</span></h2>
+  </div>
+
+  {me ? (
+    <form class="comment-form" data-comment-form>
+      <label class="sr-only" for="comment-new">Write a comment</label>
+      <textarea id="comment-new" name="body" rows="3" maxlength={COMMENT_MAX} required placeholder="What did you make with it? Any tips for the 30-second try?"></textarea>
+      <div class="comment-form-foot">
+        <p class="hint">Be kind and specific. Links show as plain text.</p>
+        <button class="btn btn-dark" type="submit">Post comment</button>
+      </div>
+    </form>
+  ) : (
+    <div class="comment-signin">
+      <p>Tried it? Share what you made or a tip for the next person.</p>
+      <a class="btn" href={`/login?next=${next}`}>Sign in to comment</a>
+    </div>
+  )}
+  <p class="form-error" role="alert" hidden data-comment-error></p>
+
+  {threads.length > 0 ? (
+    <ol class="comment-list">
+      {threads.map((c) => (
+        <li class="comment-thread">
+          {c.status === "visible" ? (
+            <article class="comment" id={`c-${c.id}`} data-comment={c.id} data-own={me && c.user_id === me.id ? "1" : undefined}>
+              <Avatar class="comment-avatar" name={c.author_name} url={avatarUrl(c.author_avatar, c.author_image)} size={36} />
+              <div class="comment-main">
+                <header class="comment-meta">
+                  {c.author_handle ? <a class="comment-author" href={`/users/${c.author_handle}`}>{c.author_name}</a> : <span class="comment-author">{c.author_name ?? "Deleted account"}</span>}
+                  {badge(c) && <span class="comment-badge">{badge(c)}</span>}
+                  <a class="comment-time" href={`#c-${c.id}`}><time datetime={c.created_at}>{timeAgo(c.created_at)}</time></a>
+                  {c.edited_at && <span class="comment-edited">edited</span>}
+                </header>
+                <p class="comment-body" data-body>{c.body}</p>
+                <div class="comment-actions">
+                  {me && <button type="button" class="link-btn" data-reply>Reply</button>}
+                  {me && c.user_id === me.id && <button type="button" class="link-btn" data-edit>Edit</button>}
+                  {me && c.user_id === me.id && <button type="button" class="link-btn" data-delete>Delete</button>}
+                  {me && c.user_id !== me.id && <button type="button" class="link-btn" data-report="comment" data-target={c.id}>Report</button>}
+                </div>
+              </div>
+            </article>
+          ) : (
+            <p class="comment-removed">This comment was removed.</p>
+          )}
+          {c.replies.length > 0 && (
+            <ol class="comment-replies">
+              {c.replies.map((r) => (
+                <li>
+                  <article class="comment" id={`c-${r.id}`} data-comment={r.id}>
+                    <Avatar class="comment-avatar" name={r.author_name} url={avatarUrl(r.author_avatar, r.author_image)} size={36} />
+                    <div class="comment-main">
+                      <header class="comment-meta">
+                        {r.author_handle ? <a class="comment-author" href={`/users/${r.author_handle}`}>{r.author_name}</a> : <span class="comment-author">{r.author_name ?? "Deleted account"}</span>}
+                        {badge(r) && <span class="comment-badge">{badge(r)}</span>}
+                        <a class="comment-time" href={`#c-${r.id}`}><time datetime={r.created_at}>{timeAgo(r.created_at)}</time></a>
+                        {r.edited_at && <span class="comment-edited">edited</span>}
+                      </header>
+                      <p class="comment-body" data-body>{r.body}</p>
+                      <div class="comment-actions">
+                        {me && r.user_id === me.id && <button type="button" class="link-btn" data-edit>Edit</button>}
+                        {me && r.user_id === me.id && <button type="button" class="link-btn" data-delete>Delete</button>}
+                        {me && r.user_id !== me.id && <button type="button" class="link-btn" data-report="comment" data-target={r.id}>Report</button>}
+                      </div>
+                    </div>
+                  </article>
+                </li>
+              ))}
+            </ol>
+          )}
+          {c.status === "visible" && me && <div class="reply-slot" data-reply-slot={c.id}></div>}
+        </li>
+      ))}
+    </ol>
+  ) : (
+    <p class="comments-empty">No comments yet. Be the first to say what you tried.</p>
+  )}
+</section>
+<script>
+  import "../scripts/comments";
+</script>

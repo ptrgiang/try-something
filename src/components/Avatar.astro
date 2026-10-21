@@ -1,0 +1,17 @@
+---
+// A profile photo when there is one, otherwise initials on a colour picked from the seed.
+import { initials } from "../lib/util";
+
+interface Props {
+  name: string | null | undefined;
+  url: string | null;
+  class: string;
+  size: number;
+  seed?: string | null;
+}
+const { name, url, class: cls, size, seed } = Astro.props;
+const hue = seed ? [...seed].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7) : null;
+---
+<span class:list={[cls, url ? "has-photo" : hue !== null && `hue-${Math.round(hue / 30) % 12}`]} aria-hidden="true">
+  {url ? <img src={url} alt="" width={size} height={size} loading="lazy" decoding="async" referrerpolicy="no-referrer" /> : initials(name)}
+</span>

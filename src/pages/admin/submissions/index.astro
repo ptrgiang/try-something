@@ -1,0 +1,70 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import AdminNav from "../../../components/AdminNav.astro";
+import { listQueue, queueCounts } from "../../../lib/db";
+import { isModerator, STATUS_LABELS, type SubmissionStatus } from "../../../lib/moderation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/submissions");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+const sp = Astro.url.searchParams;
+const statuses = Object.keys(STATUS_LABELS) as SubmissionStatus[];
+const status = sp.get("status") === "all" ? "all" : statuses.includes(sp.get("status") as SubmissionStatus) ? sp.get("status")! : "pending";
+const origin = sp.get("origin") ?? "";
+const sort = sp.get("sort") === "newest" ? "newest" : "oldest";
+const [rows, counts] = await Promise.all([listQueue(env.DB, { status, origin, sort }), queueCounts(env.DB)]);
+const ageDays = (iso: string) => Math.floor((Date.now() - Date.parse(iso)) / 86400000);
+---
+<Base title="Review queue" noindex>
+  <div class="page app-page">
+        <p class="eyebrow">Moderation</p>
+        <h1 class="page-title">Review queue</h1>
+        <AdminNav current="submissions" />
+        <nav class="chips admin-tabs" aria-label="Status filter">
+          {["pending", "in_review", "needs_changes", "published", "rejected", "withdrawn", "all"].map((s) => (
+            <a class="chip" href={`/admin/submissions?status=${s}${origin ? `&origin=${origin}` : ""}`} aria-current={status === s ? "true" : undefined}>
+              {s === "all" ? "All" : STATUS_LABELS[s as SubmissionStatus]} {s !== "all" && <span class="muted">({counts[s] ?? 0})</span>}
+            </a>
+          ))}
+        </nav>
+        <form class="admin-filters" method="get">
+          <input type="hidden" name="status" value={status} />
+          <label>Submitter type
+            <select name="origin">
+              <option value="">Any</option>
+              <option value="made" selected={origin === "made"}>Maker</option>
+              <option value="found" selected={origin === "found"}>Discoverer</option>
+            </select>
+          </label>
+          <label>Order
+            <select name="sort">
+              <option value="oldest" selected={sort === "oldest"}>Oldest first</option>
+              <option value="newest" selected={sort === "newest"}>Newest first</option>
+            </select>
+          </label>
+          <button class="btn btn-sm" type="submit">Apply</button>
+        </form>
+        {rows.length ? (
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Submission</th><th>Type</th><th>Category</th><th>Submitter</th><th>Status</th><th>Age</th></tr></thead>
+              <tbody>
+                {rows.map((s) => (
+                  <tr>
+                    <td><a href={`/admin/submissions/${s.id}`}><strong>{s.name}</strong></a><br /><span class="muted small-note">{s.url}</span></td>
+                    <td>{s.origin === "made" ? "Maker" : "Discoverer"}</td>
+                    <td>{s.category}</td>
+                    <td>{s.submitter_name}</td>
+                    <td><span class={`status status-${s.status}`}>{STATUS_LABELS[s.status]}</span></td>
+                    <td>{ageDays(s.created_at)}d</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p class="empty">Nothing here. 🎉</p>
+        )}
+  </div>
+</Base>

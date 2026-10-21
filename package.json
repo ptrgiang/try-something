@@ -1,0 +1,42 @@
+{
+  "name": "try-something",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An open-source home for things worth trying.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro build && wrangler dev --local-upstream localhost:8787",
+    "check": "astro check",
+    "test": "vitest run",
+    "check:repo": "node scripts/check-repo.mjs",
+    "badges:build": "node scripts/build-badges.mjs",
+    "e2e": "playwright test",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:seed:local": "wrangler d1 execute DB --local --file=./db/seed.sql",
+    "deploy": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.4.1",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/fraunces": "5.3.0",
+    "@fontsource/manrope": "5.3.0",
+    "@resvg/resvg-wasm": "2.6.2",
+    "astro": "^7.4.1",
+    "better-auth": "^1.7.12",
+    "satori": "0.30.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@cloudflare/workers-types": "^5.20261021.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.151.3"
+  }
+}

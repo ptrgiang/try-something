@@ -1,0 +1,166 @@
+---
+// Original illustration for each category, drawn to say what the category is about.
+// Drawn on the right two thirds so a label can sit bottom-left, and within y 24-176 because wide tiles
+// crop the top and bottom. Decorative, so hidden from screen readers.
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+const ink = "#17141f";
+const BG: Record<string, string> = {
+  create: "#fff1ec",
+  build: "#eef5ff",
+  play: "#fff4e6",
+  learn: "#fff8ec",
+  design: "#eefcf9",
+  productivity: "#f1f4ff",
+  utilities: "#f3f0ff",
+  business: "#f0f8ee",
+  fun: "#fff1f5",
+};
+const bg = BG[id] ?? "#f6f3ee";
+const gearTeeth = Array.from({ length: 8 }, (_, i) => i * 45);
+const confetti = [
+  [180, 40, "#ffd93d", 20], [215, 150, "#2ec4b6", -30], [380, 150, "#6a4cff", 40], [390, 30, "#ff9f1c", -15],
+  [230, 30, "#ff6b6b", 60], [365, 100, "#4d96ff", 10], [200, 95, "#ff5d8f", -45],
+] as const;
+---
+<svg viewBox="0 0 400 200" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+  <rect width="400" height="200" fill={bg} />
+  {id === "create" && (
+    <g>
+      <path d="M150 160 C 200 95, 255 175, 315 115 S 380 75, 410 62" fill="none" stroke="#ff6b6b" stroke-width="24" stroke-linecap="round" />
+      <path d="M175 62 C 220 34, 268 84, 330 42" fill="none" stroke="#ffd93d" stroke-width="15" stroke-linecap="round" />
+      <g transform="rotate(-38 300 120)">
+        <rect x="250" y="109" width="112" height="24" rx="5" fill="#4d96ff" stroke={ink} stroke-width="3" />
+        <path d="M250 109 L226 121 L250 133 Z" fill="#ffd6a5" stroke={ink} stroke-width="3" stroke-linejoin="round" />
+        <path d="M226 121 L235 116.5 L235 125.5 Z" fill={ink} />
+        <rect x="362" y="109" width="16" height="24" rx="4" fill="#ff9fb2" stroke={ink} stroke-width="3" />
+      </g>
+      <circle cx="205" cy="40" r="7" fill="#2ec4b6" />
+      <circle cx="372" cy="170" r="9" fill="#6a4cff" />
+      <circle cx="390" cy="150" r="5" fill="#ffd93d" />
+    </g>
+  )}
+  {id === "build" && (
+    <g>
+      <rect x="172" y="26" width="206" height="148" rx="14" fill="#fff" stroke={ink} stroke-width="3" />
+      <path d="M172 58 H378" stroke={ink} stroke-width="3" />
+      <circle cx="190" cy="42" r="5.5" fill="#ff6b6b" />
+      <circle cx="207" cy="42" r="5.5" fill="#ffd93d" />
+      <circle cx="224" cy="42" r="5.5" fill="#2ec4b6" />
+      <rect x="190" y="74" width="58" height="10" rx="5" fill="#6a4cff" />
+      <rect x="256" y="74" width="78" height="10" rx="5" fill="#ffbf69" />
+      <rect x="210" y="94" width="92" height="10" rx="5" fill="#2ec4b6" />
+      <rect x="210" y="114" width="50" height="10" rx="5" fill="#ff6b9a" />
+      <rect x="268" y="114" width="62" height="10" rx="5" fill="#4d96ff" />
+      <rect x="190" y="134" width="40" height="10" rx="5" fill="#6a4cff" />
+      <circle cx="370" cy="160" r="30" fill="#6a4cff" stroke={ink} stroke-width="3" />
+      <path d="M359 149 l-10 11 10 11 M381 149 l10 11 -10 11 M374 145 l-8 30" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  )}
+  {id === "play" && (
+    <g>
+      <rect x="176" y="74" width="176" height="92" rx="46" fill="#6a4cff" stroke={ink} stroke-width="3" />
+      <rect x="204" y="113" width="38" height="12" rx="3" fill="#fff" />
+      <rect x="217" y="100" width="12" height="38" rx="3" fill="#fff" />
+      <circle cx="300" cy="106" r="9" fill="#ffd93d" stroke={ink} stroke-width="2.5" />
+      <circle cx="320" cy="126" r="9" fill="#ff6b6b" stroke={ink} stroke-width="2.5" />
+      <circle cx="280" cy="126" r="9" fill="#2ec4b6" stroke={ink} stroke-width="2.5" />
+      <g transform="translate(0 10) rotate(14 360 46)">
+        <rect x="334" y="20" width="52" height="52" rx="11" fill="#fff" stroke={ink} stroke-width="3" />
+        <circle cx="347" cy="33" r="4.5" fill={ink} />
+        <circle cx="360" cy="46" r="4.5" fill={ink} />
+        <circle cx="373" cy="59" r="4.5" fill={ink} />
+      </g>
+      <path d="M190 30 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 z" fill="#ffbf69" />
+      <path d="M380 150 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z" fill="#ff6b6b" />
+    </g>
+  )}
+  {id === "learn" && (
+    <g>
+      <g transform="translate(0 12)">
+      <path d="M288 160 C 258 145, 218 145, 186 156 L186 74 C 218 63, 258 63, 288 80 Z" fill="#fff" stroke={ink} stroke-width="3" stroke-linejoin="round" />
+      <path d="M288 160 C 318 145, 358 145, 390 156 L390 74 C 358 63, 318 63, 288 80 Z" fill="#fff" stroke={ink} stroke-width="3" stroke-linejoin="round" />
+      <path d="M204 96 C 225 90, 250 90, 270 98 M204 114 C 225 108, 250 108, 270 116 M204 132 C 220 127, 238 127, 252 131" fill="none" stroke="#4d96ff" stroke-width="4" stroke-linecap="round" />
+      <path d="M306 98 C 326 90, 350 90, 372 96 M306 116 C 326 108, 350 108, 372 114" fill="none" stroke="#ff6b6b" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <circle cx="232" cy="46" r="16" fill="#ffd93d" stroke={ink} stroke-width="3" />
+      <rect x="225" y="61" width="14" height="9" rx="3" fill="#fff" stroke={ink} stroke-width="3" />
+      <path d="M206 38 l-8 -4 M258 38 l8 -4 M232 25 v-3" stroke="#ff9f1c" stroke-width="4" stroke-linecap="round" />
+    </g>
+  )}
+  {id === "design" && (
+    <g>
+      <g stroke={ink} stroke-width="3">
+        <rect x="312" y="34" width="40" height="136" rx="10" fill="#6a4cff" transform="rotate(32 332 170)" />
+        <rect x="312" y="34" width="40" height="136" rx="10" fill="#2ec4b6" transform="rotate(12 332 170)" />
+        <rect x="312" y="34" width="40" height="136" rx="10" fill="#ffd93d" transform="rotate(-8 332 170)" />
+        <rect x="312" y="34" width="40" height="136" rx="10" fill="#ff6b6b" transform="rotate(-28 332 170)" />
+      </g>
+      <circle cx="332" cy="160" r="6" fill="#fff" stroke={ink} stroke-width="3" />
+      <path d="M170 160 C 190 70, 240 60, 262 118" fill="none" stroke={ink} stroke-width="3.5" />
+      <path d="M170 160 L190 70 M262 118 L240 60" stroke={ink} stroke-width="2" stroke-dasharray="5 5" />
+      <rect x="163" y="153" width="14" height="14" rx="2" fill="#fff" stroke={ink} stroke-width="3" />
+      <rect x="255" y="111" width="14" height="14" rx="2" fill="#fff" stroke={ink} stroke-width="3" />
+      <circle cx="190" cy="70" r="7" fill="#ff9f1c" stroke={ink} stroke-width="2.5" />
+      <circle cx="240" cy="60" r="7" fill="#ff9f1c" stroke={ink} stroke-width="2.5" />
+    </g>
+  )}
+  {id === "productivity" && (
+    <g>
+      <rect x="176" y="28" width="136" height="150" rx="14" fill="#fff" stroke={ink} stroke-width="3" />
+      {[58, 94, 130].map((y, i) => (
+        <g>
+          <rect x="194" y={y} width="22" height="22" rx="6" fill={i < 2 ? "#2ec4b6" : "#fff"} stroke={ink} stroke-width="3" />
+          {i < 2 && <path d={`M199 ${y + 11} l5 5 8 -9`} fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />}
+          <rect x="226" y={y + 7} width={i === 1 ? 52 : 66} height="9" rx="4.5" fill={i < 2 ? "#cfd6e4" : "#4d96ff"} />
+        </g>
+      ))}
+      <circle cx="350" cy="118" r="40" fill="#ffd93d" stroke={ink} stroke-width="3" />
+      <circle cx="350" cy="118" r="30" fill="#fff" stroke={ink} stroke-width="2.5" />
+      <path d="M350 118 V96 M350 118 L366 128" stroke={ink} stroke-width="4" stroke-linecap="round" />
+      <rect x="341" y="70" width="18" height="10" rx="3" fill="#ff6b6b" stroke={ink} stroke-width="2.5" />
+    </g>
+  )}
+  {id === "utilities" && (
+    <g>
+      <g transform="translate(328 86)">
+        {gearTeeth.map((deg) => <rect x="-9" y="-58" width="18" height="22" rx="4" fill="#6a4cff" stroke={ink} stroke-width="3" transform={`rotate(${deg})`} />)}
+        <circle r="44" fill="#6a4cff" stroke={ink} stroke-width="3" />
+        <circle r="16" fill={bg} stroke={ink} stroke-width="3" />
+      </g>
+      <g transform="rotate(-35 250 140)">
+        <rect x="176" y="131" width="116" height="20" rx="10" fill="#ff9f1c" stroke={ink} stroke-width="3" />
+        <circle cx="296" cy="141" r="24" fill="#ff9f1c" stroke={ink} stroke-width="3" />
+        <rect x="296" y="133" width="30" height="16" fill={bg} />
+        <path d="M296 133 H322 M296 149 H322" stroke={ink} stroke-width="3" />
+        <circle cx="194" cy="141" r="4" fill={ink} />
+      </g>
+      <path d="M378 170 l12 -7 v14 z" fill="#2ec4b6" />
+    </g>
+  )}
+  {id === "business" && (
+    <g>
+      <path d="M178 172 H392" stroke={ink} stroke-width="3" stroke-linecap="round" />
+      <rect x="192" y="132" width="34" height="40" rx="6" fill="#4d96ff" stroke={ink} stroke-width="3" />
+      <rect x="238" y="104" width="34" height="68" rx="6" fill="#2ec4b6" stroke={ink} stroke-width="3" />
+      <rect x="284" y="80" width="34" height="92" rx="6" fill="#ffbf69" stroke={ink} stroke-width="3" />
+      <rect x="330" y="52" width="34" height="120" rx="6" fill="#ff6b6b" stroke={ink} stroke-width="3" />
+      <path d="M190 112 L240 86 L286 64 L346 26" fill="none" stroke={ink} stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M328 24 L348 25 L342 44" fill="none" stroke={ink} stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  )}
+  {id === "fun" && (
+    <g>
+      <path d="M262 128 C 258 150, 270 165, 262 190 M308 122 C 314 145, 300 165, 312 190 M352 108 C 346 135, 360 160, 350 190" fill="none" stroke={ink} stroke-width="2" />
+      <ellipse cx="262" cy="96" rx="28" ry="33" fill="#ffd93d" stroke={ink} stroke-width="3" />
+      <ellipse cx="352" cy="74" rx="29" ry="35" fill="#8fd3ff" stroke={ink} stroke-width="3" />
+      <ellipse cx="308" cy="84" rx="32" ry="38" fill="#ff5d8f" stroke={ink} stroke-width="3" />
+      <circle cx="298" cy="78" r="3.5" fill={ink} />
+      <circle cx="318" cy="78" r="3.5" fill={ink} />
+      <path d="M296 92 q12 12 24 0" fill="none" stroke={ink} stroke-width="3" stroke-linecap="round" />
+      {confetti.map(([x, y, c, r]) => <rect x={x - 6} y={y - 3} width="12" height="6" rx="2" fill={c} transform={`rotate(${r} ${x} ${y})`} />)}
+    </g>
+  )}
+</svg>

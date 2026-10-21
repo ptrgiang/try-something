@@ -1,0 +1,85 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { getComment, moderateComment, recentComments } from "../../lib/db";
+import { commentModTransition, isModerator, type CommentModAction, type CommentStatus } from "../../lib/moderation";
+import { timeAgo } from "../../lib/util";
+import { plainText } from "../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/comments");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+const filters = ["visible", "hidden", "deleted", "all"] as const;
+const raw = Astro.url.searchParams.get("status");
+const status = (filters as readonly string[]).includes(raw ?? "") ? (raw as CommentStatus | "all") : "visible";
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const action = form.get("action") === "restore" ? "restore" : ("hide" as CommentModAction);
+  const comment = await getComment(env.DB, String(form.get("id") ?? ""));
+  const reason = plainText(form.get("reason"), 300);
+  if (!comment) error = "Comment not found.";
+  else {
+    const t = commentModTransition(user, comment, action, reason);
+    if (!t.ok) error = t.error;
+    else if (!(await moderateComment(env.DB, comment, user.id, action, t.to, reason))) error = "That comment changed meanwhile. Reload and retry.";
+  }
+  if (!error) return Astro.redirect(`/admin/comments?status=${status}`, 303);
+  Astro.response.status = 400;
+}
+const rows = await recentComments(env.DB, status);
+---
+<Base title="Comments" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Comments</h1>
+    <AdminNav current="comments" />
+    <nav class="chips admin-tabs" aria-label="Status filter">
+      {filters.map((f) => <a class="chip" href={`/admin/comments?status=${f}`} aria-current={status === f ? "true" : undefined}>{f[0].toUpperCase() + f.slice(1)}</a>)}
+    </nav>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {rows.length === 0 ? (
+      <p class="empty">No comments here.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Comment</th><th>Author</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr id={c.id}>
+                <td>
+                  <p class="table-quote">{c.body || "(text deleted)"}</p>
+                  <span class="muted small-note">on <a href={`/tools/${c.tool_slug}#c-${c.id}`}>{c.tool_name}</a> · <time datetime={c.created_at}>{timeAgo(c.created_at)}</time>{c.parent_id && " · reply"}</span>
+                </td>
+                <td>{c.author_name ?? "deleted account"}{c.author_email && <div class="muted small-note">{c.author_email}</div>}</td>
+                <td>
+                  <span class={`status status-${c.status}`}>{c.status}</span>
+                  {c.open_reports > 0 && <div class="small-note"><a href="/admin/reports">{c.open_reports} open report{c.open_reports === 1 ? "" : "s"}</a></div>}
+                  {c.hidden_reason && <div class="muted small-note">{c.hidden_reason}</div>}
+                </td>
+                <td>
+                  {c.status === "visible" && (
+                    <form method="post" class="inline-form">
+                      <input type="hidden" name="id" value={c.id} />
+                      <label class="sr-only" for={`r-${c.id}`}>Reason for hiding</label>
+                      <input id={`r-${c.id}`} name="reason" type="text" placeholder="Reason" maxlength="300" />
+                      <button class="btn btn-sm" name="action" value="hide">Hide</button>
+                    </form>
+                  )}
+                  {c.status === "hidden" && (
+                    <form method="post" class="inline-form">
+                      <input type="hidden" name="id" value={c.id} />
+                      <button class="btn btn-sm" name="action" value="restore">Restore</button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</Base>

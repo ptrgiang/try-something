@@ -1,0 +1,43 @@
+---
+// Headline with a typewriter word. Screen readers get the static sentence; motion respects reduced-motion.
+interface Props {
+  prefix: string;
+  words: string[];
+}
+const { prefix, words } = Astro.props;
+---
+<h1 class="typewriter" data-words={JSON.stringify(words)}>
+  <span class="sr-only">{prefix} {words[0]}</span>
+  <span aria-hidden="true">{prefix} <span class="typed">{words[0]}</span><span class="caret"></span></span>
+
+</h1>
+<script>
+  const h1 = document.querySelector<HTMLElement>(".typewriter");
+  const typed = h1?.querySelector<HTMLElement>(".typed");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (h1 && typed && !reduce) {
+    const words: string[] = JSON.parse(h1.dataset.words || "[]");
+    let w = 0;
+    let i = words[0].length;
+    let deleting = true;
+    const tick = () => {
+      if (deleting) {
+        i--;
+        if (i <= 0) {
+          deleting = false;
+          w = (w + 1) % words.length;
+        }
+      } else {
+        i++;
+      }
+      typed.textContent = words[w].slice(0, Math.max(i, 0));
+      let delay = deleting ? 45 : 90;
+      if (!deleting && i >= words[w].length) {
+        deleting = true;
+        delay = 2400;
+      }
+      setTimeout(tick, delay);
+    };
+    setTimeout(tick, 2600);
+  }
+</script>

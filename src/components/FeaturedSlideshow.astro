@@ -1,0 +1,67 @@
+---
+import { toolImageSrc } from "../lib/tool-image";
+import type { ToolWithCredit } from "../lib/db";
+import ToolCover from "./ToolCover.astro";
+import Icon from "./Icon.astro";
+
+interface Props {
+  tools: ToolWithCredit[];
+}
+const { tools } = Astro.props;
+---
+{tools.length > 0 && (
+  <section class="featured" aria-roledescription="carousel" aria-label="Featured picks" data-slideshow data-surface="hero">
+    <div class="slides" aria-live="off">
+      {tools.map((tool, i) => (
+        <div class:list={["slide", { "is-active": i === 0 }]} data-impression={tool.id} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${tools.length}: ${tool.name}`} inert={i !== 0}>
+          <a class="slide-art" href={`/tools/${tool.slug}`} tabindex="-1" aria-hidden="true">
+            <ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority={i === 0} />
+          </a>
+          <div class="slide-caption">
+            <div>
+              <h2><a href={`/tools/${tool.slug}`}>{tool.name}</a></h2>
+              <p>{tool.tagline}</p>
+            </div>
+            <a class="btn btn-dark" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it <Icon name="external" /><span class="sr-only">(opens in a new tab)</span></a>
+          </div>
+        </div>
+      ))}
+    </div>
+    {tools.length > 1 && (
+      <div class="slide-controls">
+        <button type="button" data-prev aria-label="Previous featured tool"><Icon name="left" /></button>
+        <button type="button" data-next aria-label="Next featured tool"><Icon name="right" /></button>
+      </div>
+    )}
+  </section>
+)}
+<script>
+  document.querySelectorAll<HTMLElement>("[data-slideshow]").forEach((root) => {
+    const slides = [...root.querySelectorAll<HTMLElement>(".slide")];
+    if (slides.length < 2) return;
+    let index = 0;
+    let timer: number | undefined;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Slides are stacked and cross-fade; inactive ones are inert so they can't be focused or read.
+    const show = (i: number) => {
+      index = (i + slides.length) % slides.length;
+      slides.forEach((s, n) => {
+        s.classList.toggle("is-active", n === index);
+        s.inert = n !== index;
+      });
+      slides[index].dispatchEvent(new Event("ts:slide", { bubbles: true }));
+    };
+    const stop = () => window.clearInterval(timer);
+    const start = () => {
+      stop();
+      if (!reduce) timer = window.setInterval(() => show(index + 1), 6000);
+    };
+    root.querySelector("[data-prev]")?.addEventListener("click", () => (show(index - 1), start()));
+    root.querySelector("[data-next]")?.addEventListener("click", () => (show(index + 1), start()));
+    root.addEventListener("mouseenter", stop);
+    root.addEventListener("mouseleave", start);
+    root.addEventListener("focusin", stop);
+    root.addEventListener("focusout", start);
+    start();
+  });
+</script>

@@ -1,0 +1,81 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { setFeatured, setToolVisibility } from "../../lib/db";
+import { isModerator } from "../../lib/moderation";
+import { plainText } from "../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/tools");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const toolId = String(form.get("toolId") ?? "");
+  const action = form.get("action");
+  const hide = action === "hide";
+  const reason = plainText(form.get("reason"), 300);
+  if (action === "feature") {
+    const position = Math.max(0, Math.min(99, Math.trunc(Number(form.get("position")) || 0)));
+    if (!(await setFeatured(env.DB, toolId, user.id, position))) error = "Tool not found.";
+    else return Astro.redirect(`/admin/tools#${toolId}`, 303);
+  } else if (hide && reason.length < 5) {
+    error = "Add a reason before hiding a tool.";
+    Astro.response.status = 400;
+  } else if (!(await setToolVisibility(env.DB, toolId, user.id, hide, reason))) {
+    error = "Tool not found.";
+    Astro.response.status = 404;
+  } else {
+    return Astro.redirect("/admin/tools", 303);
+  }
+}
+const { results: tools } = await env.DB.prepare(
+  `SELECT id, slug, name, url, status, hidden_reason, credit_type, featured, published_at FROM tool ORDER BY status DESC, featured = 0, featured, published_at DESC LIMIT 500`,
+).all<{ id: string; slug: string; name: string; url: string; status: string; hidden_reason: string | null; credit_type: string | null; featured: number; published_at: string }>();
+---
+<Base title="Published tools" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Published tools</h1>
+    <AdminNav current="tools" />
+    <p class="lede">Hidden tools disappear from Explore, search, collections and the sitemap. Featured tools (1, 2, 3…) fill the home slideshow in that order; 0 takes one out. History is kept.</p>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    <div class="table-wrap table-cards submit-body">
+      <table>
+        <thead><tr><th>Tool</th><th>Source</th><th>Featured</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          {tools.map((t) => (
+            <tr id={t.id}>
+              <td class="cell-title">{t.status === "published" ? <a href={`/tools/${t.slug}`}><strong>{t.name}</strong></a> : <strong>{t.name}</strong>}<br /><span class="muted small-note cell-url">{t.url}</span></td>
+              <td data-label="Source">{t.credit_type ?? "—"}</td>
+              <td data-label="Featured">
+                <form method="post" class="inline-form">
+                  <input type="hidden" name="toolId" value={t.id} />
+                  <label class="sr-only" for={`f-${t.id}`}>Slideshow position for {t.name}</label>
+                  <input class="input-narrow" id={`f-${t.id}`} name="position" type="number" min="0" max="99" value={t.featured} />
+                  <button class="btn btn-sm" name="action" value="feature">Set</button>
+                </form>
+              </td>
+              <td data-label="Status"><span class={`status status-${t.status}`}>{t.status}</span>{t.hidden_reason && <div class="muted small-note">{t.hidden_reason}</div>}</td>
+              <td data-label="Action">
+                <form method="post" class="inline-form">
+                  <input type="hidden" name="toolId" value={t.id} />
+                  {t.status === "published" ? (
+                    <>
+                      <label class="sr-only" for={`r-${t.id}`}>Reason for hiding {t.name}</label>
+                      <input id={`r-${t.id}`} name="reason" type="text" placeholder="Reason" maxlength="300" />
+                      <button class="btn btn-sm" name="action" value="hide">Hide</button>
+                    </>
+                  ) : (
+                    <button class="btn btn-sm" name="action" value="unhide">Unhide</button>
+                  )}
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Base>

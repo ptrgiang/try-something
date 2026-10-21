@@ -1,0 +1,107 @@
+<!doctype html>
+<!-- Source for public/og-default.png. Regenerate with: node scripts/render-og.mjs -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: "Fraunces";
+        src: url("../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-full-normal.woff2") format("woff2");
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: "Fraunces";
+        font-style: italic;
+        src: url("../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-full-italic.woff2") format("woff2");
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: "Manrope";
+        src: url("../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2") format("woff2");
+        font-weight: 200 800;
+      }
+      body {
+        margin: 0;
+      }
+      .og {
+        width: 1200px;
+        height: 630px;
+        background: #fffdf9;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 80px;
+        box-sizing: border-box;
+        position: relative;
+        overflow: hidden;
+        color: #17141f;
+      }
+      .shape {
+        position: absolute;
+      }
+      .a {
+        right: -120px;
+        top: -120px;
+        width: 520px;
+        height: 520px;
+        border-radius: 50%;
+        background: #e4dcff;
+      }
+      .b {
+        right: 120px;
+        bottom: -160px;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: #ffd84a;
+      }
+      .c {
+        right: 300px;
+        top: 120px;
+        width: 160px;
+        height: 160px;
+        border-radius: 40%;
+        background: #ff6a45;
+        transform: rotate(18deg);
+      }
+      .logo {
+        font: 800 34px Manrope;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+      }
+      .logo b span {
+        color: #ff6a45;
+      }
+      h1 {
+        font: 800 104px/0.98 Fraunces;
+        letter-spacing: -3px;
+        margin: 36px 0 0;
+        position: relative;
+      }
+      h1 em {
+        color: #ff6a45;
+      }
+      p {
+        font: 500 30px Manrope;
+        color: #3a3546;
+        margin: 28px 0 0;
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="og">
+      <div class="shape a"></div>
+      <div class="shape b"></div>
+      <div class="shape c"></div>
+      <div class="logo">
+        <svg width="44" height="44" viewBox="0 0 32 32" color="#17141f"><path d="M12 10.5v17.2l4.6-4.3 3.3 6.6 3.2-1.6-3.3-6.5h6.2z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><g stroke="#ff6a45" stroke-width="2.6" stroke-linecap="round"><path d="M8.6 7.4 6 4.8M12 6V2.6M15.4 7.4 18 4.8" /></g></svg>
+        <b>trysometh<span>.ing</span></b>
+      </div>
+      <h1>Discover tools<br />worth <em>trying</em></h1>
+      <p>Curated web toys &amp; tools you can try in 30 seconds.</p>
+    </div>
+  </body>
+</html>

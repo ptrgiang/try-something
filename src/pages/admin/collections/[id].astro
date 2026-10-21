@@ -1,0 +1,112 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import AdminNav from "../../../components/AdminNav.astro";
+import Icon from "../../../components/Icon.astro";
+import { addToCollection, getCollectionForEdit, moveInCollection, removeFromCollection, saveCollection } from "../../../lib/db";
+import { isModerator } from "../../../lib/moderation";
+import { plainText, slugify } from "../../../lib/validation";
+
+const user = Astro.locals.user;
+const id = Astro.params.id ?? "";
+if (!user) return Astro.redirect(`/login?next=/admin/collections/${id}`);
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const action = String(form.get("action") ?? "");
+  if (action === "save") {
+    const title = plainText(form.get("title"), 80);
+    const slug = slugify(plainText(form.get("slug"), 48) || title);
+    const status = form.get("status") === "published" ? "published" : "draft";
+    if (title.length < 3) error = "Give the collection a title.";
+    else {
+      const res = await saveCollection(env.DB, user.id, { id, title, slug, description: plainText(form.get("description"), 400), status });
+      if (!res.ok) error = res.error;
+    }
+  } else if (action === "add") {
+    // Accept a full tool URL or just the slug.
+    const raw = plainText(form.get("tool"), 200);
+    const slug = raw.replace(/^.*\/tools\//, "").replace(/[?#].*$/, "").replace(/\/$/, "");
+    error = (await addToCollection(env.DB, user.id, id, slug, plainText(form.get("note"), 200) || null)) ?? "";
+  } else if (action === "remove") {
+    await removeFromCollection(env.DB, user.id, id, String(form.get("toolId") ?? ""));
+  } else if (action === "up" || action === "down") {
+    await moveInCollection(env.DB, id, String(form.get("toolId") ?? ""), action === "up" ? -1 : 1);
+  }
+  if (!error) return Astro.redirect(`/admin/collections/${id}`, 303);
+  Astro.response.status = 400;
+}
+const c = await getCollectionForEdit(env.DB, id);
+if (!c) return Astro.rewrite("/404");
+---
+<Base title={`Edit ${c.title}`} noindex>
+  <div class="page app-page">
+    <p class="eyebrow"><a href="/admin/collections">Collections</a></p>
+    <h1 class="page-title">{c.title}</h1>
+    <AdminNav current="collections" />
+    {error && <p class="form-error" role="alert">{error}</p>}
+    <div class="split">
+      <div>
+        <h2 class="section-heading">Tools <span class="muted">({c.tools.length})</span></h2>
+        {c.tools.length === 0 ? (
+          <p class="empty">Add the first tool below.</p>
+        ) : (
+          <ol class="collection-edit-list">
+            {c.tools.map((t, i) => (
+              <li>
+                <span class="collection-pos">{i + 1}</span>
+                <div class="collection-tool">
+                  <a href={`/tools/${t.slug}`}><strong>{t.name}</strong></a>
+                  {t.status !== "published" && <span class={`status status-${t.status}`}>{t.status}</span>}
+                  {t.note && <div class="muted small-note">{t.note}</div>}
+                </div>
+                <form method="post" class="collection-tool-actions">
+                  <input type="hidden" name="toolId" value={t.id} />
+                  <button class="btn btn-sm" name="action" value="up" disabled={i === 0} aria-label={`Move ${t.name} up`}>↑</button>
+                  <button class="btn btn-sm" name="action" value="down" disabled={i === c.tools.length - 1} aria-label={`Move ${t.name} down`}>↓</button>
+                  <button class="btn btn-sm" name="action" value="remove" aria-label={`Remove ${t.name}`}><Icon name="close" /></button>
+                </form>
+              </li>
+            ))}
+          </ol>
+        )}
+        <form method="post" class="form form-section collection-add">
+          <div class="field-row">
+            <div class="field">
+              <label for="tool">Tool page URL or slug</label>
+              <input id="tool" name="tool" type="text" required placeholder="excalidraw or https://trysometh.ing/tools/excalidraw" />
+            </div>
+            <div class="field">
+              <label for="note">Editor's note <span class="muted">(optional)</span></label>
+              <input id="note" name="note" type="text" maxlength="200" />
+            </div>
+          </div>
+          <button class="btn btn-dark" name="action" value="add"><Icon name="plus" />Add tool</button>
+        </form>
+      </div>
+      <form method="post" class="form form-section split-side">
+        <div class="field">
+          <label for="ctitle">Title</label>
+          <input id="ctitle" name="title" type="text" maxlength="80" required value={c.title} />
+        </div>
+        <div class="field">
+          <label for="slug">Page address</label>
+          <div class="input-prefix"><span aria-hidden="true">/collections/</span><input id="slug" name="slug" type="text" maxlength="48" value={c.slug} /></div>
+        </div>
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="3" maxlength="400">{c.description}</textarea>
+        </div>
+        <fieldset class="field">
+          <legend>Visibility</legend>
+          <label class="radio"><input type="radio" name="status" value="draft" checked={c.status === "draft"} /> Draft (only editors see it)</label>
+          <label class="radio"><input type="radio" name="status" value="published" checked={c.status === "published"} /> Published</label>
+        </fieldset>
+        <button class="btn btn-dark" name="action" value="save">Save collection</button>
+        {c.status === "published" && <a class="link-btn" href={`/collections/${c.slug}`}>View public page <Icon name="arrow" /></a>}
+      </form>
+    </div>
+  </div>
+</Base>

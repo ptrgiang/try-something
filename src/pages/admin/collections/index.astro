@@ -1,0 +1,58 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import AdminNav from "../../../components/AdminNav.astro";
+import { listAllCollections, saveCollection } from "../../../lib/db";
+import { isModerator } from "../../../lib/moderation";
+import { plainText, slugify } from "../../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/collections");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const title = plainText(form.get("title"), 80);
+  if (title.length < 3) error = "Give the collection a title.";
+  else {
+    const res = await saveCollection(env.DB, user.id, { title, slug: slugify(title), description: "", status: "draft" });
+    if (res.ok) return Astro.redirect(`/admin/collections/${res.id}`, 303);
+    error = res.error;
+  }
+  Astro.response.status = 400;
+}
+const collections = await listAllCollections(env.DB);
+---
+<Base title="Collections" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Collections</h1>
+    <AdminNav current="collections" />
+    <form method="post" class="inline-form admin-create">
+      <label class="sr-only" for="title">New collection title</label>
+      <input id="title" name="title" type="text" maxlength="80" placeholder="New collection, e.g. “Weekend toys, week 43”" required />
+      <button class="btn btn-dark btn-sm" type="submit">Create draft</button>
+    </form>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {collections.length === 0 ? (
+      <p class="empty">No collections yet.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Collection</th><th>Tools</th><th>Status</th><th>Updated</th></tr></thead>
+          <tbody>
+            {collections.map((c) => (
+              <tr>
+                <td><a href={`/admin/collections/${c.id}`}><strong>{c.title}</strong></a><br /><span class="muted small-note">/collections/{c.slug}</span></td>
+                <td>{c.tool_count}</td>
+                <td><span class={`status status-${c.status}`}>{c.status}</span></td>
+                <td>{c.updated_at.slice(0, 10)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</Base>

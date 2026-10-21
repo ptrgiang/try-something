@@ -1,0 +1,168 @@
+---
+import { toolImageSrc } from "../../lib/tool-image";
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import ToolCover from "../../components/ToolCover.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import ToolStats from "../../components/ToolStats.astro";
+import Icon from "../../components/Icon.astro";
+import Comments from "../../components/Comments.astro";
+import { countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
+import { CATEGORIES } from "../../lib/validation";
+import { displayHost } from "../../lib/url";
+import { crumbsLd, SITE } from "../../lib/seo";
+import { toolCard } from "../../lib/og";
+
+const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
+if (!tool) return Astro.rewrite("/404");
+const commentsOn = env.COMMENTS_ENABLED === "true";
+const [related, threads, commentCount, wins, updates] = await Promise.all([
+  relatedTools(env.DB, tool, 4),
+  commentsOn ? listComments(env.DB, tool.id) : [],
+  commentsOn ? countComments(env.DB, tool.id) : 0,
+  topDays(env.DB, tool.id),
+  publishedUpdates(env.DB, tool.id),
+]);
+const dayLabel = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const me = Astro.locals.user;
+const person = (name: string, handle: string | null) => ({ name, href: handle ? `/users/${handle}` : null });
+const submitter = tool.submitter_name ? person(tool.submitter_name, tool.submitter_handle) : null;
+const category = CATEGORIES.find((c) => c.id === tool.category);
+const host = displayHost(tool.url);
+const cover = toolImageSrc(tool);
+const jsonLd = [
+  {
+    "@type": "WebApplication",
+    "@id": `${SITE}/tools/${tool.slug}#app`,
+    name: tool.name,
+    url: tool.url,
+    description: tool.tagline,
+    applicationCategory: category?.label ?? "Web tool",
+    operatingSystem: "Web browser",
+    ...(cover ? { image: new URL(cover, SITE).toString() } : {}),
+    ...(tool.maker_name ? { creator: { "@type": "Organization", name: tool.maker_name } } : {}),
+  },
+  crumbsLd([
+    { name: "Explore", path: "/explore" },
+    ...(category ? [{ name: category.label, path: `/explore/${category.id}` }] : []),
+    { name: tool.name, path: `/tools/${tool.slug}` },
+  ]),
+];
+// "Name: tagline" while it fits a search result title, else what kind of tool it is.
+const pageTitle =
+  tool.name.length + tool.tagline.length < 58
+    ? `${tool.name}: ${tool.tagline.replace(/\.$/, "")}`
+    : `${tool.name}: ${category?.noun ?? "web tool"} you can try in your browser`;
+const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_name ? ` Made by ${tool.maker_name}.` : ""}`;
+---
+<Base title={pageTitle} description={pageDescription} path={`/tools/${tool.slug}`} ogType="article" jsonLd={jsonLd} og={toolCard(tool, category?.label)}>
+  <div class:list={["detail-layout", { "has-dock": commentsOn }]} data-surface="direct">
+    <article class="detail" data-tool-id={tool.id}>
+      <div class="detail-head">
+        <p class="eyebrow"><a href={`/explore/${tool.category}`}>{category?.label ?? tool.category}</a></p>
+        <h1 class="page-title">{tool.name}</h1>
+        <p class="lede">{tool.tagline}</p>
+        <ToolStats tool={tool} class="stats-lg" />
+        {wins.length > 0 && (
+          <p class="top-badge"><Icon name="trophy" />Top tool of the day · {dayLabel(wins[0])}{wins.length > 1 && <span> and {wins.length - 1} more {wins.length === 2 ? "day" : "days"} in the last 90</span>}</p>
+        )}
+      </div>
+      <figure class="detail-media">
+        <div class="detail-cover"><ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority /></div>
+        <figcaption class="art-note">
+          {tool.image_key
+            ? `Cover image provided by the person who submitted ${tool.name}. All marks belong to their owners.`
+            : tool.image_url
+              ? `Preview image from ${host} (the site's own share image). All marks belong to their owners.`
+              : `Cover is an original Try Something illustration, not a screenshot of ${tool.name}.`}
+        </figcaption>
+      </figure>
+      <div class="try-box">
+        <h2>Try this in 30 seconds</h2>
+        <p>{tool.try_this}</p>
+      </div>
+      <div class="hero-ctas">
+        <a class="btn btn-dark btn-lg" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {host} <Icon name="external" /></a>
+        <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
+        <button type="button" class="btn btn-lg" data-share={`/tools/${tool.slug}`} data-share-title={tool.name}><Icon name="share" /><span>Share</span></button>
+        <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`}><Icon name="shuffle" />Another one</a>
+      </div>
+      {tool.why && (
+        <div>
+          <h2 class="section-title">Why it's worth trying</h2>
+          <p>{tool.why}</p>
+        </div>
+      )}
+      {updates.length > 0 && (
+        <div class="tool-updates">
+          <h2 class="section-title">Updates from the maker</h2>
+          <ol>
+            {updates.map((u) => <li><time datetime={u.decided_at}>{dayLabel(u.decided_at.slice(0, 10))}</time><p>{u.note}</p></li>)}
+          </ol>
+        </div>
+      )}
+      <ul class="credits">
+        {tool.maker_name && (
+          <li>Made by <strong>{tool.maker_url ? <a href={tool.maker_url} rel="noopener nofollow ugc" target="_blank">{tool.maker_name}</a> : tool.maker_name}</strong>{tool.credit_type === "made" && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (maker-submitted, not verified)")}</li>
+        )}
+        {tool.credit_type === "found" && submitter && <li>Discovered by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong></li>}
+        {tool.credit_type === "made" && submitter && (
+          <li>Submitted by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{!tool.maker_name && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (says they made it — not verified)")}</li>
+        )}
+        {tool.credit_type === "editorial" && <li>Picked by the Try Something editors{!tool.submitted_by && <> · <a class="claim-link" href={`/me/verify/${tool.slug}`} rel="nofollow">Made it? Claim this listing</a></>}</li>}
+        <li class="muted">Official site: {host}</li>
+      </ul>
+      {tool.tags.length > 0 && <ul class="tags" aria-label="Tags">{tool.tags.map((t) => <li><a href={`/tags/${t}`}>#{t}</a></li>)}</ul>}
+      <div class="detail-foot">
+        {commentsOn && <a class="detail-comments" href={`/tools/${tool.slug}#comments`}><Icon name="chat" />{commentCount === 1 ? "1 comment" : `${commentCount} comments`}</a>}
+        <button type="button" class="link-btn" data-report="tool" data-target={tool.id}><Icon name="flag" />Report listing</button>
+      </div>
+    </article>
+    {/* Outside .detail on purpose: quick view lifts [data-comments] into its own drawer. */}
+    {commentsOn && <aside class="detail-dock"><Comments tool={tool} threads={threads} count={commentCount} me={me} /></aside>}
+  </div>
+  {related.maker.length > 0 && (
+    <section data-related="maker" data-surface="related">
+      <div class="section-head"><h2>More from {tool.maker_name ?? submitter?.name ?? "this maker"}</h2></div>
+      <div class="grid">{related.maker.map((t) => <ToolCard tool={t} />)}</div>
+    </section>
+  )}
+  {related.similar.length > 0 && (
+    <section data-related="similar" data-surface="related">
+      <div class="section-head">
+        <h2>You might also like</h2>
+        <a class="section-link" href={`/explore/${tool.category}`}>More {category?.label ?? tool.category} <Icon name="arrow" /></a>
+      </div>
+      <div class="grid">{related.similar.map((t) => <ToolCard tool={t} />)}</div>
+    </section>
+  )}
+  <div class="try-bar" data-try-bar>
+    <div class="try-bar-name"><strong>{tool.name}</strong><span>{host}</span></div>
+    <button type="button" class="btn save-btn" data-save={tool.id} aria-pressed="false" aria-label={`Save ${tool.name}`}><Icon name="bookmark" /><span>Save</span></button>
+    <a class="btn btn-dark" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it <Icon name="external" /></a>
+  </div>
+</Base>
+<script>
+  import { sendView } from "../../scripts/client";
+  import { noteToolSeen, originFor } from "../../scripts/discovery";
+
+  // A page reached from a card keeps that card's surface for its view and Try clicks; otherwise "direct".
+  const layout = document.querySelector<HTMLElement>("main .detail-layout");
+  const detail = layout?.querySelector<HTMLElement>(".detail[data-tool-id]");
+  if (layout && detail) {
+    layout.dataset.surface = originFor(location.pathname) ?? "direct";
+    sendView(detail.dataset.toolId!, layout.dataset.surface);
+    noteToolSeen(location.pathname);
+  }
+
+  // Mobile: once the main Try button scrolls away, a bar with Try and Save sticks to the bottom.
+  const bar = document.querySelector<HTMLElement>("[data-try-bar]");
+  const ctas = document.querySelector(".detail .hero-ctas");
+  if (bar && ctas && "IntersectionObserver" in window) {
+    new IntersectionObserver(([entry]) => {
+      const show = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+      bar.classList.toggle("is-visible", show);
+      document.documentElement.classList.toggle("has-try-bar", show);
+    }).observe(ctas);
+  }
+</script>

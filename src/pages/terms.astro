@@ -1,0 +1,47 @@
+---
+import LegalPage from "../components/LegalPage.astro";
+
+const sections = [
+  { id: "listings", label: "Listings and other sites" },
+  { id: "images", label: "Names and images" },
+  { id: "submitting", label: "Submitting a tool" },
+  { id: "comments", label: "Comments and profiles" },
+  { id: "moderation", label: "Moderation" },
+  { id: "open-source", label: "Open source and the name" },
+];
+---
+<LegalPage
+  title="Terms"
+  description="The rules for using and submitting to Try Something."
+  updated="22 October 2026"
+  summary={[
+    "We link to other people's sites; we don't run them and aren't responsible for them.",
+    "Submit only real, public products and describe them honestly.",
+    "Makers can ask us to remove their listing or image at any time.",
+    "Comments are for people who tried the tool: be kind, stay on topic, no spam.",
+    "The code is MIT licensed; the Try Something name and logo are not.",
+  ]}
+  sections={sections}
+>
+  <h2 id="listings">Listings and other sites</h2>
+  <p>Try Something links to websites run by other people. We don't operate them and aren't responsible for their content, availability or terms. “Try it” always opens the product's own site in a new tab.</p>
+
+  <h2 id="images">Names and images</h2>
+  <p>Product names, marks and share images belong to their owners. When a product publishes a share image (its Open Graph image), we may show it with the listing and a link back to the product.</p>
+  <p>If you upload a cover image with a submission, you confirm you have the right to share it and that it shows the product honestly, and you let us show it with the listing and in previews of it. An uploaded cover is used instead of the share image.</p>
+  <p>Makers can ask us to remove an image or a whole listing at any time by emailing <a href="mailto:hello@trysometh.ing">hello@trysometh.ing</a>, and we'll do it promptly.</p>
+
+  <h2 id="submitting">Submitting a tool</h2>
+  <p>Submit only real, publicly reachable products. No spam, malware, phishing, illegal content or misleading descriptions.</p>
+  <p>Saying “I made this” is a claim we may check, and we never mark a maker as verified without evidence. By submitting, you let Try Something show the text you wrote alongside the listing.</p>
+
+  <h2 id="comments">Comments and profiles</h2>
+  <p>Comment about the tool: what you made, what worked, what didn't. No harassment, hate, spam, self-promotion unrelated to the tool, or personal information about other people. Links in comments are shown as plain text.</p>
+  <p>Your profile name, handle, bio and website must not impersonate someone else. A “Verified maker” badge only appears after you prove control of the product's site.</p>
+
+  <h2 id="moderation">Moderation</h2>
+  <p>Editors may approve, ask for changes to, reject or hide any listing or comment, and they record the reason each time. A comment reported by several people is hidden until an editor reviews it.</p>
+
+  <h2 id="open-source">Open source and the name</h2>
+  <p>The source code is MIT licensed. That license covers the code only: not the Try Something name and logo, what people submit, or third-party content.</p>
+</LegalPage>

@@ -1,0 +1,109 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import Icon from "../../../components/Icon.astro";
+import { claimEditorialTool, getMakerClaim, markMakerVerified } from "../../../lib/db";
+import { rateLimit } from "../../../lib/rate-limit";
+import { displayHost } from "../../../lib/url";
+import { checkMakerProof, makerToken, META_NAME, WELL_KNOWN_PATH } from "../../../lib/verification";
+
+const user = Astro.locals.user;
+const slug = Astro.params.slug ?? "";
+if (!user) return Astro.redirect(`/login?next=/me/verify/${slug}`);
+const tool = await getMakerClaim(env.DB, slug);
+// The person who submitted it as "I made this" verifies it; an unowned editorial listing is open to any maker's claim.
+const isOwn = tool?.status === "published" && tool.submitted_by === user.id && tool.credit_type === "made";
+const claimable = tool?.status === "published" && tool.credit_type === "editorial" && !tool.submitted_by;
+if (!tool || (!isOwn && !claimable)) return Astro.rewrite("/404");
+
+const token = await makerToken(env.BETTER_AUTH_SECRET, tool.id, user.id);
+const host = displayHost(tool.url);
+let error = "";
+let verified = Boolean(tool.maker_verified_at);
+if (Astro.request.method === "POST" && !verified) {
+  if (!(await rateLimit(env.DB, `verify:${user.id}`, 10, 3600))) {
+    error = "Too many checks in a short time. Try again in a while.";
+  } else {
+    const proof = await checkMakerProof(tool.url, token);
+    if (!proof.ok) error = proof.error;
+    else if (claimable) {
+      verified = await claimEditorialTool(env.DB, tool.id, user.id, proof.method);
+      if (!verified) error = "Someone else claimed this listing first. Email hello@trysometh.ing if it's yours.";
+    } else verified = await markMakerVerified(env.DB, tool.id, user.id, proof.method);
+    if (!verified && !error) error = "This listing changed while you were checking. Reload and try again.";
+  }
+  if (!verified) Astro.response.status = 400;
+}
+const metaTag = `<meta name="${META_NAME}" content="${token}">`;
+---
+<Base title={claimable && !verified ? `Claim ${tool.name}` : `Verify ${tool.name}`} noindex>
+  <div class="page app-page settings">
+    <header class="page-head">
+      <p class="eyebrow"><a href="/me/submissions">My submissions</a></p>
+      {claimable && !verified ? (
+        <>
+          <h1 class="page-title">Claim {tool.name}</h1>
+          <p class="lede">Made it? Prove you run <strong>{host}</strong> and the listing moves to your account as a <strong>Verified maker</strong>. You can then post updates, see its numbers and get a badge.</p>
+        </>
+      ) : (
+        <>
+          <h1 class="page-title">Verify you made {tool.name}</h1>
+          <p class="lede">Prove you run <strong>{host}</strong> and the listing shows a <strong>Verified maker</strong> badge instead of “not verified”.</p>
+        </>
+      )}
+    </header>
+    {verified ? (
+      <div class="gate">
+        <span class="gate-icon verified-icon" aria-hidden="true"><Icon name="check" /></span>
+        <h2>You're a verified maker</h2>
+        <p>{tool.name} now shows the Verified maker badge. You can remove the token from your site.</p>
+        <div class="gate-actions">
+          <a class="btn btn-dark" href={`/me/share/${tool.slug}`}>Get a badge</a>
+          <a class="btn" href={`/tools/${tool.slug}`}>See the listing</a>
+        </div>
+      </div>
+    ) : (
+      <div class="verify">
+        {error && <p class="form-error" role="alert">{error}</p>}
+        <ol class="steps verify-steps">
+          <li>
+            <p><strong>Add your token to {host}</strong>, using either option.</p>
+            <div class="verify-options">
+              <div class="side-card">
+                <h2>Option A: meta tag</h2>
+                <p>In the <code>&lt;head&gt;</code> of <a href={tool.url} rel="noopener noreferrer" target="_blank">{tool.url}</a>:</p>
+                <div class="copy-field"><code data-copy-src>{metaTag}</code><button type="button" class="btn btn-sm" data-copy>Copy</button></div>
+              </div>
+              <div class="side-card">
+                <h2>Option B: text file</h2>
+                <p>Serve this line at <code>{new URL(WELL_KNOWN_PATH, tool.url).toString()}</code>:</p>
+                <div class="copy-field"><code data-copy-src>{token}</code><button type="button" class="btn btn-sm" data-copy>Copy</button></div>
+              </div>
+            </div>
+          </li>
+          <li>
+            <p><strong>Run the check.</strong> We load the page and the file once, over https, from {host} only (redirects to other sites don't count).</p>
+            <form method="post" class="verify-form">
+              <button class="btn btn-dark btn-lg" type="submit">Check now</button>
+            </form>
+          </li>
+        </ol>
+        <p class="muted small-note">The token is tied to your account and this listing; it doesn't reveal anything else. Editors can still review a claim if someone disputes it.</p>
+      </div>
+    )}
+  </div>
+</Base>
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const text = btn.parentElement?.querySelector("[data-copy-src]")?.textContent ?? "";
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied";
+        setTimeout(() => (btn.textContent = "Copy"), 1600);
+      } catch {
+        btn.textContent = "Select and copy";
+      }
+    });
+  });
+</script>

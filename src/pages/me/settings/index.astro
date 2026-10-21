@@ -1,0 +1,150 @@
+---
+import { env } from "cloudflare:workers";
+import Settings from "../../../layouts/Settings.astro";
+import Avatar from "../../../components/Avatar.astro";
+import { avatarUrl, isAvatarKey } from "../../../lib/avatar";
+import { getMyProfile, updateProfile } from "../../../lib/db";
+import { rateLimit } from "../../../lib/rate-limit";
+import { validateProfile, type ProfileInput } from "../../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/settings");
+let profile = await getMyProfile(env.DB, user.id);
+if (!profile) return Astro.redirect("/login?next=/me/settings");
+
+let errors: Partial<Record<keyof ProfileInput | "form", string>> = {};
+let values: Record<string, string> = { name: profile.name, handle: profile.handle ?? "", bio: profile.bio ?? "", website: profile.website ?? "" };
+const saved = Astro.url.searchParams.has("saved");
+if (Astro.request.method === "POST") {
+  const form = Object.fromEntries(await Astro.request.formData());
+  values = Object.fromEntries(["name", "handle", "bio", "website"].map((k) => [k, String(form[k] ?? "")]));
+  const result = validateProfile(form);
+  if (!result.ok) {
+    errors = result.errors;
+  } else if (!(await rateLimit(env.DB, `profile:${user.id}`, 20, 3600))) {
+    errors.form = "Too many changes in a short time. Try again in a while.";
+  } else {
+    const res = await updateProfile(env.DB, user.id, result.value);
+    if (res.ok) return Astro.redirect("/me/settings?saved", 303);
+    errors.handle = res.error;
+  }
+  Astro.response.status = 400;
+}
+const isPublic = Boolean(profile.handle);
+const uploaded = isAvatarKey(profile.avatar);
+const accountPhoto = avatarUrl(null, profile.image);
+const photo = avatarUrl(profile.avatar, profile.image);
+const photoNote = uploaded ? "Your uploaded photo." : photo ? "From your Google or GitHub account." : "Showing your initials.";
+const uploadsOn = Boolean(env.AVATARS);
+---
+<Settings current="profile" title="Profile" lede="How you appear next to the tools you submit and the comments you write. Your email is never shown.">
+  {saved && (
+    <p class="notice notice-success" role="status">
+      Profile saved. {isPublic && <a href={`/users/${profile.handle}`}>View your public profile</a>}
+    </p>
+  )}
+  {errors.form && <p class="form-error" role="alert">{errors.form}</p>}
+  <p class="settings-note">
+    {isPublic ? <>Your profile is public at <a href={`/users/${profile.handle}`}>trysometh.ing/users/{profile.handle}</a>.</> : "Pick a handle to get a public profile page."}
+    {" "}It lists the tools you made or found once they're published. Saved tools and hearts stay private.
+  </p>
+  <section class="settings-card avatar-editor" aria-labelledby="photo-title" data-avatar-editor>
+    <Avatar class="avatar-lg" name={profile.name} url={photo} seed={profile.handle ?? profile.name} size={88} />
+    <div class="avatar-editor-body">
+      <h3 id="photo-title">Profile photo</h3>
+      <p class="hint">{photoNote} Shown on your profile and next to your comments.</p>
+      <div class="avatar-actions">
+        {uploadsOn && (
+          <>
+            <button class="btn btn-sm btn-dark" type="button" data-avatar-pick><span data-btn-text>{uploaded ? "Change photo" : "Upload photo"}</span></button>
+            <input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" tabindex="-1" aria-hidden="true" data-avatar-file />
+          </>
+        )}
+        {uploaded && <button class="btn btn-sm" type="button" data-avatar-use={accountPhoto ? "provider" : "initials"}>Remove photo</button>}
+        {!uploaded && accountPhoto && profile.avatar !== "none" && <button class="btn btn-sm" type="button" data-avatar-use="initials">Use initials instead</button>}
+        {!uploaded && accountPhoto && profile.avatar === "none" && <button class="btn btn-sm" type="button" data-avatar-use="provider">Use account photo</button>}
+      </div>
+      <p class="form-error" role="alert" hidden data-avatar-error></p>
+    </div>
+  </section>
+  <form class="form settings-card" method="post" novalidate>
+    <div class="field">
+      <label for="name">Display name</label>
+      <input id="name" name="name" type="text" maxlength="50" required value={values.name} autocomplete="name" aria-invalid={errors.name ? "true" : undefined} />
+      {errors.name && <p class="error">{errors.name}</p>}
+    </div>
+    <div class="field">
+      <label for="handle">Handle</label>
+      <div class="input-prefix">
+        <span aria-hidden="true">trysometh.ing/users/</span>
+        <input id="handle" name="handle" type="text" maxlength="24" required value={values.handle} autocomplete="username" spellcheck="false" autocapitalize="none" aria-describedby="handle-hint" aria-invalid={errors.handle ? "true" : undefined} />
+      </div>
+      <p class="hint" id="handle-hint">3–24 letters, numbers, - or _. You can change it once a week.</p>
+      {errors.handle && <p class="error">{errors.handle}</p>}
+    </div>
+    <div class="field">
+      <label for="bio">Short bio <span class="muted">(optional)</span></label>
+      <textarea id="bio" name="bio" rows="2" maxlength="160" aria-invalid={errors.bio ? "true" : undefined}>{values.bio}</textarea>
+      <p class="hint">Up to 160 characters, shown as plain text.</p>
+    </div>
+    <div class="field">
+      <label for="website">Website <span class="muted">(optional)</span></label>
+      <input id="website" name="website" type="url" inputmode="url" maxlength="300" placeholder="https://" value={values.website} aria-invalid={errors.website ? "true" : undefined} />
+      {errors.website && <p class="error">{errors.website}</p>}
+    </div>
+    <div class="form-footer">
+      <button class="btn btn-dark btn-lg" type="submit">Save profile</button>
+    </div>
+  </form>
+</Settings>
+<script>
+  const editor = document.querySelector<HTMLElement>("[data-avatar-editor]");
+  if (editor) {
+    const errorEl = editor.querySelector<HTMLElement>("[data-avatar-error]")!;
+    const fileInput = editor.querySelector<HTMLInputElement>("[data-avatar-file]");
+    const pick = editor.querySelector<HTMLButtonElement>("[data-avatar-pick]");
+    const SIDE = 256;
+    const fail = (msg: string) => {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      editor.querySelectorAll("button").forEach((b) => (b.disabled = false));
+      if (pick) pick.querySelector("[data-btn-text]")!.textContent = "Upload photo";
+    };
+    const send = async (init: RequestInit) => {
+      errorEl.hidden = true;
+      editor.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      const res = await fetch("/api/avatar", init).catch(() => null);
+      if (res?.ok) return window.location.reload();
+      const data = (await res?.json().catch(() => null)) as { error?: string } | null;
+      fail(data?.error ?? "That didn't work. Please try again.");
+    };
+    // Crop to a centred square and re-encode at 256px, so what's stored is small and has no metadata (like GPS).
+    const toSquare = async (file: File): Promise<Blob | null> => {
+      const bmp = await createImageBitmap(file).catch(() => null);
+      if (!bmp) return null;
+      const side = Math.min(bmp.width, bmp.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = Math.min(SIDE, side);
+      canvas.getContext("2d")!.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, canvas.width, canvas.height);
+      const encode = (type: string, q: number) => new Promise<Blob | null>((r) => canvas.toBlob(r, type, q));
+      const webp = await encode("image/webp", 0.86);
+      return webp?.type === "image/webp" ? webp : encode("image/jpeg", 0.88);
+    };
+    pick?.addEventListener("click", () => fileInput?.click());
+    fileInput?.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      if (!file) return;
+      if (file.size > 20_000_000) return fail("That file is too large. Pick a photo under 20 MB.");
+      pick!.querySelector("[data-btn-text]")!.textContent = "Uploading…";
+      const blob = await toSquare(file);
+      if (!blob) return fail("Couldn't read that image. Try a JPEG, PNG or WebP photo.");
+      const body = new FormData();
+      body.append("photo", blob, blob.type === "image/webp" ? "photo.webp" : "photo.jpg");
+      send({ method: "POST", body });
+    });
+    editor.querySelectorAll<HTMLButtonElement>("[data-avatar-use]").forEach((btn) =>
+      btn.addEventListener("click", () => send({ method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ use: btn.dataset.avatarUse }) })),
+    );
+  }
+</script>

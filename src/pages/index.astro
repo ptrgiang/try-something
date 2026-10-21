@@ -1,0 +1,238 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import Typewriter from "../components/Typewriter.astro";
+import FeaturedSlideshow from "../components/FeaturedSlideshow.astro";
+import Filters from "../components/Filters.astro";
+import ToolCard from "../components/ToolCard.astro";
+import Icon from "../components/Icon.astro";
+import CategoryArt from "../components/CategoryArt.astro";
+import ToolCover from "../components/ToolCover.astro";
+import { categoryCounts, featuredTools, homePicks, listTools, parsePeriod, parseSort, popularTags, topToday, TOP_TODAY_MIN_TOOLS } from "../lib/db";
+import { toolImageSrc } from "../lib/tool-image";
+import { displayHost } from "../lib/url";
+import { CATEGORIES, CATEGORY_IDS } from "../lib/validation";
+
+// Category and sort filter the list in place under the hero; only a search moves to /explore.
+const sp = Astro.url.searchParams;
+const categoryParam = sp.get("category");
+const category = categoryParam && CATEGORY_IDS.includes(categoryParam) ? categoryParam : null;
+const sort = parseSort(sp.get("sort"));
+const period = sort === "popular" ? parsePeriod(sp.get("period")) : "all";
+const filtered = Boolean(category) || sort !== "picks";
+const exploreHref = (() => {
+  const n = new URLSearchParams();
+  if (category) n.set("category", category);
+  if (sort !== "picks") n.set("sort", sort);
+  if (period !== "all") n.set("period", period);
+  const s = n.toString();
+  return s ? `/explore?${s}` : "/explore";
+})();
+
+const [featured, tags, today, counts] = await Promise.all([
+  featuredTools(env.DB, 5),
+  popularTags(env.DB, 7),
+  topToday(env.DB, 3),
+  categoryCounts(env.DB),
+]);
+// The hero opens on a different featured pick each UTC day, the same one for everyone all day.
+const turn = featured.length ? Math.floor(Date.now() / 86400000) % featured.length : 0;
+const hero = [...featured.slice(turn), ...featured.slice(0, turn)];
+const heroIds = hero.map((t) => t.id);
+const picks = await homePicks(env.DB, heroIds);
+const pickTools = picks?.tools ?? [];
+const pickDay = picks ? new Date(picks.published_at) : null;
+const freshPicks = pickDay ? Date.now() - pickDay.getTime() < 7 * 86400000 : false;
+// The unfiltered list leaves out hero and pick tools so the first rows aren't repeats; they stay on Explore.
+const tools = await listTools(env.DB, {
+  category: category ?? undefined,
+  sort,
+  period,
+  limit: 12,
+  exclude: filtered ? undefined : [...heroIds, ...pickTools.map((t) => t.id)],
+});
+const browse = CATEGORIES.filter((c) => counts[c.id]);
+---
+<Base nav="explore" path="/" headerSearch={false} noindex={filtered}>
+  <section class="hero">
+    <div class="hero-copy">
+      <Typewriter prefix="Discover tools worth" words={["trying", "sharing", "a click", "a spin"]} />
+      <p class="lede">Curated web tools, experiments and tiny apps from indie makers. Every pick is something you can actually try in 30 seconds.</p>
+      <ul class="hero-points">
+        <li><Icon name="check" />Reviewed by people, not ranked by ads</li>
+        <li><Icon name="check" /><span>Made it or found it? <a href="/submit">Share it with credit</a></span></li>
+      </ul>
+      <div class="hero-ctas">
+        <a class="btn btn-dark btn-lg" href="/explore">Explore tools <Icon name="arrow" /></a>
+        <a class="btn btn-ghost btn-lg" href="/surprise"><Icon name="shuffle" />Surprise me</a>
+      </div>
+    </div>
+    <FeaturedSlideshow tools={hero} />
+  </section>
+
+  <section class="search-band" aria-label="Search">
+    <form class="big-search" action="/explore" method="get" role="search">
+      <label class="sr-only" for="home-search">Search tools</label>
+      <Icon name="search" />
+      <input id="home-search" type="search" name="q" placeholder="What do you want to try today?" maxlength="80" />
+      <button class="btn btn-coral" type="submit">Search</button>
+    </form>
+    {tags.length > 0 && (
+      <nav class="popular-tags" aria-label="Popular tags">
+        <span>Popular:</span>
+        {tags.map((t) => <a href={`/tags/${t}`}>{t}</a>)}
+      </nav>
+    )}
+  </section>
+
+  {picks && pickTools.length >= 3 && (
+    <section class="picks" aria-labelledby="picks-title" data-surface="picks">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">{freshPicks ? "Worth trying this week" : "Editors' picks"} · {pickDay!.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</p>
+          <h2 id="picks-title">{picks.title}</h2>
+          {picks.description && <p class="picks-desc">{picks.description}</p>}
+        </div>
+        <a class="section-link" href={`/collections/${picks.slug}`}>See the collection <Icon name="arrow" /></a>
+      </div>
+      <ol class="picks-list">
+        {pickTools.map((t) => (
+          <li class="pick" data-impression={t.id}>
+            <a class="pick-cover" href={`/tools/${t.slug}`} tabindex="-1" aria-hidden="true">
+              <ToolCover name={t.name} art={t.art} url={t.url} imageSrc={toolImageSrc(t)} />
+            </a>
+            <div class="pick-text">
+              <h3><a href={`/tools/${t.slug}`}>{t.name}</a></h3>
+              <p>{t.tagline}</p>
+              <a class="pick-try" href={t.url} target="_blank" rel="noopener noreferrer" data-try={t.id}>Try it <Icon name="external" /><span class="sr-only">(opens {displayHost(t.url)} in a new tab)</span></a>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
+
+  {today.length >= TOP_TODAY_MIN_TOOLS && (
+    <section class="top-today" aria-labelledby="top-today" data-surface="top">
+      <div class="section-head">
+        <h2 id="top-today"><Icon name="trophy" />Top today</h2>
+        <a class="section-link" href="/explore?sort=trending">Trending this week <Icon name="arrow" /></a>
+      </div>
+      <ol class="top-today-list">
+        {today.map((t, i) => (
+          <li data-impression={t.id}>
+            <span class="top-rank">{i + 1}</span>
+            <a class="top-name" href={`/tools/${t.slug}`}>{t.name}</a>
+            <span class="top-tagline">{t.tagline}</span>
+            <span class="top-host">{displayHost(t.url)}</span>
+          </li>
+        ))}
+      </ol>
+      <p class="hint top-note">Ranked by today's tries, views, hearts and saves (UTC). Shown once at least three tools have real activity today.</p>
+    </section>
+  )}
+
+  <h2 class="sr-only">Latest tools</h2>
+  <div class="home-list" data-home-list data-surface="home">
+    <Filters base="/" anchor="#tools" category={category} sort={sort} period={period} />
+    {tools.length ? (
+      <div class="grid">{tools.map((tool) => <ToolCard tool={tool} />)}</div>
+    ) : (
+      <p class="empty">{filtered ? "No tools here yet." : "No tools published yet."}</p>
+    )}
+    {tools.length >= 12 && (
+      <p class="wrap"><a class="btn" href={exploreHref}>See all tools <Icon name="arrow" /></a></p>
+    )}
+  </div>
+
+  {browse.length > 1 && (
+    <section class="browse" aria-labelledby="browse-title">
+      <div class="section-head"><h2 id="browse-title">Browse by category</h2></div>
+      <ul class="browse-grid">
+        {browse.map((c) => (
+          <li>
+            <a class="browse-tile" href={`/explore/${c.id}`}>
+              <span class="browse-art"><CategoryArt id={c.id} /></span>
+              <span class="browse-text">
+                <strong>{c.label}</strong>
+                <span>{counts[c.id]} {counts[c.id] === 1 ? "tool" : "tools"}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+</Base>
+<script>
+  import { announceContent, fetchDocument, skeletonCard } from "../scripts/client";
+
+  // Filters swap the list in place (no reload, scroll kept) and fall back to a normal navigation on error.
+  const SKELETON_DELAY = 150;
+  const SKELETON_MIN = 300;
+  let controller: AbortController | null = null;
+  let shown = location.search; // query of the list on screen
+
+  const list = () => document.querySelector<HTMLElement>("[data-home-list]");
+
+  function showSkeleton(root: HTMLElement) {
+    const count = Math.min(12, Math.max(3, root.querySelectorAll(".grid > .card").length));
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    for (let n = 0; n < count; n++) grid.appendChild(skeletonCard());
+    root.querySelectorAll(":scope > :not(.filters)").forEach((el) => el.remove());
+    root.appendChild(grid);
+  }
+
+  function markCurrent(link: HTMLAnchorElement) {
+    link.parentElement?.querySelectorAll("a").forEach((a) => a.removeAttribute("aria-current"));
+    link.setAttribute("aria-current", "true");
+  }
+
+  async function load(url: string, push: boolean) {
+    const root = list();
+    if (!root) return location.assign(url);
+    controller?.abort();
+    const mine = (controller = new AbortController());
+    root.style.minHeight = `${root.offsetHeight}px`;
+    root.classList.add("is-loading");
+    root.setAttribute("aria-busy", "true");
+    let skeletonAt = 0;
+    const timer = setTimeout(() => {
+      skeletonAt = performance.now();
+      showSkeleton(root);
+    }, SKELETON_DELAY);
+    try {
+      const next = (await fetchDocument(url, mine.signal)).querySelector("[data-home-list]");
+      if (!next) throw new Error("no list");
+      clearTimeout(timer);
+      if (skeletonAt) await new Promise((r) => setTimeout(r, Math.max(0, SKELETON_MIN - (performance.now() - skeletonAt))));
+      if (mine.signal.aborted) return;
+      if (push) history.pushState(null, "", url);
+      shown = new URL(url).search;
+      root.replaceChildren(...Array.from(next.childNodes, (n) => document.importNode(n, true)));
+      root.classList.remove("is-loading");
+      root.classList.add("is-entering");
+      root.removeAttribute("aria-busy");
+      root.style.minHeight = "";
+      setTimeout(() => root.classList.remove("is-entering"), 600);
+      announceContent();
+    } catch (err) {
+      clearTimeout(timer);
+      if ((err as Error).name !== "AbortError") location.assign(url);
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const link = (e.target as Element).closest<HTMLAnchorElement>("[data-home-list] .filters a");
+    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (link.getAttribute("aria-current") === "true") return;
+    markCurrent(link);
+    load(link.href, true);
+  });
+  // Quick view also pushes entries; only react when Back/Forward lands on a different home list.
+  window.addEventListener("popstate", () => {
+    if (location.pathname === "/" && location.search !== shown) load(location.href, false);
+  });
+</script>

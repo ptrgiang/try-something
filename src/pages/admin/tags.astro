@@ -1,0 +1,55 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { listTagsForAdmin, setTagDescription, TAG_DESCRIPTION_MAX } from "../../lib/db";
+import { isModerator } from "../../lib/moderation";
+import { parseTags, plainText } from "../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/tags");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const raw = String(form.get("tag") ?? "");
+  const tag = parseTags(raw)[0];
+  const description = plainText(form.get("description"), TAG_DESCRIPTION_MAX);
+  if (!tag || tag !== raw) error = "Unknown tag.";
+  else if (description && description.length < 20) error = "Write at least a sentence, or leave it empty to clear it.";
+  else {
+    await setTagDescription(env.DB, tag, description, user.id);
+    return Astro.redirect(`/admin/tags?saved=${tag}#tag-${tag}`, 303);
+  }
+  Astro.response.status = 400;
+}
+const tags = await listTagsForAdmin(env.DB);
+const saved = Astro.url.searchParams.get("saved");
+---
+<Base title="Tags" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Tags</h1>
+    <AdminNav current="tags" />
+    <p class="muted">A short intro shown at the top of each tag page. Say what the tools have in common and who they're for; keep it factual. Leave empty for the default line.</p>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {saved && !error && <p class="notice" role="status">Saved #{saved}.</p>}
+    <ul class="tag-admin">
+      {tags.map((t) => (
+        <li id={`tag-${t.tag}`}>
+          <form method="post" class="tag-admin-form">
+            <div class="tag-admin-head">
+              <a href={`/tags/${t.tag}`}><strong>#{t.tag}</strong></a>
+              <span class="muted small-note">{t.n} {t.n === 1 ? "tool" : "tools"}{t.updated_at && ` · edited ${t.updated_at.slice(0, 10)}`}</span>
+            </div>
+            <input type="hidden" name="tag" value={t.tag} />
+            <label class="sr-only" for={`d-${t.tag}`}>Description for #{t.tag}</label>
+            <textarea id={`d-${t.tag}`} name="description" rows="2" maxlength={TAG_DESCRIPTION_MAX} placeholder="No description yet">{t.description ?? ""}</textarea>
+            <button class="btn btn-sm" type="submit">Save</button>
+          </form>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Base>

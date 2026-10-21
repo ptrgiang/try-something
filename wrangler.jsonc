@@ -1,0 +1,83 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Top level = production (trysometh.ing). Local development overrides vars in .dev.vars.
+  // Resource IDs are not secrets: using them still requires Cloudflare account access.
+  "name": "try-something",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "binding": "ASSETS", "directory": "./dist/client" },
+  "observability": { "enabled": true },
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "trysometh.ing", "custom_domain": true },
+    { "pattern": "www.trysometh.ing", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "try-something-db",
+      "database_id": "58c6d0fa-109a-4b6e-9819-12b0f809b3af",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    { "binding": "CACHE", "id": "3842ac4b1aa34e6fa66ca2ab5c1068c1" }
+  ],
+  // Uploaded profile photos, served through /avatars/* (never as a public bucket).
+  "r2_buckets": [
+    { "binding": "AVATARS", "bucket_name": "try-something-avatars" },
+    { "binding": "TOOL_IMAGES", "bucket_name": "try-something-tool-images" }
+  ],
+  // Cloudflare Images shrinks covers served from /media; results are cached at the edge per tool.
+  "images": { "binding": "IMAGES" },
+  // Email Service (Workers Paid). Sign-in codes go out as "Try Something <hello@trysometh.ing>";
+  // replies reach the owner through Email Routing.
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["hello@trysometh.ing"] }],
+  "vars": {
+    "PUBLIC_SITE_URL": "https://trysometh.ing",
+    "PUBLIC_GITHUB_REPO": "ptrgiang/try-something",
+    // Turnstile site keys are public; the secret is a Worker secret.
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFn1aLAhvK3BjsVN",
+    "EMAIL_FROM": "hello@trysometh.ing",
+    "EMAIL_LOGIN_ENABLED": "true",
+    // Set to "false" and deploy to switch comments off everywhere; existing comments are kept.
+    "COMMENTS_ENABLED": "true",
+    // Scripted browsers aren't counted in analytics; only the e2e server turns this on (playwright.config.ts).
+    "ANALYTICS_COUNT_AUTOMATION": "false"
+  },
+  "env": {
+    // Staging: its own Worker, D1 and KV, so pull-request previews never touch production data.
+    // Bindings and vars are not inherited by environments, so they are repeated here.
+    "staging": {
+      "workers_dev": true,
+      "routes": [],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "try-something-db-staging",
+          "database_id": "fb745c2e-bcda-455d-bd4f-4c5e20c1902c",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "kv_namespaces": [
+        { "binding": "CACHE", "id": "dc8803445ec84ec7a06abc288e8f6ceb" }
+      ],
+      "r2_buckets": [
+        { "binding": "AVATARS", "bucket_name": "try-something-avatars-staging" },
+        { "binding": "TOOL_IMAGES", "bucket_name": "try-something-tool-images-staging" }
+      ],
+      "images": { "binding": "IMAGES" },
+      "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["hello@trysometh.ing"] }],
+      "vars": {
+        // PUBLIC_SITE_URL is a Worker secret here: the workers.dev host contains the account subdomain.
+        "PUBLIC_GITHUB_REPO": "ptrgiang/try-something",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFgHWbmAN8NEeNyH",
+        "EMAIL_FROM": "hello@trysometh.ing",
+        "EMAIL_LOGIN_ENABLED": "true",
+        "COMMENTS_ENABLED": "true",
+        "ANALYTICS_COUNT_AUTOMATION": "false"
+      }
+    }
+  }
+}

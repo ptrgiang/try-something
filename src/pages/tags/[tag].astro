@@ -1,0 +1,64 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import Filters from "../../components/Filters.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import Icon from "../../components/Icon.astro";
+import { countTools, listTools, parsePeriod, parseSort, relatedTags, tagDescription, TAG_INDEX_MIN } from "../../lib/db";
+import { CATEGORIES, CATEGORY_IDS, parseTags } from "../../lib/validation";
+import { collectionLd, crumbsLd } from "../../lib/seo";
+import { tagCard } from "../../lib/og";
+
+const raw = Astro.params.tag ?? "";
+const tag = parseTags(raw)[0];
+if (!tag) return Astro.rewrite("/404");
+if (tag !== raw) return Astro.redirect(`/tags/${tag}${Astro.url.search}`, 301);
+
+const sp = Astro.url.searchParams;
+const categoryParam = sp.get("category");
+const category = categoryParam && CATEGORY_IDS.includes(categoryParam) ? categoryParam : null;
+const sort = parseSort(sp.get("sort"));
+const period = sort === "popular" ? parsePeriod(sp.get("period")) : "all";
+const limit = 48;
+const [all, total, tools, related, intro] = await Promise.all([
+  countTools(env.DB, { tag }),
+  countTools(env.DB, { tag, category: category ?? undefined }),
+  listTools(env.DB, { tag, category: category ?? undefined, sort, period, limit }),
+  relatedTags(env.DB, tag, 10),
+  tagDescription(env.DB, tag),
+]);
+if (all === 0) return Astro.rewrite("/404");
+const label = CATEGORIES.find((c) => c.id === category)?.label;
+const filtered = Boolean(category) || sort !== "picks";
+const moreHref = `/explore${category ? `/${category}` : ""}?${new URLSearchParams({ tag })}`;
+const description = intro ?? `${all} hand-picked ${all === 1 ? "tool" : "tools"} tagged #${tag} that you can try in your browser, each one tried by a person.`;
+const jsonLd = [
+  collectionLd({ path: `/tags/${tag}`, name: `#${tag} tools`, description, tools }),
+  crumbsLd([{ name: "Explore", path: "/explore" }, { name: `#${tag}`, path: `/tags/${tag}` }]),
+];
+---
+<Base title={`${all} ${tag} ${all === 1 ? "tool" : "tools"} you can try in your browser`} description={description} nav="explore" path={`/tags/${tag}`} noindex={filtered || all < TAG_INDEX_MIN} headerSearch={false} jsonLd={jsonLd} og={filtered ? undefined : tagCard(tag, all, tools)}>
+  <div class="explore-head tag-head">
+    <div>
+      <p class="eyebrow"><a href="/explore">Explore</a> · Tag</p>
+      <h1 class="page-title">#{tag}{label && <span class="muted"> in {label}</span>}</h1>
+      {intro && <p class="lede tag-intro">{intro}</p>}
+      <p class="result-count">{total} {total === 1 ? "tool" : "tools"}</p>
+    </div>
+    {related.length > 0 && (
+      <nav class="related-tags" aria-label="Related tags">
+        <p>Related tags</p>
+        <ul>
+          {related.map((r) => <li><a href={`/tags/${r.tag}`}>#{r.tag}<span>{r.n}</span></a></li>)}
+        </ul>
+      </nav>
+    )}
+  </div>
+  <Filters base={`/tags/${tag}`} category={category} sort={sort} period={period} />
+  {tools.length ? (
+    <div class="grid" data-surface="tag">{tools.map((tool, i) => <ToolCard tool={tool} headingLevel="h2" index={i} />)}</div>
+  ) : (
+    <div class="empty"><p>No #{tag} tools{label ? ` in ${label}` : ""} yet.</p></div>
+  )}
+  {total > limit && <p class="wrap load-more"><a class="btn" href={moreHref}>See all {total} on Explore <Icon name="arrow" /></a></p>}
+</Base>

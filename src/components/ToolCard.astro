@@ -1,0 +1,39 @@
+---
+import { toolImageSrc } from "../lib/tool-image";
+import type { ToolWithCredit } from "../lib/db";
+import ToolCover from "./ToolCover.astro";
+import Icon from "./Icon.astro";
+import ToolStats from "./ToolStats.astro";
+import { displayHost } from "../lib/url";
+
+interface Props {
+  tool: ToolWithCredit;
+  headingLevel?: "h2" | "h3";
+  // Position in the list: the first card is the likely LCP image, so it loads with high priority.
+  index?: number;
+}
+const { tool, headingLevel = "h3", index = Infinity } = Astro.props;
+const H = headingLevel;
+const host = displayHost(tool.url);
+---
+<article class="card" data-impression={tool.id}>
+  <a class="card-cover" href={`/tools/${tool.slug}`} tabindex="-1" aria-hidden="true">
+    <ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority={index === 0} />
+  </a>
+  <div class="card-body">
+    <H><a href={`/tools/${tool.slug}`}>{tool.name}</a></H>
+    <p class="tagline">{tool.tagline}</p>
+    <div class="card-meta">
+      <a class="card-host" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id} title={`Open ${host}`}><span class="card-host-name">{host}</span><Icon name="external" /><span class="sr-only">(opens in a new tab)</span></a>
+      <ToolStats tool={tool} />
+    </div>
+  </div>
+  <div class="card-actions">
+    <button type="button" class="btn btn-sm save-btn" data-save={tool.id} aria-pressed="false" aria-label={`Save ${tool.name}`}>
+      <Icon name="bookmark" /><span>Save</span>
+    </button>
+    <a class="btn btn-sm btn-dark" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>
+      Try it <Icon name="external" /><span class="sr-only">(opens {host} in a new tab)</span>
+    </a>
+  </div>
+</article>
