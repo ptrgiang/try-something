@@ -45,7 +45,9 @@ export function sql(statements: string): void {
 }
 
 export function sqlJson<T>(query: string): T[] {
-  const out = wrangler(["--json", `--command=${JSON.stringify(query)}`]);
+  // Only the Windows path goes through a shell, so only it needs the query quoted.
+  const command = process.platform === "win32" ? JSON.stringify(query) : query;
+  const out = wrangler(["--json", `--command=${command}`]);
   return JSON.parse(out)[0].results as T[];
 }
 
