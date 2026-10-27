@@ -4,6 +4,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-27
+
+First public release; the site runs at https://trysometh.ing.
+
 ### Browsing and profiles
 
 - Quick search from any page: Ctrl+K (⌘K on a Mac) or "/" opens a search box with live results, arrow-key selection and a link to all results. With an empty query it shows what's trending this week.
@@ -155,3 +159,6 @@ The interface is design v1 (see ROADMAP.md).
 - `hello@trysometh.ing` via Cloudflare Email Routing.
 - Unit tests and Playwright end-to-end flow tests.
 - 13 editorial seed tools (links checked live; manual try QA pending).
+
+[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ptrgiang/try-something/releases/tag/v0.1.0
