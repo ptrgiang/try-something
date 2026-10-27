@@ -25,9 +25,10 @@ rather than replacing it.
 - [x] Repo policy: MIT + trademark policy, fork-and-email contributions, AGENTS.md, runbooks
 - [x] CI (type-check, unit, build, e2e, migration guard); staging environment; manual promote-to-production workflow
 - [x] `hello@trysometh.ing` via Cloudflare Email Routing (contact for contributions and takedowns)
-- [ ] Public repository, Workers Builds connected (staging + production), branch rulesets
-- [ ] Production D1/KV, Worker secrets, OAuth apps, real Turnstile keys, WAF rate-limit rule
-- [ ] Staging preview, then production on `trysometh.ing` after QA (OAuth callbacks checked on both)
+- [x] Public repository with branch rulesets (2026-10-27)
+- [ ] Workers Builds connected (staging + production); until then deploys run by hand with wrangler
+- [x] Production D1/KV, Worker secrets, OAuth apps, real Turnstile keys, WAF rate-limit rule
+- [x] Staging preview, then production on `trysometh.ing` after QA (OAuth callbacks checked on both)
 - [x] Visual QA at 768px alongside 375px and 1440px (staging, 2026-10-22)
 - [x] Browser check of every seed tool's 30-second try (2026-10-22; listening and feel still need an editor)
 - [x] Seed set grown to 29 tools across all seven categories, each opened in a browser and usable without an account
@@ -45,10 +46,10 @@ rather than replacing it.
 - [x] One account per person across Google, GitHub and email codes; Settings (`/me/settings`) for profile, sign-in methods and deletion
 - [x] Profile photos: upload (resized in the browser, checked on the server, stored in R2), or the Google/GitHub photo, or initials; moderators can remove one
 - [x] `COMMENTS_ENABLED` switch, off in production until checked on staging
-- [ ] Turn comments on in production after the staging check
+- [x] Comments on in production (2026-10-27)
 - [ ] Weekly curated collections as an editorial habit (the tooling exists)
 - [x] Optional cover upload with a submission: resized in the browser, checked on the server, private in R2 until a moderator publishes it; covers use the upload, then the site's share image, then generated art
-- [ ] Production R2 bucket for tool covers (`try-something-tool-images`)
+- [x] Production R2 bucket for tool covers (`try-something-tool-images`)
 - [x] Privacy-friendly analytics on our own D1 (no cookies, no third party): `/admin/stats` with traffic, sources, countries, top tools, community activity and weekly account retention
 
 - [x] Search-friendly pages: site-wide JSON-LD graph (WebSite with search, Organization), breadcrumbs, CollectionPage lists on tag, category and collection pages, ProfilePage on profiles; intent titles; sitemap index with tool cover images; categories at `/explore/<category>`
