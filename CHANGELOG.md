@@ -4,6 +4,11 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+
+- Cards show a "New" or "Updated" chip for a week after a tool is published or resurfaced, so it's clear why it sits near the top of Picks.
+- RSS feed of the 30 newest tools at `/feed.xml`, linked from every page's head and the footer.
+
 ## [0.1.0] - 2026-10-27
 
 First public release; the site runs at https://trysometh.ing.

@@ -5,6 +5,7 @@ import ToolCover from "./ToolCover.astro";
 import Icon from "./Icon.astro";
 import ToolStats from "./ToolStats.astro";
 import { displayHost } from "../lib/url";
+import { freshLabel } from "../lib/picks";
 
 interface Props {
   tool: ToolWithCredit;
@@ -15,11 +16,13 @@ interface Props {
 const { tool, headingLevel = "h3", index = Infinity } = Astro.props;
 const H = headingLevel;
 const host = displayHost(tool.url);
+const label = freshLabel(tool);
 ---
 <article class="card" data-impression={tool.id}>
   <a class="card-cover" href={`/tools/${tool.slug}`} tabindex="-1" aria-hidden="true">
     <ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority={index === 0} />
   </a>
+  {label && <span class="fresh-chip">{label}</span>}
   <div class="card-body">
     <H><a href={`/tools/${tool.slug}`}>{tool.name}</a></H>
     <p class="tagline">{tool.tagline}</p>

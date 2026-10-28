@@ -41,3 +41,14 @@ export function picksOrder<T extends PicksInput>(tools: T[], now = Date.now()): 
   keyed.sort((a, b) => a.rel - b.rel || a.tier - b.tier || a.within - b.within || a.t.id.localeCompare(b.t.id));
   return keyed.map((k) => k.t);
 }
+
+/** Cards say why a tool sits high for a week; shorter than FRESH_DAYS so a big batch doesn't badge whole pages for long. */
+export const LABEL_DAYS = 7;
+
+export function freshLabel(t: Pick<PicksInput, "published_at" | "refreshed_at">, now = Date.now()): "New" | "Updated" | null {
+  const since = now - LABEL_DAYS * 86400000;
+  const published = Date.parse(t.published_at);
+  const refreshed = t.refreshed_at ? Date.parse(t.refreshed_at) : 0;
+  if (refreshed > published && refreshed >= since) return "Updated";
+  return published >= since ? "New" : null;
+}

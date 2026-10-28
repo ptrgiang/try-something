@@ -1128,6 +1128,25 @@ textarea {
   color: var(--ink);
   text-decoration: underline;
 }
+/* Outside the aria-hidden cover link so screen readers hear it; it rides the cover's hover lift. */
+.fresh-chip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  pointer-events: none;
+  transition: transform 0.25s ease;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.card:hover .fresh-chip {
+  transform: translateY(-4px);
+}
 .card-cover svg {
   width: 100%;
   height: 100%;

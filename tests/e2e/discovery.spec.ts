@@ -99,3 +99,14 @@ test("header menus close on an outside click or Escape, and GitHub opens in a ne
     await expect(link).toHaveAttribute("target", "_blank");
   }
 });
+
+test("the RSS feed lists the newest tools and every page links to it", async ({ page, request }) => {
+  const res = await request.get("/feed.xml");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("application/rss+xml");
+  const xml = await res.text();
+  expect(xml).toMatch(/<item><title>[^<]+<\/title><link>https:\/\/trysometh\.ing\/tools\//);
+
+  await page.goto("/");
+  await expect(page.locator('link[rel="alternate"][type="application/rss+xml"]')).toHaveAttribute("href", "/feed.xml");
+});

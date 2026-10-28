@@ -68,6 +68,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="alternate" type="application/rss+xml" title="Try Something: new tools" href="/feed.xml" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -174,6 +175,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           <a href="/submit">Submit a tool</a>
           <a href="/contribute">Contribute</a>
           <a href="/about">About</a>
+          <a href="/feed.xml">RSS</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
         </nav>

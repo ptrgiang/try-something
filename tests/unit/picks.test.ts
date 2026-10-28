@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dailyShuffle, FRESH_DAYS, picksOrder, type PicksInput } from "../../src/lib/picks";
+import { dailyShuffle, FRESH_DAYS, freshLabel, LABEL_DAYS, picksOrder, type PicksInput } from "../../src/lib/picks";
 import { canResurface, RESURFACE_COOLDOWN_DAYS, updateCheck, UPDATE_LIMIT } from "../../src/lib/moderation";
 import { parseToolUpdate } from "../../src/lib/validation";
 
@@ -86,5 +86,17 @@ describe("product updates", () => {
     const bad = parseToolUpdate({ note: "new", tagline: "x", tryThis: "y" });
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(Object.keys(bad.errors).sort()).toEqual(["note", "tagline", "tryThis"]);
+  });
+});
+
+describe("freshLabel", () => {
+  it("labels tools published in the last week as New", () => {
+    expect(freshLabel({ published_at: daysAgo(2), refreshed_at: null }, NOW)).toBe("New");
+    expect(freshLabel({ published_at: daysAgo(LABEL_DAYS + 1), refreshed_at: null }, NOW)).toBeNull();
+  });
+
+  it("labels a recent resurface as Updated, and drops it after the week", () => {
+    expect(freshLabel({ published_at: daysAgo(100), refreshed_at: daysAgo(1) }, NOW)).toBe("Updated");
+    expect(freshLabel({ published_at: daysAgo(100), refreshed_at: daysAgo(LABEL_DAYS + 1) }, NOW)).toBeNull();
   });
 });
