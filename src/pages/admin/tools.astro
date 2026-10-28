@@ -2,7 +2,7 @@
 import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import AdminNav from "../../components/AdminNav.astro";
-import { setFeatured, setToolVisibility } from "../../lib/db";
+import { HERO_SLIDES, setFeatured, setToolVisibility } from "../../lib/db";
 import { isModerator } from "../../lib/moderation";
 import { plainText } from "../../lib/validation";
 
@@ -39,7 +39,7 @@ const { results: tools } = await env.DB.prepare(
     <p class="eyebrow">Moderation</p>
     <h1 class="page-title">Published tools</h1>
     <AdminNav current="tools" />
-    <p class="lede">Hidden tools disappear from Explore, search, collections and the sitemap. Featured tools (1, 2, 3…) fill the home slideshow in that order; 0 takes one out. History is kept.</p>
+    <p class="lede">Hidden tools disappear from Explore, search, collections and the sitemap. Featured tools (1, 2, 3…) fill the home slideshow in that order, up to {HERO_SLIDES}, and lead the Picks order; 0 takes one out. History is kept.</p>
     {error && <p class="form-error" role="alert">{error}</p>}
     <div class="table-wrap table-cards submit-body">
       <table>

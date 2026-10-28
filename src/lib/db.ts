@@ -261,7 +261,10 @@ export async function listTools(
   return results.map(toTool);
 }
 
-export async function featuredTools(db: D1Database, limit = 5): Promise<ToolWithCredit[]> {
+/** How many featured tools the home slideshow shows; positions past it only lead the Picks order. */
+export const HERO_SLIDES = 10;
+
+export async function featuredTools(db: D1Database, limit = HERO_SLIDES): Promise<ToolWithCredit[]> {
   const { results } = await db
     .prepare(`${TOOL_SELECT} WHERE t.status = 'published' AND t.featured > 0 ORDER BY t.featured ASC LIMIT ?`)
     .bind(limit)

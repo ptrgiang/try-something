@@ -41,6 +41,13 @@ describe("parseMetadata", () => {
     expect(meta.favicon).toBeNull();
   });
 
+  it("reads the share image from spaced-out og tags, falling back to a thumbnail hint", () => {
+    const og = parseMetadata(`<meta property="og:image"       content="/sample.jpg"/>`, new URL("https://earth.example.org/"));
+    expect(og.image).toBe("https://earth.example.org/sample.jpg");
+    const thumb = parseMetadata(`<meta name="thumbnail" content="https://a.com/scr.png" /><link rel="image_src" href="/icon.png">`, new URL("https://a.com/"));
+    expect(thumb.image).toBe("https://a.com/scr.png");
+  });
+
   it("does not let script content into the title", () => {
     const meta = parseMetadata(`<title><script>alert(1)</script>Real</title>`, new URL("https://a.com/"));
     expect(meta.title).toBe("alert(1)Real");

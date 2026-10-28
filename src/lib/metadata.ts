@@ -174,7 +174,8 @@ export function parseMetadata(html: string, base: URL): Omit<PageMetadata, "fina
     links.find((a) => /apple-touch-icon/i.test(a.rel ?? "") && a.href);
   let image: string | null = null;
   try {
-    const raw = metaContent("og:image", "og:image:url", "og:image:secure_url", "twitter:image", "twitter:image:src");
+    // "thumbnail" is an older hint some sites still use for a screenshot; image_src and JSON-LD are usually just logos.
+    const raw = metaContent("og:image", "og:image:url", "og:image:secure_url", "twitter:image", "twitter:image:src", "thumbnail");
     const resolved = raw ? new URL(raw, base) : null;
     image = resolved && resolved.protocol === "https:" ? resolved.toString().slice(0, 1000) : null;
   } catch {

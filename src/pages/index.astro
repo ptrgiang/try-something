@@ -30,7 +30,7 @@ const exploreHref = (() => {
 })();
 
 const [featured, tags, today, counts] = await Promise.all([
-  featuredTools(env.DB, 5),
+  featuredTools(env.DB),
   popularTags(env.DB, 7),
   topToday(env.DB, 3),
   categoryCounts(env.DB),

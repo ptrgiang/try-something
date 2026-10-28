@@ -14,6 +14,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 - Submissions made without "Fetch details" now get the site's share image too: the server looks it up when the form didn't include one.
 - The review page no longer flags a just-approved submission as a "Possible duplicate" of the tool it published.
+- The share image lookup also reads a `<meta name="thumbnail">` screenshot when a site has no og/twitter image.
+- The home slideshow shows up to 10 featured tools instead of 5, so a tool featured at position 6 or later appears in it.
 
 ## [0.1.0] - 2026-10-27
 
