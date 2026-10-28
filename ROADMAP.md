@@ -114,6 +114,10 @@ P1:
       with less-seen tools first and a daily reshuffle (`src/lib/picks.ts`, tune the constants once impressions data
       shows how it does)
 - [ ] Notify people who saved a tool when it gets an update (R1b; the notification kinds need a table rebuild)
+- [x] Discovery sessions at `/discover` (2026-10-28): pick a mood, get three tools one at a time from its categories,
+      no repeats within the session, less-seen tools first two times in three; state lives in the URL, no account
+- [x] Feedback page for bugs, broken tools and ideas without an account; Surprise me in the desktop header; About lists
+      what gets listed (2026-10-28)
 
 ## M2 — Growth (only with a real audience)
 

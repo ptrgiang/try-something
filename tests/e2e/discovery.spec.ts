@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { sqlJson } from "./helpers";
 
 test("tag pages list tagged tools with related tags, and tool tags link to them", async ({ page }) => {
   const res = await page.goto("/tags/svg");
@@ -110,4 +111,25 @@ test("the RSS feed lists the newest tools, and the header has Surprise me", asyn
   await page.goto("/");
   await expect(page.locator('link[rel="alternate"][type="application/rss+xml"]')).toHaveAttribute("href", "/feed.xml");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Surprise me" })).toHaveAttribute("href", "/surprise");
+});
+
+test("a discovery session shows three different tools for the mood, then offers three more", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Discover by mood" }).click();
+  await expect(page).toHaveURL(/\/discover$/);
+  await page.getByRole("link", { name: /Play something/ }).click();
+  const shown = new Set<string>();
+  for (let step = 1; step <= 3; step++) {
+    await expect(page.locator(".discover-progress")).toContainText(`Discovery ${step} of 3`);
+    const id = await page.locator(".discover-card").getAttribute("data-impression");
+    expect(shown.has(id!)).toBe(false);
+    shown.add(id!);
+    const [{ category }] = sqlJson<{ category: string }>(`SELECT category FROM tool WHERE id = '${id}'`);
+    expect(["play", "fun"]).toContain(category);
+    await expect(page.locator(".discover-card").getByRole("link", { name: /^Try it on/ })).toHaveAttribute("href", /utm_source=trysometh\.ing/);
+    if (step < 3) await page.getByRole("link", { name: "Next discovery" }).click();
+  }
+  await page.getByRole("link", { name: "3 more" }).click();
+  await expect(page.locator(".discover-progress")).toContainText("Discovery 1 of 3");
+  expect(shown.has((await page.locator(".discover-card").getAttribute("data-impression"))!)).toBe(false);
 });

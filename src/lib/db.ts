@@ -304,6 +304,27 @@ export async function surpriseSlug(db: D1Database, from: string | null, seen: st
 }
 
 /**
+ * Next tool for a discovery session: from the mood's categories (all when null), never one already shown this
+ * session, and two times in three from the less-seen half so quiet tools get their turn. Null once all were shown.
+ */
+export async function discoveryPick(db: D1Database, categories: readonly string[] | null, seen: string[], random = Math.random): Promise<ToolWithCredit | null> {
+  const { results } = await db
+    .prepare(
+      `SELECT t.slug,
+         COALESCE((SELECT SUM(s.views + s.tries) FROM tool_stat_daily s WHERE s.tool_id = t.id AND s.day >= date('now', '-30 days')), 0) AS exposure
+       FROM tool t WHERE t.status = 'published' AND (?1 IS NULL OR t.category IN (SELECT value FROM json_each(?1)))
+       ORDER BY exposure, t.published_at DESC`,
+    )
+    .bind(categories ? JSON.stringify(categories) : null)
+    .all<{ slug: string }>();
+  const pool = results.filter((t) => !seen.includes(t.slug));
+  if (!pool.length) return null;
+  const quiet = pool.slice(0, Math.max(1, Math.ceil(pool.length / 2)));
+  const draw = random() < 2 / 3 ? quiet : pool;
+  return getPublishedTool(db, draw[Math.floor(random() * draw.length)].slug);
+}
+
+/**
  * Other tools for the detail page. `maker`: same maker name, or the same person's own submissions.
  * `similar`: ranked by shared tags (2 each) plus same category (1), ties shuffled, topped up with
  * random picks so the section is never short; never repeats a `maker` tool.

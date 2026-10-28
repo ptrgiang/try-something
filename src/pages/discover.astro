@@ -1,0 +1,69 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import ToolCover from "../components/ToolCover.astro";
+import { discoveryPick } from "../lib/db";
+import { discoverUrl, MOODS, parseMood, parseSeen, parseStep, SESSION_LENGTH } from "../lib/discover";
+import { toolImageSrc } from "../lib/tool-image";
+import { displayHost, outboundUrl } from "../lib/url";
+
+const mood = parseMood(Astro.url.searchParams.get("mood"));
+const seen = parseSeen(Astro.url.searchParams.get("seen"));
+const step = parseStep(Astro.url.searchParams.get("step"));
+const tool = mood ? await discoveryPick(env.DB, mood.categories, seen) : null;
+// Each request draws a different tool, so nothing about a session may be cached or indexed.
+if (mood) Astro.response.headers.set("cache-control", "private, no-store");
+const next = mood && tool ? discoverUrl(mood.id, step < SESSION_LENGTH ? step + 1 : 1, [...seen, tool.slug]) : null;
+---
+<Base title="Discover" path="/discover" noindex={Boolean(mood)} description="Pick a mood and get three hand-picked web tools to try, one at a time. No account needed.">
+  <div class="page discover">
+    <header class="page-head">
+      <p class="eyebrow">Discover</p>
+      <h1 class="page-title">Find something unexpected.</h1>
+      {!mood && <p class="lede">What are you in the mood for? You'll get three tools, one at a time. No account needed.</p>}
+    </header>
+
+    {!mood && (
+      <ul class="mood-grid" role="list">
+        {MOODS.map((m) => (
+          <li><a class="mood" href={discoverUrl(m.id, 1, [])}><strong>{m.label}</strong><span>{m.hint}</span></a></li>
+        ))}
+      </ul>
+    )}
+
+    {mood && tool && (
+      <section class="discover-session" data-surface="discover" aria-labelledby="discover-name">
+        <p class="discover-progress"><span>Discovery {step} of {SESSION_LENGTH}</span> · {mood.label} · <a href="/discover">Change mood</a></p>
+        <article class="discover-card" data-impression={tool.id}>
+          <a class="discover-cover" href={`/tools/${tool.slug}`} tabindex="-1" aria-hidden="true">
+            <ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority />
+          </a>
+          <div class="discover-body">
+            <h2 id="discover-name"><a href={`/tools/${tool.slug}`}>{tool.name}</a></h2>
+            <p class="tagline">{tool.tagline}</p>
+            <div class="try-box">
+              <h3>Try this in 30 seconds</h3>
+              <p>{tool.try_this}</p>
+            </div>
+            <div class="hero-ctas">
+              <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {displayHost(tool.url)} <Icon name="external" /></a>
+              <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
+            </div>
+          </div>
+        </article>
+        <nav class="discover-nav" aria-label="Discovery">
+          <a class="btn btn-lg" href={next!}><Icon name="shuffle" />{step < SESSION_LENGTH ? "Next discovery" : `${SESSION_LENGTH} more`}</a>
+          <a class="btn btn-ghost btn-lg" href={discoverUrl(mood.id, 1, [])}>Restart</a>
+        </nav>
+      </section>
+    )}
+
+    {mood && !tool && (
+      <div class="empty discover-empty">
+        <p>{seen.length ? `That's every tool for “${mood.label}” so far.` : "Nothing here yet."} More are added every week.</p>
+        <p class="hero-ctas"><a class="btn btn-dark" href="/discover">Pick another mood</a> <a class="btn" href="/explore">Explore everything</a></p>
+      </div>
+    )}
+  </div>
+</Base>

@@ -148,6 +148,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
               <a href="/collections">Collections</a>
               <a href="/about">About</a>
               <a href="/surprise">Surprise me</a>
+              <a href="/discover">Discover by mood</a>
               <a href="/submit">Submit a tool</a>
               {!user && <a href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
             </div>

@@ -16,6 +16,7 @@ export const GET: APIRoute = async ({ params }) => {
       ...CATEGORIES.map((c) => ({ loc: `/explore/${c.id}` })),
       { loc: "/collections" },
       ...collections.map((c) => ({ loc: `/collections/${c.slug}`, lastmod: c.updated_at })),
+      { loc: "/discover" },
       { loc: "/about" },
       { loc: "/contribute" },
     ],

@@ -8,6 +8,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 - Cards show a "New" or "Updated" chip for a week after a tool is published or resurfaced, so it's clear why it sits near the top of Picks.
 - RSS feed of the 30 newest tools at `/feed.xml`, linked from every page's head and the footer.
+- Discovery sessions at `/discover`: pick a mood (anything, make, play, learn, get something done) and get three tools one at a time, with the 30-second try, Try it and Save, then three more. No repeats within a session and quieter tools come up more often. No account or script needed; the home hero links to it as "Discover by mood".
 - Feedback page (`/feedback`, linked from the footer) for bugs, broken tools and ideas, with no account needed: Turnstile, 5 per hour per sender, stored in D1 and handled by moderators at `/admin/feedback`. Signed out, "Report listing" on a tool page opens it with the tool filled in.
 - Surprise me in the desktop header (icon only between 900 and 1100px).
 - About explains what gets listed and what doesn't.
