@@ -23,7 +23,7 @@ interface Props {
   description?: string;
   path?: string;
   noindex?: boolean;
-  nav?: "explore" | "collections" | "about" | null;
+  nav?: "explore" | "discover" | "collections" | "about" | null;
   ogType?: "website" | "article";
   /** Page-specific schema.org nodes, added to the site-wide WebSite and Organization graph. */
   jsonLd?: LdNode | LdNode[];
@@ -95,6 +95,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
         </div>
         <nav class="main-nav" aria-label="Main">
           <a href="/explore" aria-current={nav === "explore" ? "page" : undefined}>Explore</a>
+          <a href="/discover" aria-current={nav === "discover" ? "page" : undefined}>Discover</a>
           <a href="/collections" aria-current={nav === "collections" ? "page" : undefined}>Collections</a>
           <a href="/about" aria-current={nav === "about" ? "page" : undefined}>About</a>
           <a class="nav-surprise" href="/surprise" aria-label="Surprise me"><Icon name="shuffle" /><span class="surprise-label">Surprise me</span></a>
@@ -145,10 +146,10 @@ const q = Astro.url.searchParams.get("q") ?? "";
             <summary aria-label="Menu"><Icon name="menu" /></summary>
             <div class="menu-panel">
               <a href="/explore">Explore</a>
+              <a href="/discover">Discover</a>
               <a href="/collections">Collections</a>
               <a href="/about">About</a>
               <a href="/surprise">Surprise me</a>
-              <a href="/discover">Discover by mood</a>
               <a href="/submit">Submit a tool</a>
               {!user && <a href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
             </div>
@@ -173,6 +174,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
         </div>
         <nav aria-label="Footer">
           <a href="/explore">Explore</a>
+          <a href="/discover" aria-current={nav === "discover" ? "page" : undefined}>Discover</a>
           <a href="/collections">Collections</a>
           <a href="/submit">Submit a tool</a>
           <a href="/contribute">Contribute</a>

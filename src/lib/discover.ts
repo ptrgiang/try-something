@@ -6,11 +6,11 @@ const SEEN_MAX = 40;
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 export const MOODS = [
-  { id: "anything", label: "Surprise me with anything", hint: "Any corner of the catalog", categories: null },
-  { id: "make", label: "Make something", hint: "Drawing, design and creative tools", categories: ["create", "design"] },
-  { id: "play", label: "Play something", hint: "Games and web toys", categories: ["play", "fun"] },
-  { id: "learn", label: "Learn something", hint: "Interactive explainers", categories: ["learn"] },
-  { id: "work", label: "Get something done", hint: "Developer tools, utilities and helpers", categories: ["build", "productivity", "utilities", "business"] },
+  { id: "anything", label: "Anything", categories: null },
+  { id: "make", label: "Make something", categories: ["create", "design"] },
+  { id: "play", label: "Play something", categories: ["play", "fun"] },
+  { id: "learn", label: "Learn something", categories: ["learn"] },
+  { id: "work", label: "Get something done", categories: ["build", "productivity", "utilities", "business"] },
 ] as const;
 export type Mood = (typeof MOODS)[number];
 

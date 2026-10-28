@@ -117,7 +117,9 @@ test("a discovery session shows three different tools for the mood, then offers 
   await page.goto("/");
   await page.getByRole("link", { name: "Discover by mood" }).click();
   await expect(page).toHaveURL(/\/discover$/);
-  await page.getByRole("link", { name: /Play something/ }).click();
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Discover", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "Play something" }).click();
+  await expect(page.getByRole("link", { name: "Play something" })).toHaveAttribute("aria-current", "true");
   const shown = new Set<string>();
   for (let step = 1; step <= 3; step++) {
     await expect(page.locator(".discover-progress")).toContainText(`Discovery ${step} of 3`);

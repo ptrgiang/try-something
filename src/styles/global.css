@@ -5478,74 +5478,138 @@ td.num {
 }
 
 /* ---------- Discover ---------- */
-.discover {
-  max-width: 1080px;
-}
-.mood-grid {
+.deal {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 14px;
-  margin: 8px 0 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 640px);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+.deal-intro .page-title {
+  font-size: clamp(40px, 5.4vw, 64px);
+}
+.deal-ask {
+  margin: 28px 0 10px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.mood-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
-.mood {
-  display: grid;
-  gap: 6px;
-  height: 100%;
-  padding: 22px 22px 24px;
-  border-radius: var(--radius);
+.mood-chips a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
   background: var(--paper);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
+  font-weight: 700;
+  font-size: 15px;
   text-decoration: none;
   color: var(--ink);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition: background 0.15s ease;
 }
-.mood strong {
-  font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: -0.01em;
-}
-.mood span {
-  color: var(--muted);
-  font-size: 15px;
-}
-.mood:hover {
-  transform: translateY(-3px);
-  border-color: var(--lavender);
-}
-.mood-grid li:first-child .mood {
+.mood-chips a:hover {
   background: var(--butter-soft);
-  border-color: #f1dc84;
 }
-.discover-progress {
-  margin: 0 0 16px;
-  color: var(--muted);
-  font-size: 15px;
+.mood-chips a[aria-current="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
 }
-.discover-progress span {
-  color: var(--ink);
+.deal-note {
+  margin: 28px 0 0;
+  font-family: var(--font-hand);
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--coral-ink);
+  transform: rotate(-3deg);
+  transform-origin: left center;
+}
+/* The ghosts are the cards still to come this round; their offsets need the deck's end margins. */
+.deck {
+  position: relative;
+  margin: 0 60px 56px 0;
+}
+.deck-card {
+  position: relative;
+  z-index: 3;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 1px 2px rgba(23, 20, 31, 0.05), 0 24px 50px -28px rgba(23, 20, 31, 0.5);
+}
+.deck-back {
+  position: absolute;
+  inset: 0;
+  background: var(--butter-soft) radial-gradient(rgba(23, 20, 31, 0.09) 1.2px, transparent 1.4px) 0 0 / 16px 16px;
+}
+.deck-back.b1 {
+  z-index: 2;
+  transform: translate(18px, 14px) rotate(2deg);
+}
+.deck-back.b2 {
+  z-index: 1;
+  transform: translate(34px, 26px) rotate(4deg);
+}
+.deck-face {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  min-height: 420px;
+  padding: 32px;
+  text-align: center;
+  color: var(--ink-2);
   font-weight: 700;
 }
+.deck-face svg {
+  width: 56px;
+  height: 56px;
+  color: var(--coral-ink);
+}
 .discover-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: clamp(20px, 3vw, 40px);
-  align-items: start;
+  animation: deal-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: transform 0.35s ease-in, opacity 0.35s ease-in;
+}
+.discover-card.is-dealt {
+  animation: none;
+  opacity: 0;
+  transform: translate(-115%, 30px) rotate(-16deg);
+}
+@keyframes deal-in {
+  from {
+    transform: translate(18px, 14px) rotate(2deg);
+  }
 }
 .discover-cover {
   display: block;
-  border-radius: var(--radius);
+  margin: 12px 12px 0;
+  border-radius: 14px;
   overflow: hidden;
   aspect-ratio: 1200 / 630;
   background: #f3efe8;
-  box-shadow: 0 1px 2px rgba(23, 20, 31, 0.06), 0 10px 30px -18px rgba(23, 20, 31, 0.35);
+}
+.discover-body {
+  padding: 18px 24px 24px;
+}
+.discover-host {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
 }
 .discover-body h2 {
-  margin: 0;
+  margin: 4px 0 0;
   font-family: var(--font-display);
-  font-size: clamp(28px, 3.4vw, 40px);
+  font-size: clamp(28px, 3.2vw, 38px);
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
@@ -5557,29 +5621,94 @@ td.num {
   color: var(--ink-2);
   font-size: 17px;
 }
+.discover-body .try-box {
+  margin: 16px 0;
+}
 .discover-body .try-box h3 {
   margin: 0 0 6px;
   font-size: 14px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.discover-nav {
+.discover-body .hero-ctas {
+  margin: 0;
+}
+.discover-body .hero-ctas .btn-dark {
+  max-width: 100%;
+  white-space: normal;
+}
+.deal-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  align-items: center;
+  gap: 10px 14px;
+  margin-right: 60px;
+}
+.deal-dots {
+  display: flex;
+  gap: 8px;
+}
+.deal-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 99px;
+  background: var(--line-strong);
+}
+.deal-dots .done {
+  background: var(--ink);
+}
+.deal-dots .now {
+  width: 34px;
+  background: var(--coral);
+}
+.discover-progress {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
 }
 .discover-empty {
   margin: 0;
 }
-@media (max-width: 760px) {
+@media (prefers-reduced-motion: reduce) {
   .discover-card {
-    grid-template-columns: 1fr;
+    animation: none;
+    transition: none;
   }
-  .discover-nav .btn {
-    flex: 1 1 auto;
+}
+@media (max-width: 900px) {
+  .deal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .deal-note {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .deck,
+  .deal-bar {
+    margin-right: 22px;
+  }
+  .deck {
+    margin-bottom: 34px;
+  }
+  .deck-back.b1 {
+    transform: translate(9px, 8px) rotate(2deg);
+  }
+  .deck-back.b2 {
+    transform: translate(14px, 15px) rotate(3deg);
+  }
+  .deck-face {
+    min-height: 280px;
+  }
+  .discover-body {
+    padding: 16px 18px 20px;
+  }
+  .discover-progress {
+    flex-basis: calc(100% - 96px);
+  }
+  .deal-bar .btn {
+    flex: 1 1 40%;
     justify-content: center;
   }
 }
