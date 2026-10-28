@@ -8,6 +8,12 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 - Cards show a "New" or "Updated" chip for a week after a tool is published or resurfaced, so it's clear why it sits near the top of Picks.
 - RSS feed of the 30 newest tools at `/feed.xml`, linked from every page's head and the footer.
+- "Try it" links carry `utm_source=trysometh.ing&utm_medium=referral`, so a tool's own analytics can see visits from here; a link's existing UTM tags are kept.
+
+### Fixed
+
+- Submissions made without "Fetch details" now get the site's share image too: the server looks it up when the form didn't include one.
+- The review page no longer flags a just-approved submission as a "Possible duplicate" of the tool it published.
 
 ## [0.1.0] - 2026-10-27
 

@@ -10,7 +10,7 @@ import CategoryArt from "../components/CategoryArt.astro";
 import ToolCover from "../components/ToolCover.astro";
 import { categoryCounts, featuredTools, homePicks, listTools, parsePeriod, parseSort, popularTags, topToday, TOP_TODAY_MIN_TOOLS } from "../lib/db";
 import { toolImageSrc } from "../lib/tool-image";
-import { displayHost } from "../lib/url";
+import { displayHost, outboundUrl } from "../lib/url";
 import { CATEGORIES, CATEGORY_IDS } from "../lib/validation";
 
 // Category and sort filter the list in place under the hero; only a search moves to /explore.
@@ -104,7 +104,7 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
             <div class="pick-text">
               <h3><a href={`/tools/${t.slug}`}>{t.name}</a></h3>
               <p>{t.tagline}</p>
-              <a class="pick-try" href={t.url} target="_blank" rel="noopener noreferrer" data-try={t.id}>Try it <Icon name="external" /><span class="sr-only">(opens {displayHost(t.url)} in a new tab)</span></a>
+              <a class="pick-try" href={outboundUrl(t.url)} target="_blank" rel="noopener noreferrer" data-try={t.id}>Try it <Icon name="external" /><span class="sr-only">(opens {displayHost(t.url)} in a new tab)</span></a>
             </div>
           </li>
         ))}

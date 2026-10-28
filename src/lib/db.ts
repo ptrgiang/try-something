@@ -393,7 +393,11 @@ export async function findDuplicate(
   key: string,
   excludeSubmissionId?: string,
 ): Promise<{ kind: "tool"; slug: string } | { kind: "submission" } | null> {
-  const tool = await db.prepare(`SELECT slug, status FROM tool WHERE canonical_key = ?`).bind(key).first<{ slug: string; status: string }>();
+  // The tool this submission itself published is not a duplicate of it.
+  const tool = await db
+    .prepare(`SELECT slug, status FROM tool WHERE canonical_key = ?1 AND (?2 IS NULL OR submission_id IS NOT ?2)`)
+    .bind(key, excludeSubmissionId ?? null)
+    .first<{ slug: string; status: string }>();
   if (tool) return { kind: "tool", slug: tool.slug };
   const sub = await db
     .prepare(`SELECT id FROM submission WHERE canonical_key = ? AND status IN ('pending','in_review','needs_changes') AND id != ?`)

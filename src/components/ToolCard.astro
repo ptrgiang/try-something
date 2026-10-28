@@ -4,7 +4,7 @@ import type { ToolWithCredit } from "../lib/db";
 import ToolCover from "./ToolCover.astro";
 import Icon from "./Icon.astro";
 import ToolStats from "./ToolStats.astro";
-import { displayHost } from "../lib/url";
+import { displayHost, outboundUrl } from "../lib/url";
 import { freshLabel } from "../lib/picks";
 
 interface Props {
@@ -27,7 +27,7 @@ const label = freshLabel(tool);
     <H><a href={`/tools/${tool.slug}`}>{tool.name}</a></H>
     <p class="tagline">{tool.tagline}</p>
     <div class="card-meta">
-      <a class="card-host" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id} title={`Open ${host}`}><span class="card-host-name">{host}</span><Icon name="external" /><span class="sr-only">(opens in a new tab)</span></a>
+      <a class="card-host" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} title={`Open ${host}`}><span class="card-host-name">{host}</span><Icon name="external" /><span class="sr-only">(opens in a new tab)</span></a>
       <ToolStats tool={tool} />
     </div>
   </div>
@@ -35,7 +35,7 @@ const label = freshLabel(tool);
     <button type="button" class="btn btn-sm save-btn" data-save={tool.id} aria-pressed="false" aria-label={`Save ${tool.name}`}>
       <Icon name="bookmark" /><span>Save</span>
     </button>
-    <a class="btn btn-sm btn-dark" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>
+    <a class="btn btn-sm btn-dark" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>
       Try it <Icon name="external" /><span class="sr-only">(opens {host} in a new tab)</span>
     </a>
   </div>

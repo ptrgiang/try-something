@@ -9,7 +9,7 @@ import Icon from "../../components/Icon.astro";
 import Comments from "../../components/Comments.astro";
 import { countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
 import { CATEGORIES } from "../../lib/validation";
-import { displayHost } from "../../lib/url";
+import { displayHost, outboundUrl } from "../../lib/url";
 import { crumbsLd, SITE } from "../../lib/seo";
 import { toolCard } from "../../lib/og";
 
@@ -82,7 +82,7 @@ const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_na
         <p>{tool.try_this}</p>
       </div>
       <div class="hero-ctas">
-        <a class="btn btn-dark btn-lg" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {host} <Icon name="external" /></a>
+        <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {host} <Icon name="external" /></a>
         <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
         <button type="button" class="btn btn-lg" data-share={`/tools/${tool.slug}`} data-share-title={tool.name}><Icon name="share" /><span>Share</span></button>
         <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`}><Icon name="shuffle" />Another one</a>
@@ -139,7 +139,7 @@ const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_na
   <div class="try-bar" data-try-bar>
     <div class="try-bar-name"><strong>{tool.name}</strong><span>{host}</span></div>
     <button type="button" class="btn save-btn" data-save={tool.id} aria-pressed="false" aria-label={`Save ${tool.name}`}><Icon name="bookmark" /><span>Save</span></button>
-    <a class="btn btn-dark" href={tool.url} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it <Icon name="external" /></a>
+    <a class="btn btn-dark" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it <Icon name="external" /></a>
   </div>
 </Base>
 <script>

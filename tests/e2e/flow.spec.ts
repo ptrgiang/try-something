@@ -188,6 +188,7 @@ test("full flow: submit → needs changes → resubmit → approve → published
   await expect(page.getByLabel("Publish with the uploaded cover")).toBeChecked();
   await page.getByRole("button", { name: "Approve & publish" }).click();
   await expect(page.getByRole("status")).toContainText("Published at /tools/e2e-sketch-pad");
+  await expect(page.getByText(/Possible duplicate/)).toHaveCount(0);
   await expect(page.locator(".timeline li")).toHaveCount(5);
   await signIn(page, submitter);
   await page.goto("/me/notifications");
@@ -199,6 +200,7 @@ test("full flow: submit → needs changes → resubmit → approve → published
   const res = await page.goto("/tools/e2e-sketch-pad");
   expect(res?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("E2E Sketch Pad");
+  await expect(page.getByRole("link", { name: /^Try it on/ })).toHaveAttribute("href", /\?utm_source=trysometh\.ing&utm_medium=referral$/);
   await expect(page.locator(".lede").first()).toContainText("<img src=x");
   expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
   await expect(page.locator(".credits")).toContainText("Discovered by Sam Submitter");

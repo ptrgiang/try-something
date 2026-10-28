@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertPublicHttpUrl, canonicalKey, cleanUrl, isPrivateAddress, parseUserUrl, UnsafeUrlError } from "../../src/lib/url";
+import { assertPublicHttpUrl, canonicalKey, cleanUrl, isPrivateAddress, outboundUrl, parseUserUrl, UnsafeUrlError } from "../../src/lib/url";
 
 describe("parseUserUrl / assertPublicHttpUrl", () => {
   it("adds https when the scheme is missing", () => {
@@ -52,5 +52,16 @@ describe("canonicalKey", () => {
   });
   it("cleanUrl strips tracking params and fragments", () => {
     expect(cleanUrl("https://a.com/p?utm_campaign=x&id=3#frag")).toBe("https://a.com/p?id=3");
+  });
+});
+
+describe("outboundUrl", () => {
+  it("tags the link with this site as the source", () => {
+    expect(outboundUrl("https://example.com/app#start")).toBe("https://example.com/app?utm_source=trysometh.ing&utm_medium=referral#start");
+    expect(outboundUrl("https://example.com/?lang=en")).toBe("https://example.com/?lang=en&utm_source=trysometh.ing&utm_medium=referral");
+  });
+
+  it("keeps a maker's own UTM tags", () => {
+    expect(outboundUrl("https://example.com/?utm_source=x")).toBe("https://example.com/?utm_source=x");
   });
 });

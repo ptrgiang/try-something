@@ -8,6 +8,7 @@ import { verifyTurnstile } from "./turnstile";
 import { plainText, validateSubmission, type FieldErrors } from "./validation";
 import { assertPublicHttpUrl } from "./url";
 import { isToolImageKey, storeToolImage } from "./tool-image";
+import { fetchMetadata } from "./metadata";
 
 export type FormOutcome = { ok: true; id: string } | { ok: false; errors: FieldErrors; values: Record<string, string> };
 
@@ -25,6 +26,17 @@ function shareImage(values: Record<string, string>): string | null {
     return url.toString().slice(0, 1000);
   } catch {
     return null;
+  }
+}
+
+// "Fetch details" is optional, so when the submitter skipped it the server looks for the share image itself.
+async function withShareImage(values: Record<string, string>, url: string): Promise<Record<string, string>> {
+  if (shareImage(values)) return values;
+  try {
+    const meta = await fetchMetadata(new URL(url), { timeoutMs: 4000 });
+    return { ...values, metaImage: meta.image ?? "" };
+  } catch {
+    return values;
   }
 }
 
@@ -69,8 +81,9 @@ export async function handleCreate(env: CloudflareEnv, request: Request, user: S
   // Stored last, once everything else passed, and removed again if the row isn't written.
   const upload = await storeToolImage(env.TOOL_IMAGES, user.id, form);
   if (upload && "error" in upload) return { ok: false, errors: { cover: upload.error }, values };
+  const meta = await withShareImage(values, result.value.url);
   try {
-    const id = await createSubmission(env.DB, user.id, result.value, sourceMeta(values), shareImage(values), upload?.key ?? null);
+    const id = await createSubmission(env.DB, user.id, result.value, sourceMeta(meta), shareImage(meta), upload?.key ?? null);
     return { ok: true, id };
   } catch (err) {
     if (upload) await env.TOOL_IMAGES?.delete(upload.key);

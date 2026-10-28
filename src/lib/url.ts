@@ -25,6 +25,20 @@ const BLOCKED_HOSTS = new Set([
 
 export class UnsafeUrlError extends Error {}
 
+/** A tool's outbound link, tagged so the tool's own analytics see the visit came from here. Existing UTM tags win. */
+export function outboundUrl(raw: string): string {
+  try {
+    const url = new URL(raw);
+    if (!url.searchParams.has("utm_source")) {
+      url.searchParams.set("utm_source", "trysometh.ing");
+      url.searchParams.set("utm_medium", "referral");
+    }
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 /** Parse a user-supplied URL, adding https:// when the scheme is missing. */
 export function parseUserUrl(input: string): URL {
   const raw = input.trim();
