@@ -1,0 +1,27 @@
+---
+// The "your tool is live" celebration on Notifications and My submissions. The badge page only serves tools the user made.
+import Icon from "./Icon.astro";
+import Sticker from "./Sticker.astro";
+
+interface Props {
+  name: string;
+  slug: string;
+  made: boolean;
+}
+const { name, slug, made } = Astro.props;
+---
+<div class="celebrate" role="status">
+  <Sticker name="gift" size="sm" />
+  <div>
+    <strong>{name} is live!</strong>
+    <p>{made ? "Share it while it's fresh: the badge links back to your listing." : "Share it while it's fresh, so others can try it too."}</p>
+    <p class="celebrate-actions">
+      {made && <a class="btn btn-dark btn-sm" href={`/me/share/${slug}`}>Get a badge</a>}
+      <button type="button" class:list={["btn", "btn-sm", !made && "btn-dark"]} data-share={`/tools/${slug}`} data-share-title={name}><Icon name="share" /><span>Share</span></button>
+      <a class="btn btn-sm" href={`/tools/${slug}`}>See the listing</a>
+    </p>
+  </div>
+</div>
+<script>
+  import "../scripts/share";
+</script>

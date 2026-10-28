@@ -15,13 +15,15 @@ const row = (over: Partial<NotificationRow>): NotificationRow => ({
   actor_name: null,
   tool_slug: null,
   tool_name: null,
+  tool_credit: null,
   ...over,
 });
 
 describe("notificationView", () => {
   it("links a published submission to its tool page", () => {
-    const v = notificationView(row({ status: "published", tool_slug: "sketch-pad", read_at: "2026-10-22T11:00:00Z" }));
-    expect(v).toMatchObject({ title: "Sketch Pad is live", href: "/tools/sketch-pad", icon: "check", unread: false });
+    const v = notificationView(row({ status: "published", tool_slug: "sketch-pad", tool_credit: "made", read_at: "2026-10-22T11:00:00Z" }));
+    expect(v).toMatchObject({ title: "Sketch Pad is live", href: "/tools/sketch-pad", icon: "check", unread: false, live: { slug: "sketch-pad", name: "Sketch Pad", made: true } });
+    expect(notificationView(row({ status: "published", tool_slug: "sketch-pad", tool_credit: "found" }))?.live).toEqual({ slug: "sketch-pad", name: "Sketch Pad", made: false });
   });
 
   it("sends needs changes and rejections to the submission with the editor's note", () => {

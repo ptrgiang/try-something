@@ -5,7 +5,7 @@ import Base from "../../layouts/Base.astro";
 import Filters from "../../components/Filters.astro";
 import ToolCard from "../../components/ToolCard.astro";
 import Icon from "../../components/Icon.astro";
-import { countTools, listTools, parsePeriod, parseSort } from "../../lib/db";
+import { countTools, listTools, parsePeriod, parseSort, popularTags } from "../../lib/db";
 import { collectionLd, crumbsLd } from "../../lib/seo";
 import { categoryCard } from "../../lib/og";
 import { CATEGORIES, CATEGORY_IDS, parseTags, plainText } from "../../lib/validation";
@@ -48,6 +48,7 @@ const description = cat
   ? `${cat.blurb} ${total} hand-picked ${total === 1 ? "tool" : "tools"}, each one tried by a person.`
   : `Browse ${total} hand-picked web tools, experiments and tiny apps. Each one works in your browser and was tried by a person.`;
 const shown = tools.slice(0, perPage);
+const suggestTags = shown.length ? [] : await popularTags(env.DB, 6);
 const jsonLd = noindex
   ? undefined
   : [
@@ -80,6 +81,12 @@ const jsonLd = noindex
     <div class="empty sticker-empty">
       <Sticker name="search" size="md" />
       <p>Nothing matches{q ? ` “${q}”` : ""} yet.</p>
+      {suggestTags.length > 0 && (
+        <nav class="popular-tags" aria-label="Popular tags">
+          <span>Try a tag:</span>
+          {suggestTags.map((t) => <a href={`/tags/${t}`}>{t}</a>)}
+        </nav>
+      )}
       <p><a href="/submit">Know a tool that fits? Submit it.</a></p>
     </div>
   )}

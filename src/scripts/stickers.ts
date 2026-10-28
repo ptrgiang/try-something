@@ -25,7 +25,8 @@ export async function mountStickers(root: Element | Document = document) {
   }
 }
 
-function canvasFor(name: StickerName, className: string) {
+/** A sticker canvas built in script, for UI that only sometimes shows one; start it with mountStickers. */
+export function stickerCanvas(name: StickerName, className = "sticker sticker-sm") {
   const c = document.createElement("canvas");
   c.className = className;
   c.dataset.sticker = name;
@@ -37,7 +38,7 @@ function canvasFor(name: StickerName, className: string) {
 export async function burst(anchor: Element, name: StickerName) {
   const { STICKERS } = await load();
   const r = anchor.getBoundingClientRect();
-  const c = canvasFor(name, "sticker-burst");
+  const c = stickerCanvas(name, "sticker-burst");
   c.style.setProperty("--x", `${r.left + r.width / 2}px`);
   c.style.setProperty("--y", `${r.top + r.height / 2}px`);
   document.body.appendChild(c);
@@ -70,7 +71,7 @@ export async function stickerToast(name: StickerName, title: string, body: strin
   close.setAttribute("aria-label", "Dismiss");
   close.textContent = "×";
   close.addEventListener("click", () => toast.remove());
-  for (const el of [canvasFor(name, "sticker sticker-sm"), text, close]) toast.appendChild(el);
+  for (const el of [stickerCanvas(name, "sticker sticker-sm"), text, close]) toast.appendChild(el);
   document.body.appendChild(toast);
   await mountStickers(toast);
   setTimeout(() => toast.remove(), 7000);

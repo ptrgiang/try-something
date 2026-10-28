@@ -1,7 +1,7 @@
 // The site's animated stickers: our own drawings plus the kit's worked icons, all painted in the brand palette.
 import { VIEWS, ellipse, line, pill, poly, rect, spark } from "./fun";
-import { bell, bulb, chat, gift, heart, padlock, pen, play, plane, search, toggle, trophy } from "./kit-icons";
-import { hop, springTurn, sway, toss, tossLag, tossLag2, twinkle, sparkle } from "./motions";
+import { bell, chat, gift, heart, padlock, pen, plane, search, trophy } from "./kit-icons";
+import { EASY, IN, SOFT, clasp, hop, shackle, springTurn, sway, toss, tossLag, tossLag2, twinkle, sparkle, wiggle } from "./motions";
 import type { Icon, Layer, Motion, Palette, Vec } from "./fun";
 
 export const BRAND: Partial<Palette> = {
@@ -167,6 +167,100 @@ export const box: Icon = {
   ],
 };
 
+// "Play something": a controller rocked like it's mid-game.
+export const gamepad: Icon = {
+  name: "gamepad",
+  frames: 180,
+  line: LINE,
+  extrude: EXT,
+  layers: [
+    { id: "pad", a: [0, 40], p: [250, 290], m: wiggle, shapes: [] },
+    {
+      parent: "pad",
+      tilt: FACE,
+      shapes: [
+        { d: ellipse(-112, 46, 58, 70), fill: "deep", depth: 1 },
+        { d: ellipse(112, 46, 58, 70), fill: "deep", depth: 1 },
+        { d: pill(-160, -78, 320, 150), fill: "deep", depth: 1 },
+        { d: poly([[-96, -26], [-72, -26], [-72, -50], [-48, -50], [-48, -26], [-24, -26], [-24, -2], [-48, -2], [-48, 22], [-72, 22], [-72, -2], [-96, -2]], 4), fill: "white", depth: 0.3 },
+        { d: ellipse(58, -24, 19), fill: "hot", depth: 0.3 },
+        { d: ellipse(100, 8, 19), fill: "gold", depth: 0.3 },
+      ],
+    },
+    glow("pad", [150, -130], 26, [twinkle(46), twinkle(126, true)]),
+  ],
+};
+
+// "Learn something": a book whose pages show on its edge, a ribbon hanging out of it.
+export const book: Icon = {
+  name: "book",
+  frames: 123,
+  line: LINE,
+  extrude: EXT,
+  layers: [
+    { id: "tome", a: [0, 130], p: [250, 370], m: hop, shapes: [] },
+    {
+      parent: "tome",
+      tilt: FACE,
+      shapes: [
+        { d: poly([[28, 100], [62, 100], [62, 176], [45, 156], [28, 176]], 3), fill: "hot", depth: 0.2 },
+        { d: rect(-104, -136, 208, 252, 18), fill: "ok", side: "paper", depth: 1 },
+        { d: rect(-104, -136, 36, 252, 0), fill: "deep", depth: 0 },
+        { d: rect(-40, -86, 112, 58, 10), fill: "white", depth: 0.25 },
+      ],
+    },
+    glow("tome", [140, -170], 28, [twinkle(54), twinkle(104, true)]),
+  ],
+};
+
+// "Get something done": a briefcase picked up by its handle, swinging once.
+export const briefcase: Icon = {
+  name: "briefcase",
+  frames: 123,
+  line: LINE,
+  extrude: EXT,
+  layers: [
+    { id: "case", a: [0, 120], p: [250, 360], m: hop, shapes: [] },
+    {
+      parent: "case",
+      tilt: FACE,
+      shapes: [
+        { d: "M-52 -60L-52 -98A20 20 0 0 1 -32 -118L32 -118A20 20 0 0 1 52 -98L52 -60L30 -60L30 -96L-30 -96L-30 -60Z", fill: "ink", depth: 0.6 },
+        { d: rect(-150, -66, 300, 186, 26), fill: "main", depth: 1 },
+        { d: line([-150, 6], [150, 6]) },
+        { d: rect(-26, -10, 52, 34, 8), fill: "gold", depth: 0.3 },
+      ],
+    },
+    glow("case", [160, -120], 26, [twinkle(54), twinkle(104, true)]),
+  ],
+};
+
+// Verified: the padlock springs open and a check pops on; played once it rests open. As a loop it shuts again at the end.
+const unclasp = { p: [[10, [0, 0], [0.31, 0, 0.12, 1]], [48, [-8, -12], EASY], [84, [0, 0]]] } as const;
+const unshackle = {
+  p: [[8, [0, 0], SOFT], [38, [-6, -16], 0], [140, [-6, -16], IN], [170, [0, 0]]],
+  r: [[8, 0, SOFT], [38, -33, 0], [140, -33, IN], [170, 0]],
+} as const;
+export const unlock: Icon = {
+  ...padlock,
+  name: "unlock",
+  frames: 180,
+  still: 110,
+  layers: [
+    ...padlock.layers.map((l) => (l.m === clasp ? { ...l, m: unclasp } : l.m === shackle ? { ...l, m: unshackle } : l)),
+    {
+      parent: "lock",
+      a: [104, 70],
+      p: [104, 70],
+      m: [twinkle(52), twinkle(130, true)],
+      shapes: [
+        { d: ellipse(104, 70, 46), fill: "gold", depth: 0.4 },
+        { d: line([82, 70], [98, 86], [128, 54]), round: true, line: 10 },
+      ],
+    },
+  ],
+};
+
 export const STICKERS = {
   compass,
   dice,
@@ -176,14 +270,14 @@ export const STICKERS = {
   heart,
   bell,
   gift,
-  padlock,
   plane,
   search,
   chat,
   trophy,
   pen,
-  play,
-  bulb,
-  toggle,
+  gamepad,
+  book,
+  briefcase,
+  unlock,
 } satisfies Record<string, Icon>;
 export type StickerName = keyof typeof STICKERS;

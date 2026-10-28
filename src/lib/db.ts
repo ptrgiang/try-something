@@ -533,15 +533,15 @@ export async function myToolInsights(db: D1Database, userId: string): Promise<To
   return results;
 }
 
-export async function listMySubmissions(db: D1Database, userId: string): Promise<(Submission & { tool_slug: string | null; tool_verified_at: string | null })[]> {
+export async function listMySubmissions(db: D1Database, userId: string): Promise<(Submission & { tool_slug: string | null; tool_verified_at: string | null; tool_made: boolean })[]> {
   const { results } = await db
     .prepare(
-      `SELECT s.*, t.slug AS tool_slug, t.maker_verified_at AS tool_verified_at FROM submission s LEFT JOIN tool t ON t.id = s.tool_id AND t.status = 'published'
+      `SELECT s.*, t.slug AS tool_slug, t.maker_verified_at AS tool_verified_at, t.credit_type AS tool_credit FROM submission s LEFT JOIN tool t ON t.id = s.tool_id AND t.status = 'published'
        WHERE s.user_id = ? ORDER BY s.created_at DESC LIMIT 100`,
     )
     .bind(userId)
     .all<Row>();
-  return results.map((r) => ({ ...toSubmission(r), tool_slug: (r.tool_slug as string) ?? null, tool_verified_at: (r.tool_verified_at as string) ?? null }));
+  return results.map((r) => ({ ...toSubmission(r), tool_slug: (r.tool_slug as string) ?? null, tool_verified_at: (r.tool_verified_at as string) ?? null, tool_made: r.tool_credit === "made" }));
 }
 
 export async function listQueue(
@@ -1144,7 +1144,7 @@ export async function listNotifications(db: D1Database, userId: string, limit = 
   const { results } = await db
     .prepare(
       `SELECT n.id, n.kind, n.status, n.created_at, n.read_at, n.submission_id, s.name AS submission_name, s.moderator_note,
-         n.comment_id, c.body AS comment_body, u.name AS actor_name, t.slug AS tool_slug, t.name AS tool_name
+         n.comment_id, c.body AS comment_body, u.name AS actor_name, t.slug AS tool_slug, t.name AS tool_name, t.credit_type AS tool_credit
        ${NOTIFICATION_FROM} ORDER BY n.created_at DESC LIMIT ?`,
     )
     .bind(userId, limit)

@@ -2,6 +2,7 @@
 import { env } from "cloudflare:workers";
 import Base from "../../../layouts/Base.astro";
 import Icon from "../../../components/Icon.astro";
+import LiveBanner from "../../../components/LiveBanner.astro";
 import Sticker from "../../../components/Sticker.astro";
 import { listMySubmissions, myToolInsights } from "../../../lib/db";
 import { STATUS_LABELS } from "../../../lib/moderation";
@@ -11,6 +12,8 @@ if (!user) return Astro.redirect("/login?next=/me/submissions");
 const [subs, insights] = await Promise.all([listMySubmissions(env.DB, user.id), myToolInsights(env.DB, user.id)]);
 const fmt = (n: number) => n.toLocaleString("en-US");
 const justSubmitted = Astro.url.searchParams.get("submitted");
+// Approval stamps updated_at, so a published row touched this week is a tool that just went live.
+const fresh = subs.find((s) => s.status === "published" && s.tool_slug && Date.now() - Date.parse(s.updated_at) < 7 * 86_400_000);
 const updateNotice = { sent: "Update sent. An editor will review it before it shows on the tool page.", withdrawn: "Update withdrawn." }[Astro.url.searchParams.get("update") ?? ""];
 const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for review", published: "Last update published", rejected: "Last update declined", withdrawn: "Last update withdrawn" };
 ---
@@ -24,6 +27,7 @@ const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for rev
         <p>Thanks! Your submission is <strong>pending review</strong>. An editor will check the link and the 30-second try before it goes live. You'll see the status here.</p>
       </div>
     )}
+    {fresh?.tool_slug && <LiveBanner name={fresh.name} slug={fresh.tool_slug} made={fresh.tool_made} />}
     {updateNotice && <p class="notice notice-success submit-body" role="status">{updateNotice}</p>}
     {insights.length > 0 && (
       <section class="insights submit-body" aria-labelledby="insights-title">

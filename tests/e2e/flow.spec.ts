@@ -191,7 +191,14 @@ test("full flow: submit → needs changes → resubmit → approve → published
   await expect(page.getByText(/Possible duplicate/)).toHaveCount(0);
   await expect(page.locator(".timeline li")).toHaveCount(5);
   await signIn(page, submitter);
+  await page.goto("/me/submissions");
+  const banner = page.locator(".celebrate");
+  await expect(banner).toContainText("E2E Sketch Pad is live!");
+  await expect(banner.getByRole("button", { name: "Share" })).toHaveAttribute("data-share", "/tools/e2e-sketch-pad");
+  // A found tool has no badge page.
+  await expect(banner.getByRole("link", { name: "Get a badge" })).toHaveCount(0);
   await page.goto("/me/notifications");
+  await expect(banner).toContainText("E2E Sketch Pad is live!");
   await page.getByRole("link", { name: /E2E Sketch Pad is live/ }).click();
   await expect(page).toHaveURL(/\/tools\/e2e-sketch-pad$/);
 

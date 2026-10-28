@@ -11,21 +11,52 @@ import Icon from "./Icon.astro";
   </form>
   <p class="palette-label" data-palette-label>Trending this week</p>
   <ul class="palette-results" id="palette-results" role="listbox" data-palette-results data-surface="palette"></ul>
+  <div class="palette-empty" data-palette-empty hidden>
+    <div>
+      <p class="popular-tags" data-palette-tags></p>
+      <p><a href="/submit">Know a tool that fits? Submit it.</a></p>
+    </div>
+  </div>
   <p class="palette-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> to move</span><span><kbd>Enter</kbd> to open</span><span>All results on <a href="/explore" data-palette-all>Explore</a></span></p>
 </dialog>
 <script>
+  import { mountStickers, stickerCanvas } from "../scripts/stickers";
+
   const dialog = document.querySelector<HTMLDialogElement>("[data-palette]");
   const input = dialog?.querySelector<HTMLInputElement>("#palette-q");
   const list = dialog?.querySelector<HTMLUListElement>("[data-palette-results]");
   const label = dialog?.querySelector<HTMLElement>("[data-palette-label]");
   const all = dialog?.querySelector<HTMLAnchorElement>("[data-palette-all]");
+  const empty = dialog?.querySelector<HTMLElement>("[data-palette-empty]");
+  const tagsBox = dialog?.querySelector<HTMLElement>("[data-palette-tags]");
   type Row = { slug: string; name: string; tagline: string; host: string };
   let active = -1;
   let timer = 0;
   let controller: AbortController | null = null;
 
-  function render(rows: Row[], q: string) {
-    if (!list || !label) return;
+  // The sticker is built on first use, so pages that never show it don't load the kit.
+  function showEmpty(tags: string[]) {
+    if (!empty || !tagsBox) return;
+    if (!empty.querySelector("canvas")) {
+      empty.insertBefore(stickerCanvas("search"), empty.firstChild);
+      void mountStickers(empty);
+    }
+    tagsBox.replaceChildren(
+      ...tags.map((t) => {
+        const a = document.createElement("a");
+        a.href = `/tags/${encodeURIComponent(t)}`;
+        a.textContent = t;
+        return a;
+      }),
+    );
+    tagsBox.hidden = !tags.length;
+    empty.hidden = false;
+  }
+
+  function render(rows: Row[], q: string, tags: string[] = []) {
+    if (!list || !label || !empty) return;
+    if (q && !rows.length) showEmpty(tags);
+    else empty.hidden = true;
     label.textContent = q ? (rows.length ? `Tools matching “${q}”` : `Nothing matches “${q}” yet`) : "Trending this week";
     list.replaceChildren(
       ...rows.map((r, i) => {
@@ -67,7 +98,9 @@ import Icon from "./Icon.astro";
     controller = new AbortController();
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
-      if (res.ok) render(((await res.json()) as { results: Row[] }).results, q);
+      if (!res.ok) return;
+      const data = (await res.json()) as { results: Row[]; tags?: string[] };
+      render(data.results, q, data.tags);
     } catch {}
   }
 

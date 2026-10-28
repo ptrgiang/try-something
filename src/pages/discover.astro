@@ -19,7 +19,7 @@ const next = mood && tool ? discoverUrl(mood.id, step < SESSION_LENGTH ? step + 
 // Face-down cards behind the current one: what is left of this round.
 const backs = mood && tool ? SESSION_LENGTH - step : SESSION_LENGTH - 1;
 const notes = ["first card, no pressure", "ooh, another one", "last card of this round!"];
-const moodSticker = { anything: "dice", make: "pen", play: "play", learn: "bulb", work: "toggle" } as const;
+const moodSticker = { anything: "dice", make: "pen", play: "gamepad", learn: "book", work: "briefcase" } as const;
 ---
 <Base title="Discover" path="/discover" nav="discover" noindex={Boolean(mood)} description="Pick a mood and get three hand-picked web tools to try, one at a time. No account needed.">
   <div class="page discover deal">

@@ -5157,10 +5157,9 @@ td.num {
   align-items: center;
   gap: 10px;
 }
-.top-today h2 svg {
-  width: 26px;
-  height: 26px;
-  color: var(--coral);
+.sticker.top-today-cup {
+  width: 44px;
+  margin: -10px -6px -10px -10px;
 }
 .top-today-list {
   display: grid;
@@ -5323,6 +5322,23 @@ td.num {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.palette-empty:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px 16px;
+  font-size: 14px;
+}
+.palette-empty p {
+  margin: 0;
+}
+.palette-empty .popular-tags {
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+.palette-empty [hidden] {
+  display: none;
 }
 .palette-foot {
   display: flex;

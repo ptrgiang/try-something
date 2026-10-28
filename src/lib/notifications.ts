@@ -23,6 +23,7 @@ export interface NotificationRow {
   actor_name: string | null;
   tool_slug: string | null;
   tool_name: string | null;
+  tool_credit: string | null;
 }
 
 export interface NotificationView {
@@ -33,8 +34,8 @@ export interface NotificationView {
   /** Moderator note or a snippet of the comment; plain text. */
   detail: string | null;
   href: string;
-  /** Slug of a tool that just went live, for the celebration on the notifications page. */
-  live?: string;
+  /** A tool that just went live, for the celebration on the notifications page; `made` gates the badge. */
+  live?: { slug: string; name: string; made: boolean };
   created_at: string;
 }
 
@@ -48,7 +49,7 @@ export function notificationView(n: NotificationRow): NotificationView | null {
   if (n.kind === "submission") {
     const name = n.submission_name ?? "Your submission";
     if (n.status === "published") {
-      return { ...base, icon: "check", title: `${name} is live`, detail: null, href: n.tool_slug ? `/tools/${n.tool_slug}` : "/me/submissions", live: n.tool_slug ?? undefined };
+      return { ...base, icon: "check", title: `${name} is live`, detail: null, href: n.tool_slug ? `/tools/${n.tool_slug}` : "/me/submissions", live: n.tool_slug ? { slug: n.tool_slug, name: n.tool_name ?? name, made: n.tool_credit === "made" } : undefined };
     }
     if (n.status === "needs_changes" || n.status === "rejected") {
       const label = STATUS_LABELS[n.status].toLowerCase();

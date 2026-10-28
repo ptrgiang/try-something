@@ -6,6 +6,7 @@ import FeaturedSlideshow from "../components/FeaturedSlideshow.astro";
 import Filters from "../components/Filters.astro";
 import ToolCard from "../components/ToolCard.astro";
 import Icon from "../components/Icon.astro";
+import Sticker from "../components/Sticker.astro";
 import CategoryArt from "../components/CategoryArt.astro";
 import ToolCover from "../components/ToolCover.astro";
 import { categoryCounts, featuredTools, homePicks, listTools, parsePeriod, parseSort, popularTags, topToday, TOP_TODAY_MIN_TOOLS } from "../lib/db";
@@ -115,7 +116,7 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
   {today.length >= TOP_TODAY_MIN_TOOLS && (
     <section class="top-today" aria-labelledby="top-today" data-surface="top">
       <div class="section-head">
-        <h2 id="top-today"><Icon name="trophy" />Top today</h2>
+        <h2 id="top-today"><Sticker name="trophy" size="xs" class="top-today-cup" />Top today</h2>
         <a class="section-link" href="/explore?sort=trending">Trending this week <Icon name="arrow" /></a>
       </div>
       <ol class="top-today-list">
