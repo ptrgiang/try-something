@@ -5577,12 +5577,6 @@ td.num {
 }
 .discover-card {
   animation: deal-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: transform 0.35s ease-in, opacity 0.35s ease-in;
-}
-.discover-card.is-dealt {
-  animation: none;
-  opacity: 0;
-  transform: translate(-115%, 30px) rotate(-16deg);
 }
 @keyframes deal-in {
   from {
@@ -5673,7 +5667,6 @@ td.num {
 @media (prefers-reduced-motion: reduce) {
   .discover-card {
     animation: none;
-    transition: none;
   }
 }
 @media (max-width: 900px) {
@@ -5708,7 +5701,10 @@ td.num {
     flex-basis: calc(100% - 96px);
   }
   .deal-bar .btn {
-    flex: 1 1 40%;
+    flex: 1 1 auto;
     justify-content: center;
+  }
+  .deal-bar .btn-ghost {
+    flex: 0 0 auto;
   }
 }

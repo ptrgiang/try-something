@@ -120,6 +120,8 @@ test("a discovery session shows three different tools for the mood, then offers 
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Discover", exact: true })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Play something" }).click();
   await expect(page.getByRole("link", { name: "Play something" })).toHaveAttribute("aria-current", "true");
+  // The deck is swapped in place: a marker on the window survives every Next, Restart and mood change.
+  await page.evaluate(() => Object.assign(window, { deckMarker: true }));
   const shown = new Set<string>();
   for (let step = 1; step <= 3; step++) {
     await expect(page.locator(".discover-progress")).toContainText(`Discovery ${step} of 3`);
@@ -134,4 +136,14 @@ test("a discovery session shows three different tools for the mood, then offers 
   await page.getByRole("link", { name: "3 more" }).click();
   await expect(page.locator(".discover-progress")).toContainText("Discovery 1 of 3");
   expect(shown.has((await page.locator(".discover-card").getAttribute("data-impression"))!)).toBe(false);
+  await page.getByRole("link", { name: "Restart" }).click();
+  await expect(page).toHaveURL(/mood=play&step=1$/);
+  await page.getByRole("link", { name: "Learn something" }).click();
+  await expect(page.getByRole("link", { name: "Learn something" })).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("link", { name: "Play something" })).not.toHaveAttribute("aria-current", "true");
+  await expect(page.locator(".discover-progress")).toContainText("Discovery 1 of 3");
+  expect(await page.evaluate(() => (window as unknown as { deckMarker?: boolean }).deckMarker)).toBe(true);
+  await page.goBack();
+  await expect(page).toHaveURL(/mood=play&step=1$/);
+  await expect(page.getByRole("link", { name: "Play something" })).toHaveAttribute("aria-current", "true");
 });

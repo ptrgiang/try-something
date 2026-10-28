@@ -28,69 +28,241 @@ const notes = ["first card, no pressure", "ooh, another one", "last card of this
       <p class="deal-ask" id="mood-label">I'm in the mood to…</p>
       <ul class="mood-chips" role="list" aria-labelledby="mood-label">
         {MOODS.map((m) => (
-          <li><a href={discoverUrl(m.id, 1, [])} aria-current={mood?.id === m.id ? "true" : undefined}>{m.label}</a></li>
+          <li><a href={discoverUrl(m.id, 1, [])} data-deal="mood" aria-current={mood?.id === m.id ? "true" : undefined}>{m.label}</a></li>
         ))}
       </ul>
-      {tool && <p class="deal-note" aria-hidden="true">{notes[step - 1]}</p>}
+      <p class="deal-note" aria-hidden="true" data-deal-note>{tool ? notes[step - 1] : ""}</p>
+      <p class="sr-only" aria-live="polite" data-deal-live></p>
     </section>
 
-    {mood && !tool ? (
-      <div class="empty discover-empty">
-        <p>{seen.length ? `That's every tool for “${mood.label}” so far.` : "Nothing here yet."} More are added every week.</p>
-        <p class="hero-ctas"><a class="btn btn-dark" href="/discover">Pick another mood</a> <a class="btn" href="/explore">Explore everything</a></p>
-      </div>
-    ) : (
-      <section class="discover-session" data-surface="discover" aria-labelledby={tool ? "discover-name" : "mood-label"}>
-        <div class="deck">
-          {Array.from({ length: backs }, (_, i) => <div class:list={["deck-card", "deck-back", `b${i + 1}`]} aria-hidden="true"></div>)}
-          {tool ? (
-            <article class="deck-card discover-card" data-impression={tool.id}>
-              <a class="discover-cover" href={`/tools/${tool.slug}`} tabindex="-1" aria-hidden="true">
-                <ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority />
-              </a>
-              <div class="discover-body">
-                <p class="discover-host">{displayHost(tool.url)}</p>
-                <h2 id="discover-name"><a href={`/tools/${tool.slug}`}>{tool.name}</a></h2>
-                <p class="tagline">{tool.tagline}</p>
-                <div class="try-box">
-                  <h3>Try this in 30 seconds</h3>
-                  <p>{tool.try_this}</p>
-                </div>
-                <div class="hero-ctas">
-                  <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {displayHost(tool.url)} <Icon name="external" /></a>
-                  <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
-                </div>
-              </div>
-            </article>
-          ) : (
-            <div class="deck-card deck-back deck-face">
-              <Icon name="compass" />
-              <p>Pick a mood and the first card is dealt.</p>
-            </div>
-          )}
+    <div class="deal-table" data-deal-table data-live={tool ? `Discovery ${step} of ${SESSION_LENGTH}: ${tool.name}` : ""}>
+      {mood && !tool ? (
+        <div class="empty discover-empty">
+          <p>{seen.length ? `That's every tool for “${mood.label}” so far.` : "Nothing here yet."} More are added every week.</p>
+          <p class="hero-ctas"><a class="btn btn-dark" href="/discover">Pick another mood</a> <a class="btn" href="/explore">Explore everything</a></p>
         </div>
-        {mood && tool && (
-          <nav class="deal-bar" aria-label="Discovery">
-            <span class="deal-dots" aria-hidden="true">
-              {Array.from({ length: SESSION_LENGTH }, (_, i) => <span class:list={{ done: i + 1 < step, now: i + 1 === step }}></span>)}
-            </span>
-            <p class="discover-progress">Discovery {step} of {SESSION_LENGTH}</p>
-            <a class="btn btn-ghost btn-lg" href={discoverUrl(mood.id, 1, [])}>Restart</a>
-            <a class="btn btn-coral btn-lg" href={next!} data-deal-next><Icon name="compass" />{step < SESSION_LENGTH ? "Next discovery" : `${SESSION_LENGTH} more`}</a>
-          </nav>
-        )}
-      </section>
-    )}
+      ) : (
+        <section class="discover-session" data-surface="discover" aria-labelledby={tool ? "discover-name" : "mood-label"}>
+          <div class="deck">
+            {Array.from({ length: backs }, (_, i) => <div class:list={["deck-card", "deck-back", `b${i + 1}`]} aria-hidden="true"></div>)}
+            {tool ? (
+              <article class="deck-card discover-card" data-impression={tool.id}>
+                <a class="discover-cover" href={`/tools/${tool.slug}`} tabindex="-1" aria-hidden="true">
+                  <ToolCover name={tool.name} art={tool.art} url={tool.url} imageSrc={toolImageSrc(tool)} priority />
+                </a>
+                <div class="discover-body">
+                  <p class="discover-host">{displayHost(tool.url)}</p>
+                  <h2 id="discover-name"><a href={`/tools/${tool.slug}`}>{tool.name}</a></h2>
+                  <p class="tagline">{tool.tagline}</p>
+                  <div class="try-box">
+                    <h3>Try this in 30 seconds</h3>
+                    <p>{tool.try_this}</p>
+                  </div>
+                  <div class="hero-ctas">
+                    <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {displayHost(tool.url)} <Icon name="external" /></a>
+                    <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
+                  </div>
+                </div>
+              </article>
+            ) : (
+              <div class="deck-card deck-back deck-face">
+                <Icon name="compass" />
+                <p>Pick a mood and the first card is dealt.</p>
+              </div>
+            )}
+          </div>
+          {mood && tool && (
+            <nav class="deal-bar" aria-label="Discovery">
+              <span class="deal-dots" aria-hidden="true">
+                {Array.from({ length: SESSION_LENGTH }, (_, i) => <span class:list={{ done: i + 1 < step, now: i + 1 === step }}></span>)}
+              </span>
+              <p class="discover-progress">Discovery {step} of {SESSION_LENGTH}</p>
+              <a class="btn btn-ghost btn-lg" href={discoverUrl(mood.id, 1, [])} data-deal="restart">Restart</a>
+              <a class="btn btn-coral btn-lg" href={next!} data-deal="next"><Icon name="compass" />{step < SESSION_LENGTH ? "Next discovery" : `${SESSION_LENGTH} more`}</a>
+            </nav>
+          )}
+        </section>
+      )}
+    </div>
   </div>
 </Base>
 <script>
-  // The card is thrown off the deck before the next one loads; the link still works without script.
-  const card = document.querySelector<HTMLElement>(".discover-card");
-  document.querySelector<HTMLAnchorElement>("[data-deal-next]")?.addEventListener("click", (e) => {
-    if (!card || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  import { announceContent, fetchDocument } from "../scripts/client";
+
+  // Next, Restart and the mood chips swap the deck in place so each can have its own motion. Every link still
+  // works as a plain navigation: modified clicks, failed fetches and no script all fall back to it.
+  type Kind = "next" | "restart" | "mood";
+  const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const DEAL = "cubic-bezier(.2, .9, .3, 1.12)";
+  const FIRST_BACK = "translate(18px, 14px) rotate(2deg)";
+  const note = document.querySelector<HTMLElement>("[data-deal-note]")!;
+  const live = document.querySelector<HTMLElement>("[data-deal-live]")!;
+  let table = document.querySelector<HTMLElement>("[data-deal-table]")!;
+  let busy = false;
+  // The next card is drawn ahead, so Next only waits for its own animation.
+  let ahead: { url: string; doc: Promise<Document | null> } | null = null;
+
+  const backs = () => [...table.querySelectorAll<HTMLElement>(".deck-back:not(.deck-face)")];
+  const top = () => table.querySelector<HTMLElement>(".discover-card, .deck-face");
+  const done = (a: Animation | undefined) => a?.finished.catch(() => undefined);
+
+  function drawAhead() {
+    const href = table.querySelector<HTMLAnchorElement>('[data-deal="next"]')?.href;
+    // Its cover is decoded ahead too, so the click has nothing left to wait for.
+    const doc = href ? fetchDocument(href).then(async (d) => (await coverReady(d), d)).catch(() => null) : null;
+    ahead = href && doc ? { url: href, doc } : null;
+  }
+
+  // Waits briefly for the new cover so a card never lands blank.
+  async function coverReady(doc: Document) {
+    const src = doc.querySelector(".discover-card img[data-cover]")?.getAttribute("src");
+    if (!src) return;
+    const img = new Image();
+    img.src = src;
+    await Promise.race([img.decode().catch(() => undefined), wait(800)]);
+  }
+
+  // A fixed copy of the outgoing card, so it can fly off while the new card already sits in the deck.
+  function lift(card: HTMLElement) {
+    const r = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true) as HTMLElement;
+    ghost.classList.remove("discover-card");
+    ghost.removeAttribute("data-impression");
+    ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.inert = true;
+    Object.assign(ghost.style, { position: "fixed", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, margin: "0", zIndex: "40", pointerEvents: "none" });
+    document.body.appendChild(ghost);
+    return ghost;
+  }
+
+  function swap(doc: Document) {
+    const fresh = doc.querySelector<HTMLElement>("[data-deal-table]");
+    if (!fresh) throw new Error("no deck");
+    const hadFocus = table.contains(document.activeElement);
+    table.replaceWith(fresh);
+    table = fresh;
+    note.textContent = doc.querySelector("[data-deal-note]")?.textContent ?? "";
+    const current = new Map([...doc.querySelectorAll(".mood-chips a")].map((a) => [a.getAttribute("href"), a.getAttribute("aria-current")]));
+    document.querySelectorAll(".mood-chips a").forEach((a) => {
+      const v = current.get(a.getAttribute("href"));
+      if (v) a.setAttribute("aria-current", v);
+      else a.removeAttribute("aria-current");
+    });
+    live.textContent = table.dataset.live ?? "";
+    if (hadFocus) table.querySelector<HTMLElement>('[data-deal="next"], a')?.focus({ preventScroll: true });
+    announceContent();
+    drawAhead();
+  }
+
+  // The bar under the deck glides to wherever the new card ends.
+  function glideBar(before: number | undefined) {
+    const bar = table.querySelector<HTMLElement>(".deal-bar");
+    if (!bar || before === undefined) return;
+    const dy = before - bar.getBoundingClientRect().top;
+    if (dy) bar.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(.3, .7, .2, 1)" });
+  }
+
+  // Next: the card is thrown off to the left, opaque until it clears the deck, and every card behind it moves up one place.
+  function throwCard(doc: Document) {
+    const card = top();
+    const poses = backs().map((b) => getComputedStyle(b).transform);
+    const barTop = table.querySelector(".deal-bar")?.getBoundingClientRect().top;
+    const ghost = card && lift(card);
+    swap(doc);
+    ghost
+      ?.animate(
+        [
+          { transform: "none" },
+          { transform: "translate(-30%, -26px) rotate(-8deg)", offset: 0.35 },
+          { transform: "translate(-95%, 40px) rotate(-17deg)", opacity: 1, offset: 0.75 },
+          { transform: "translate(-125%, 70px) rotate(-22deg)", opacity: 0 },
+        ],
+        { duration: 520, easing: "cubic-bezier(.45, 0, .7, .4)" },
+      )
+      .finished.then(() => ghost.remove());
+    top()?.animate([{ transform: poses[0] ?? FIRST_BACK }, { transform: "translateY(-10px) scale(1.015)", offset: 0.7 }, { transform: "none" }], {
+      duration: 560,
+      delay: 110,
+      easing: DEAL,
+      fill: "backwards",
+    });
+    backs().forEach((b, i) => poses[i + 1] && b.animate([{ transform: poses[i + 1] }, {}], { duration: 460, delay: 170, easing: DEAL, fill: "backwards" }));
+    glideBar(barTop);
+  }
+
+  // Restart: the card is tucked back into the deck and the deck is shuffled before a fresh round is dealt.
+  async function gather() {
+    const pose = backs()[0] ? getComputedStyle(backs()[0]).transform : FIRST_BACK;
+    table.querySelector(".deal-bar")?.animate([{}, { opacity: 0.4 }], { duration: 200, fill: "forwards" });
+    await done(top()?.animate([{ transform: "none" }, { transform: pose }], { duration: 260, easing: "cubic-bezier(.5, 0, .3, 1)", fill: "forwards" }));
+    await done(
+      table.querySelector(".deck")?.animate(
+        [{ transform: "none" }, { transform: "translateX(-16px) rotate(-2.5deg)" }, { transform: "translateX(14px) rotate(2deg)" }, { transform: "translateX(-8px) rotate(-1deg)" }, { transform: "none" }],
+        { duration: 440, easing: "ease-in-out" },
+      ),
+    );
+  }
+
+  // A new mood: the old deck slides away first.
+  async function clear() {
+    table.querySelectorAll(".deal-bar, .discover-empty").forEach((el) => el.animate([{}, { opacity: 0 }], { duration: 180, fill: "forwards" }));
+    await done(
+      table.querySelector(".deck")?.animate([{}, { transform: "translate(48px, 18px) rotate(5deg)", opacity: 0 }], { duration: 260, easing: "cubic-bezier(.5, 0, .75, 0)", fill: "forwards" }),
+    );
+  }
+
+  // Deals the new deck in from the chips' side, bottom card first.
+  function deal() {
+    const order = backs().reverse();
+    const card = top();
+    if (card) order.push(card);
+    order.forEach((el, i) =>
+      el.animate([{ transform: "translate(-70px, -36px) rotate(-12deg)", opacity: 0 }, { opacity: 1, offset: 0.4 }, {}], { duration: 520, delay: i * 90, easing: DEAL, fill: "backwards" }),
+    );
+    table
+      .querySelectorAll(".deal-bar, .discover-empty")
+      .forEach((el) => el.animate([{ opacity: 0, transform: "translateY(8px)" }, {}], { duration: 320, delay: order.length * 90, easing: "ease-out", fill: "backwards" }));
+  }
+
+  async function go(url: string, kind: Kind, push = true) {
+    if (busy) return;
+    busy = true;
+    try {
+      // A failed draw-ahead gets one fresh try before falling back to a page load.
+      const early = kind === "next" && ahead?.url === url ? ahead.doc : Promise.resolve(null);
+      const pending = early.then((doc) => doc ?? fetchDocument(url)).catch(() => null);
+      const exit = still() ? null : kind === "restart" ? gather() : kind === "mood" ? clear() : null;
+      const doc = await pending;
+      if (!doc) throw new Error("fetch failed");
+      await coverReady(doc);
+      await exit;
+      if (push) history.pushState({ deal: true }, "", url);
+      if (still()) swap(doc);
+      else if (kind === "next") throwCard(doc);
+      else {
+        swap(doc);
+        deal();
+      }
+      // On a phone the Next button sits below the card; bring the new card's top back into view.
+      const deck = table.getBoundingClientRect();
+      if (deck.top < 0) scrollBy({ top: deck.top - 16, behavior: still() ? "auto" : "smooth" });
+    } catch {
+      location.assign(url);
+    } finally {
+      busy = false;
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const link = (e.target as Element).closest<HTMLAnchorElement>("a[data-deal]");
+    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    card.classList.add("is-dealt");
-    const href = (e.currentTarget as HTMLAnchorElement).href;
-    setTimeout(() => location.assign(href), 300);
+    const kind = link.dataset.deal as Kind;
+    if (kind === "mood" && !still()) link.animate([{ transform: "scale(.92)" }, { transform: "scale(1.06)" }, { transform: "none" }], { duration: 320, easing: "ease-out" });
+    void go(link.href, kind);
   });
+  addEventListener("popstate", () => void go(location.href, "mood", false));
+  drawAhead();
 </script>
