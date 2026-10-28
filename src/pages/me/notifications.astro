@@ -2,6 +2,7 @@
 import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import Icon from "../../components/Icon.astro";
+import Sticker from "../../components/Sticker.astro";
 import { listNotifications, markNotificationsRead } from "../../lib/db";
 import { NOTIFICATION_DAYS, notificationView } from "../../lib/notifications";
 import { timeAgo } from "../../lib/util";
@@ -11,11 +12,22 @@ if (!user) return Astro.redirect("/login?next=/me/notifications");
 // Read the list first so this visit still shows what was new, then clear the bell before the header renders.
 const items = (await listNotifications(env.DB, user.id)).map(notificationView).filter((n) => n !== null);
 if (items.some((n) => n.unread)) await markNotificationsRead(env.DB, user.id);
+const live = items.find((n) => n.unread && n.live);
 ---
 <Base title="Notifications" noindex>
   <div class="page app-page">
     <p class="eyebrow">Your account</p>
     <h1 class="page-title">Notifications</h1>
+    {live && (
+      <div class="celebrate" role="status">
+        <Sticker name="gift" size="sm" />
+        <div>
+          <strong>{live.title}!</strong>
+          <p>Share it while it's fresh: the badge links back to your listing.</p>
+          <p class="celebrate-actions"><a class="btn btn-dark btn-sm" href={`/me/share/${live.live}`}>Get a badge</a> <a class="btn btn-sm" href={`/tools/${live.live}`}>See the listing</a></p>
+        </div>
+      </div>
+    )}
     {items.length ? (
       <>
         <p class="section-intro notif-intro">Reviews of your submissions and new comments on your tools and comments, from the last {NOTIFICATION_DAYS} days.</p>
@@ -36,7 +48,7 @@ if (items.some((n) => n.unread)) await markNotificationsRead(env.DB, user.id);
       </>
     ) : (
       <div class="gate">
-        <span class="gate-icon" aria-hidden="true"><Icon name="bell" /></span>
+        <Sticker name="bell" size="md" />
         <h2>Nothing new yet</h2>
         <p>When an editor reviews something you submitted, or someone comments on your tool or replies to you, it shows up here.</p>
         <a class="btn btn-dark" href="/submit">Submit a tool</a>

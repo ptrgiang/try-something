@@ -1,5 +1,6 @@
 ---
 import { env } from "cloudflare:workers";
+import Sticker from "../../components/Sticker.astro";
 import Base from "../../layouts/Base.astro";
 import Filters from "../../components/Filters.astro";
 import ToolCard from "../../components/ToolCard.astro";
@@ -76,7 +77,8 @@ const jsonLd = noindex
   {tools.length ? (
     <div class="grid" data-results data-surface={q ? "search" : tag ? "tag" : category ? "category" : "explore"}>{shown.map((tool, i) => <ToolCard tool={tool} headingLevel="h2" index={i} />)}</div>
   ) : (
-    <div class="empty">
+    <div class="empty sticker-empty">
+      <Sticker name="search" size="md" />
       <p>Nothing matches{q ? ` “${q}”` : ""} yet.</p>
       <p><a href="/submit">Know a tool that fits? Submit it.</a></p>
     </div>

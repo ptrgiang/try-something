@@ -1,7 +1,7 @@
 ---
 import { env } from "cloudflare:workers";
+import Sticker from "../../../components/Sticker.astro";
 import Base from "../../../layouts/Base.astro";
-import Icon from "../../../components/Icon.astro";
 import { claimEditorialTool, getMakerClaim, markMakerVerified } from "../../../lib/db";
 import { rateLimit } from "../../../lib/rate-limit";
 import { displayHost } from "../../../lib/url";
@@ -54,7 +54,7 @@ const metaTag = `<meta name="${META_NAME}" content="${token}">`;
     </header>
     {verified ? (
       <div class="gate">
-        <span class="gate-icon verified-icon" aria-hidden="true"><Icon name="check" /></span>
+        <Sticker name="padlock" size="md" />
         <h2>You're a verified maker</h2>
         <p>{tool.name} now shows the Verified maker badge. You can remove the token from your site.</p>
         <div class="gate-actions">

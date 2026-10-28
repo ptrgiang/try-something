@@ -1,5 +1,6 @@
 ---
 import { env } from "cloudflare:workers";
+import Sticker from "../components/Sticker.astro";
 import Base from "../layouts/Base.astro";
 import { createFeedback } from "../lib/db";
 import { FEEDBACK_KINDS, feedbackPage, parseFeedback } from "../lib/feedback";
@@ -54,9 +55,12 @@ if (Astro.request.method === "POST") {
       <p class="lede">A bug, a tool that stopped working, or an idea. A person reads every message.</p>
     </header>
     {sent ? (
-      <div class="notice notice-success" role="status">
+      <div class="notice notice-success notice-sticker" role="status">
+        <Sticker name="chat" size="sm" />
+        <div>
         <p>Thanks, we got it.{!user && " We can't reply to anonymous feedback, so sign in next time if you'd like an answer."}</p>
         <p><a href="/explore">Back to exploring</a></p>
+        </div>
       </div>
     ) : (
       <form class="form settings-card" method="post">

@@ -1,14 +1,17 @@
 ---
 import Base from "../layouts/Base.astro";
+import Sticker from "../components/Sticker.astro";
 Astro.response.status = 404;
 ---
 <Base title="Not found" noindex>
   <div class="page narrow">
+    <Sticker name="plane" size="lg" class="lost-plane" />
     <p class="eyebrow">404</p>
     <h1 class="page-title">Nothing to try here.</h1>
     <p class="lede">This page doesn't exist (or isn't published).</p>
     <div class="hero-ctas submit-body">
       <a class="btn btn-dark btn-lg" href="/explore">Explore tools</a>
+      <a class="btn btn-lg" href="/discover">Discover by mood</a>
       <a class="btn btn-lg" href="/surprise">Surprise me</a>
     </div>
   </div>

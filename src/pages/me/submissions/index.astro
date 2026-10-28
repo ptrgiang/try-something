@@ -2,6 +2,7 @@
 import { env } from "cloudflare:workers";
 import Base from "../../../layouts/Base.astro";
 import Icon from "../../../components/Icon.astro";
+import Sticker from "../../../components/Sticker.astro";
 import { listMySubmissions, myToolInsights } from "../../../lib/db";
 import { STATUS_LABELS } from "../../../lib/moderation";
 
@@ -18,7 +19,10 @@ const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for rev
     <p class="eyebrow">Your account</p>
     <h1 class="page-title">My submissions</h1>
     {justSubmitted && subs.some((s) => s.id === justSubmitted) && (
-      <p class="notice notice-success submit-body" role="status">Thanks! Your submission is <strong>pending review</strong>. An editor will check the link and the 30-second try before it goes live. You'll see the status here.</p>
+      <div class="notice notice-success notice-sticker submit-body" role="status">
+        <Sticker name="plane" size="sm" />
+        <p>Thanks! Your submission is <strong>pending review</strong>. An editor will check the link and the 30-second try before it goes live. You'll see the status here.</p>
+      </div>
     )}
     {updateNotice && <p class="notice notice-success submit-body" role="status">{updateNotice}</p>}
     {insights.length > 0 && (

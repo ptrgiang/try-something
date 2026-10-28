@@ -6,6 +6,7 @@ import ToolCover from "../../components/ToolCover.astro";
 import ToolCard from "../../components/ToolCard.astro";
 import ToolStats from "../../components/ToolStats.astro";
 import Icon from "../../components/Icon.astro";
+import Sticker from "../../components/Sticker.astro";
 import Comments from "../../components/Comments.astro";
 import { countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
 import { CATEGORIES } from "../../lib/validation";
@@ -64,7 +65,7 @@ const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_na
         <p class="lede">{tool.tagline}</p>
         <ToolStats tool={tool} class="stats-lg" />
         {wins.length > 0 && (
-          <p class="top-badge"><Icon name="trophy" />Top tool of the day · {dayLabel(wins[0])}{wins.length > 1 && <span> and {wins.length - 1} more {wins.length === 2 ? "day" : "days"} in the last 90</span>}</p>
+          <p class="top-badge"><Sticker name="trophy" size="xs" />Top tool of the day · {dayLabel(wins[0])}{wins.length > 1 && <span> and {wins.length - 1} more {wins.length === 2 ? "day" : "days"} in the last 90</span>}</p>
         )}
       </div>
       <figure class="detail-media">

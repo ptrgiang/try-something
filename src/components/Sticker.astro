@@ -1,0 +1,19 @@
+---
+// An animated sticker on canvas (see src/scripts/stickers.ts). Decorative: the text next to it carries the meaning.
+import type { StickerName } from "../stickers/icons";
+
+interface Props {
+  name: StickerName;
+  size?: "xs" | "sm" | "md" | "lg";
+  loop?: boolean;
+  class?: string;
+}
+const { name, size = "md", loop = false, class: className } = Astro.props;
+---
+<canvas class:list={["sticker", `sticker-${size}`, className]} data-sticker={name} data-loop={loop ? "true" : undefined} aria-hidden="true"></canvas>
+<script>
+  import { mountStickers } from "../scripts/stickers";
+
+  void mountStickers();
+  document.addEventListener("ts:content", () => void mountStickers());
+</script>

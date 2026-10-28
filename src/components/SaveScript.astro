@@ -76,6 +76,22 @@ const signedIn = Boolean(Astro.locals.user);
     edits = null;
   }
 
+  // The first Save on this browser gets a toast that says where saved tools live.
+  const FIRST_SAVE = "ts:first-save";
+  function firstSave() {
+    try {
+      if (localStorage.getItem(FIRST_SAVE)) return;
+      localStorage.setItem(FIRST_SAVE, "1");
+    } catch {
+      return;
+    }
+    void import("../scripts/stickers").then((m) =>
+      signedIn
+        ? m.stickerToast("bookmark", "Saved", "Your saved tools wait for you in one place.", { href: "/me/saved", label: "Open saved tools" })
+        : m.stickerToast("bookmark", "Saved on this browser", "Sign in to keep your saved tools on every device.", { href: "/login?next=/me/saved", label: "Sign in" }),
+    );
+  }
+
   // Count "Try it" clicks (aggregate only; see /api/try), with the surface the button sits on.
   // auxclick catches a middle-click, which opens the site in a new tab without firing "click".
   const countTry = (e: MouseEvent) => {
@@ -97,6 +113,7 @@ const signedIn = Boolean(Astro.locals.user);
     edits?.save.set(id, on);
     writeLocal(saved);
     paint();
+    if (on) firstSave();
     if (signedIn) {
       bump("save", id, on ? 1 : -1);
       fetch("/api/bookmarks", {
@@ -120,6 +137,7 @@ const signedIn = Boolean(Astro.locals.user);
     edits?.like.set(id, on);
     bump("like", id, on ? 1 : -1);
     paint();
+    if (on && !matchMedia("(prefers-reduced-motion: reduce)").matches) void import("../scripts/stickers").then((m) => m.burst(btn, "heart"));
     try {
       const res = await fetch("/api/likes", {
         method: "POST",
