@@ -2,7 +2,7 @@ import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSessionUser } from "./lib/auth";
 
-const PRIVATE_PREFIXES = ["/admin", "/me", "/submit", "/login", "/api"];
+const PRIVATE_PREFIXES = ["/feedback", "/admin", "/me", "/submit", "/login", "/api"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url, locals } = context;

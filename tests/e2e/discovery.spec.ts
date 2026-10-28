@@ -100,7 +100,7 @@ test("header menus close on an outside click or Escape, and GitHub opens in a ne
   }
 });
 
-test("the RSS feed lists the newest tools and every page links to it", async ({ page, request }) => {
+test("the RSS feed lists the newest tools, and the header has Surprise me", async ({ page, request }) => {
   const res = await request.get("/feed.xml");
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("application/rss+xml");
@@ -109,4 +109,5 @@ test("the RSS feed lists the newest tools and every page links to it", async ({ 
 
   await page.goto("/");
   await expect(page.locator('link[rel="alternate"][type="application/rss+xml"]')).toHaveAttribute("href", "/feed.xml");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Surprise me" })).toHaveAttribute("href", "/surprise");
 });

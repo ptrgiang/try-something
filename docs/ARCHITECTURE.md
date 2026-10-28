@@ -15,7 +15,7 @@
 
 ## Data
 
-D1 is the only source of truth. Tables (see `migrations/0001_init.sql`):
+D1 is the only source of truth. Main tables (full schema in `migrations/`):
 
 | Table | Purpose |
 | --- | --- |
@@ -25,7 +25,11 @@ D1 is the only source of truth. Tables (see `migrations/0001_init.sql`):
 | `moderation_event` | Append-only history: actor, action, from/to status, reason, time |
 | `bookmark` | Saved tools per user |
 | `collection`, `collection_tool` | Editor-curated sets |
-| `app_rate_limit` | Fixed-window counters for submissions, metadata lookups, bookmarks |
+| `app_rate_limit` | Fixed-window counters for submissions, metadata lookups, bookmarks, comments, likes |
+| `comment`, `report`, `notification` | Comments on tools, reports that auto-hide at a threshold until a moderator decides, in-app notifications |
+| `tool_like`, `tool_update` | Hearts from accounts; maker product updates, reviewed before they show |
+| `tag_info` | Editor-written descriptions for tag pages |
+| `*_stat_daily`, `visit_day`, `user_active_day`, `funnel_*_daily` | Cookie-free counters: views, try clicks, impressions, searches, sources and the discovery funnel, one row per day |
 
 ### Submission state machine (`src/lib/moderation.ts`)
 
@@ -55,6 +59,6 @@ Moderators can't act on their own submissions. Every transition is guarded with 
 - GitHub stars: KV key `gh-stars:<repo>`, fresh for 30 min, stale fallback up to 7 days, otherwise hidden — never a made-up number.
 - Static assets under `/_astro/*` are immutable-cached by the adapter.
 
-## Not built yet (by design)
+## Since the first release
 
-Comments, reports, profiles, image uploads (R2), analytics, Queues/Cron — see `ROADMAP.md`.
+Comments, reports, profiles, maker verification, cover uploads (R2, resized with the Images binding) and cookie-free analytics in D1 are built; see `ROADMAP.md` and `CHANGELOG.md`. Not built on purpose: Queues and Cron (nothing needs background work yet) and any third-party analytics or ranking.

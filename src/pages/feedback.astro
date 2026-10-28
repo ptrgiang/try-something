@@ -1,0 +1,88 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import { createFeedback } from "../lib/db";
+import { FEEDBACK_KINDS, feedbackPage, parseFeedback } from "../lib/feedback";
+import { rateLimit } from "../lib/rate-limit";
+import { verifyTurnstile } from "../lib/turnstile";
+import { clientKey } from "../lib/util";
+
+const user = Astro.locals.user;
+const repo = env.PUBLIC_GITHUB_REPO;
+const sent = Astro.url.searchParams.has("sent");
+let error = "";
+let values = {
+  kind: Astro.url.searchParams.get("kind") ?? "",
+  message: "",
+  page: feedbackPage(Astro.url.searchParams.get("from")) ?? "",
+};
+
+// Signed-out senders are limited by a salted hash of their address, so no raw IP lands in the rate-limit table.
+async function senderKey(): Promise<string> {
+  if (user) return `feedback:u:${user.id}`;
+  const ip = clientKey(Astro.request.headers.get("cf-connecting-ip"));
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${env.BETTER_AUTH_SECRET}|feedback|${ip}`));
+  return `feedback:ip:${btoa(String.fromCharCode(...new Uint8Array(digest).slice(0, 12)))}`;
+}
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  values = { kind: String(form.get("kind") ?? ""), message: String(form.get("message") ?? "").slice(0, 2000), page: String(form.get("page") ?? "") };
+  const ts = await verifyTurnstile(form.get("cf-turnstile-response"), {
+    secret: env.TURNSTILE_SECRET_KEY,
+    ip: Astro.request.headers.get("cf-connecting-ip"),
+    expectedAction: "feedback",
+    expectedHostname: new URL(env.PUBLIC_SITE_URL).hostname,
+    allowTestKeys: !env.PUBLIC_SITE_URL.startsWith("https://"),
+  });
+  const parsed = parseFeedback(form);
+  if (!ts.ok) error = ts.error ?? "Bot check failed.";
+  else if (!parsed.ok) error = parsed.error;
+  else if (!(await rateLimit(env.DB, await senderKey(), 5, 3600))) error = "That's a lot of feedback in a short time. Please try again in an hour.";
+  else {
+    await createFeedback(env.DB, parsed.value, user?.id ?? null);
+    return Astro.redirect("/feedback?sent", 303);
+  }
+  Astro.response.status = 400;
+}
+---
+<Base title="Feedback" description="Tell the Try Something team about a bug, a broken tool or an idea." noindex>
+  <div class="page app-page narrow">
+    <header class="page-head">
+      <p class="eyebrow">Feedback</p>
+      <h1 class="page-title">Tell us what you found</h1>
+      <p class="lede">A bug, a tool that stopped working, or an idea. A person reads every message.</p>
+    </header>
+    {sent ? (
+      <div class="notice notice-success" role="status">
+        <p>Thanks, we got it.{!user && " We can't reply to anonymous feedback, so sign in next time if you'd like an answer."}</p>
+        <p><a href="/explore">Back to exploring</a></p>
+      </div>
+    ) : (
+      <form class="form settings-card" method="post">
+        {error && <p class="form-error" role="alert">{error}</p>}
+        <div class="field">
+          <label for="kind">What is it about?</label>
+          <select id="kind" name="kind" required>
+            <option value="" selected={!values.kind}>Choose one…</option>
+            {FEEDBACK_KINDS.map((k) => <option value={k.id} selected={values.kind === k.id}>{k.label}</option>)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="message">Your message</label>
+          <textarea id="message" name="message" rows="6" required minlength="5" maxlength="2000" aria-describedby="message-hint">{values.message}</textarea>
+          <p class="hint" id="message-hint">For a broken tool, say which one and what happened. Don't include passwords or other private details.{values.page && <> Sent from <code>{values.page}</code>.</>}</p>
+        </div>
+        <input type="hidden" name="page" value={values.page} />
+        <div class="form-footer">
+          <div class="cf-turnstile" data-sitekey={env.TURNSTILE_SITE_KEY} data-action="feedback"></div>
+          <div class="form-submit">
+            <button class="btn btn-dark btn-lg" type="submit">Send feedback</button>
+            <p class="hint">{user ? "Sent as your account, so we can reply." : "No account needed. Sign in first if you'd like a reply."} {repo && <>Security issues go through <a href={`https://github.com/${repo}/blob/main/SECURITY.md`} target="_blank" rel="noopener">SECURITY.md</a> instead.</>}</p>
+          </div>
+        </div>
+      </form>
+    )}
+  </div>
+</Base>
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>

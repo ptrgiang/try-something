@@ -97,6 +97,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           <a href="/explore" aria-current={nav === "explore" ? "page" : undefined}>Explore</a>
           <a href="/collections" aria-current={nav === "collections" ? "page" : undefined}>Collections</a>
           <a href="/about" aria-current={nav === "about" ? "page" : undefined}>About</a>
+          <a class="nav-surprise" href="/surprise" aria-label="Surprise me"><Icon name="shuffle" /><span class="surprise-label">Surprise me</span></a>
         </nav>
         {headerSearch ? (
           <form class="header-search" action="/explore" method="get" role="search">
@@ -165,7 +166,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           {repo && (
             <div class="star-cta">
               <a class="btn btn-sm" href={`https://github.com/${repo}`} target="_blank" rel="noopener"><Icon name="github" /> Star on GitHub</a>
-              {stars && <span>★ {stars.count.toLocaleString("en-US")} stars</span>}
+              {stars && <span>★ {stars.count.toLocaleString("en-US")} {stars.count === 1 ? "star" : "stars"}</span>}
             </div>
           )}
         </div>
@@ -175,6 +176,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           <a href="/submit">Submit a tool</a>
           <a href="/contribute">Contribute</a>
           <a href="/about">About</a>
+          <a href={`/feedback?from=${encodeURIComponent(Astro.url.pathname)}`}>Feedback</a>
           <a href="/feed.xml">RSS</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>

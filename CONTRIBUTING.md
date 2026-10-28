@@ -6,6 +6,10 @@ Use **Submit a tool** on [trysometh.ing](https://trysometh.ing) (sign-in require
 
 A good submission points to the **official** product URL, describes one concrete thing a visitor can do in about 30 seconds, and is honest about whether you made it or found it.
 
+## Questions, bugs and ideas
+
+Use [GitHub Discussions](https://github.com/ptrgiang/try-something/discussions): ask a question, report a bug or suggest an idea in the open, where others can add to it. On the site, the **Feedback** link in the footer works without a GitHub account.
+
 ## Contributing code from a fork
 
 We don't run an inbound review queue on this repository: issues and pull requests are closed here. Code contributions come in a different way:
@@ -14,7 +18,7 @@ We don't run an inbound review queue on this repository: issues and pull request
 2. **Email [hello@trysometh.ing](mailto:hello@trysometh.ing)** with a link to it.
 3. We review it, and if we want it, **we merge it on our side** as a single commit that credits you with a `Co-authored-by:` trailer (your GitHub noreply address works).
 
-We read every submission, but we can't promise a reply to each one or a timeline. Bug reports and questions go to the same address. Security reports go through [SECURITY.md](SECURITY.md), never email or public posts.
+We read every submission, but we can't promise a reply to each one or a timeline. Bug reports and questions go to [Discussions](https://github.com/ptrgiang/try-something/discussions) or the same address. Security reports go through [SECURITY.md](SECURITY.md), never email or public posts.
 
 Your PR is held to the same bar as anything maintainers write. At minimum:
 

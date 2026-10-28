@@ -105,23 +105,23 @@ Rollback: see [runbooks/rollback.md](runbooks/rollback.md).
 
 ## 5. Repository settings (Owner)
 
-- Issues off, Discussions off (contributions come by email, see CONTRIBUTING.md); private vulnerability reporting on.
+- Issues off; Discussions on for questions, bug reports and ideas; code contributions come by email (see CONTRIBUTING.md); private vulnerability reporting on.
 - Branch rulesets: `main` requires the CI check and linear history, no force pushes or deletions. `release` allows updates only from the promote workflow (no force pushes).
 - Environment `production` with the owner as required reviewer.
 - Secret scanning and push protection on; Dependabot alerts and security updates on.
 
 ## 6. Security gate before any public deploy (Owner)
 
-The code is public, so production must not rely on anything being secret except Worker secrets. Check each item; the app refuses to start or fails closed where noted.
+The code is public, so production must not rely on anything being secret except Worker secrets. Check each item; the app refuses to start or fails closed where noted. Re-check the list before each big launch or traffic push. Production at `trysometh.ing` was last checked on 2026-10-28.
 
-- [ ] `BETTER_AUTH_SECRET` set, 32+ random characters, different per environment (the app throws on https without it).
-- [ ] Real Turnstile widget and secret for each environment. Cloudflare's test keys are ignored on https: submissions and email sign-in stay disabled until a real secret is set.
-- [ ] OAuth apps per environment with exact callback URLs; secrets only in Worker secrets.
-- [ ] No `.dev.vars`, D1 export or backup in the repository (`git ls-files`), and GitHub secret scanning with push protection on.
-- [ ] WAF rate-limiting rule (one is included on the Free plan): e.g. path starts with `/api/` or `/submit`, more than 60 requests per 10 seconds per IP → block for 10 seconds. Bot Fight Mode on.
-- [ ] First admin promoted by SQL; any other moderators added from `/admin/users` (each change is in the audit log).
-- [ ] Comments: `COMMENTS_ENABLED` is `"false"` in production until an editor has run the comment, report and hide flow on staging (see docs/runbooks/moderation.md). Then set it to `"true"` and deploy.
-- [ ] `npm audit` clean; Dependabot alerts on.
+- [x] `BETTER_AUTH_SECRET` set, 32+ random characters, different per environment (the app throws on https without it).
+- [x] Real Turnstile widget and secret for each environment. Cloudflare's test keys are ignored on https: submissions and email sign-in stay disabled until a real secret is set.
+- [x] OAuth apps per environment with exact callback URLs; secrets only in Worker secrets.
+- [x] No `.dev.vars`, D1 export or backup in the repository (`git ls-files`), and GitHub secret scanning with push protection on.
+- [x] WAF rate-limiting rule (one is included on the Free plan): e.g. path starts with `/api/` or `/submit`, more than 60 requests per 10 seconds per IP → block for 10 seconds. Bot Fight Mode on.
+- [x] First admin promoted by SQL; any other moderators added from `/admin/users` (each change is in the audit log).
+- [x] Comments: `COMMENTS_ENABLED` stays `"false"` until an editor has run the comment, report and hide flow on staging (see docs/runbooks/moderation.md), then `"true"` and deploy. On in production since 2026-10-27.
+- [x] `npm audit` clean; Dependabot alerts on.
 
 Known, accepted limits:
 

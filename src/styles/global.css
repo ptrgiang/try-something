@@ -212,6 +212,16 @@ textarea {
 .main-nav a:hover {
   background: var(--lavender-soft);
 }
+.main-nav .nav-surprise {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--coral-ink);
+}
+.main-nav .nav-surprise svg {
+  width: 16px;
+  height: 16px;
+}
 .main-nav a[aria-current="page"] {
   color: var(--ink);
   box-shadow: inset 0 -2px 0 var(--lavender);
@@ -2877,6 +2887,16 @@ tr:last-child td {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 28px 40px;
+}
+.criteria {
+  margin: 0 0 12px;
+  padding-left: 1.2em;
+  color: var(--ink-2);
+  font-size: 16.5px;
+  line-height: 1.6;
+}
+.criteria li + li {
+  margin-top: 6px;
 }
 .about-columns p {
   margin: 0;

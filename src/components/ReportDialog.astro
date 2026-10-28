@@ -50,7 +50,9 @@ const signedIn = Boolean(Astro.locals.user);
       const btn = (e.target as Element).closest<HTMLElement>("[data-report][data-target]");
       if (!btn) return;
       if (dialog.dataset.signedIn !== "1") {
-        location.assign(`/login?next=${encodeURIComponent(location.pathname)}`);
+        // A broken listing can be flagged without an account through Feedback; comment reports stay signed-in only.
+        const from = encodeURIComponent(location.pathname);
+        location.assign(btn.dataset.report === "tool" ? `/feedback?kind=tool&from=${from}` : `/login?next=${from}`);
         return;
       }
       target = { type: btn.dataset.report!, id: btn.dataset.target! };

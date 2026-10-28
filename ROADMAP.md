@@ -31,7 +31,7 @@ rather than replacing it.
 - [x] Staging preview, then production on `trysometh.ing` after QA (OAuth callbacks checked on both)
 - [x] Visual QA at 768px alongside 375px and 1440px (staging, 2026-10-22)
 - [x] Browser check of every seed tool's 30-second try (2026-10-22; listening and feel still need an editor)
-- [x] Seed set grown to 29 tools across all seven categories, each opened in a browser and usable without an account
+- [x] Seed set grown to 29 tools across all seven categories of the time (nine since Utilities and Business were added), each opened in a browser and usable without an account
 
 ## M1 — Community
 

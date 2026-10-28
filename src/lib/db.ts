@@ -5,6 +5,7 @@ import { AUTO_HIDE_REPORTS, RESURFACE_COOLDOWN_DAYS, UPDATE_WINDOW_DAYS, type Co
 import { NOTIFY_STATUSES, type NotificationRow } from "./notifications";
 import { picksOrder, type PicksInput } from "./picks";
 import type { Acquisition } from "./analytics";
+import type { FeedbackInput, FeedbackKind } from "./feedback";
 import { newId, nowIso } from "./util";
 import { parseTags, slugify } from "./validation";
 
@@ -2073,4 +2074,51 @@ export async function makerValue(db: D1Database, from: string, to: string): Prom
     .bind(from, to)
     .first<MakerValue>();
   return row!;
+}
+
+// ---------- Feedback ----------
+
+export interface FeedbackRow {
+  id: string;
+  kind: FeedbackKind;
+  message: string;
+  page: string | null;
+  status: "new" | "done";
+  created_at: string;
+  user_name: string | null;
+  user_handle: string | null;
+  /** Shown to moderators only, so they can reply. */
+  user_email: string | null;
+}
+
+export async function createFeedback(db: D1Database, input: FeedbackInput, userId: string | null): Promise<void> {
+  await db
+    .prepare(`INSERT INTO feedback (id, kind, message, page, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(newId(), input.kind, input.message, input.page, userId, nowIso())
+    .run();
+}
+
+export async function listFeedback(db: D1Database, status: "new" | "done", limit = 100): Promise<FeedbackRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT f.id, f.kind, f.message, f.page, f.status, f.created_at, u.name AS user_name, u.handle AS user_handle, u.email AS user_email
+       FROM feedback f LEFT JOIN "user" u ON u.id = f.user_id WHERE f.status = ? ORDER BY f.created_at DESC LIMIT ?`,
+    )
+    .bind(status, limit)
+    .all<FeedbackRow>();
+  return results;
+}
+
+export async function newFeedbackCount(db: D1Database): Promise<number> {
+  const row = await db.prepare(`SELECT COUNT(*) AS n FROM feedback WHERE status = 'new'`).first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+/** Marks feedback handled or reopens it; false when it doesn't exist or is already in that state. */
+export async function setFeedbackStatus(db: D1Database, id: string, status: "new" | "done", actorId: string): Promise<boolean> {
+  const res = await db
+    .prepare(`UPDATE feedback SET status = ?1, handled_at = ?2, handled_by = ?3 WHERE id = ?4 AND status != ?1`)
+    .bind(status, status === "done" ? nowIso() : null, status === "done" ? actorId : null, id)
+    .run();
+  return res.meta.changes > 0;
 }

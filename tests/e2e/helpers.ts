@@ -78,6 +78,7 @@ export function cleanup(): void {
   sql(`
     DELETE FROM tool WHERE submission_id IN (SELECT id FROM submission WHERE name LIKE 'E2E %');
     DELETE FROM submission WHERE name LIKE 'E2E %';
+    DELETE FROM feedback WHERE message LIKE 'E2E %';
     DELETE FROM app_rate_limit;
     DELETE FROM "rateLimit";
   `);

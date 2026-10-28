@@ -8,6 +8,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 - Cards show a "New" or "Updated" chip for a week after a tool is published or resurfaced, so it's clear why it sits near the top of Picks.
 - RSS feed of the 30 newest tools at `/feed.xml`, linked from every page's head and the footer.
+- Feedback page (`/feedback`, linked from the footer) for bugs, broken tools and ideas, with no account needed: Turnstile, 5 per hour per sender, stored in D1 and handled by moderators at `/admin/feedback`. Signed out, "Report listing" on a tool page opens it with the tool filled in.
+- Surprise me in the desktop header (icon only between 900 and 1100px).
+- About explains what gets listed and what doesn't.
+- GitHub Discussions are open for questions, bug reports and ideas; README has a Technical decisions section.
 - "Try it" links carry `utm_source=trysometh.ing&utm_medium=referral`, so a tool's own analytics can see visits from here; a link's existing UTM tags are kept.
 
 ### Fixed
@@ -15,6 +19,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Submissions made without "Fetch details" now get the site's share image too: the server looks it up when the form didn't include one.
 - The review page no longer flags a just-approved submission as a "Possible duplicate" of the tool it published.
 - The share image lookup also reads a `<meta name="thumbnail">` screenshot when a site has no og/twitter image.
+- Architecture, roadmap and deployment docs match what's built; the production security checklist is ticked as of 2026-10-28.
+- The footer says "1 star", not "1 stars".
 - The home slideshow shows up to 10 featured tools instead of 5, so a tool featured at position 6 or later appears in it.
 
 ## [0.1.0] - 2026-10-27

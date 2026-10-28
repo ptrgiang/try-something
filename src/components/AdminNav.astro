@@ -1,19 +1,20 @@
 ---
 // Tabs shared by every admin page, with the counts that need attention.
 import { env } from "cloudflare:workers";
-import { openReportCount, pendingUpdateCount, queueCounts } from "../lib/db";
+import { newFeedbackCount, openReportCount, pendingUpdateCount, queueCounts } from "../lib/db";
 
 interface Props {
-  current: "submissions" | "updates" | "reports" | "comments" | "tools" | "collections" | "tags" | "stats" | "users";
+  current: "submissions" | "updates" | "reports" | "feedback" | "comments" | "tools" | "collections" | "tags" | "stats" | "users";
 }
 const { current } = Astro.props;
 const user = Astro.locals.user;
-const [counts, reports, updates] = await Promise.all([queueCounts(env.DB), openReportCount(env.DB), pendingUpdateCount(env.DB)]);
+const [counts, reports, updates, feedback] = await Promise.all([queueCounts(env.DB), openReportCount(env.DB), pendingUpdateCount(env.DB), newFeedbackCount(env.DB)]);
 const waiting = (counts.pending ?? 0) + (counts.in_review ?? 0);
 const tabs = [
   { id: "submissions", href: "/admin/submissions", label: "Submissions", badge: waiting },
   { id: "updates", href: "/admin/updates", label: "Updates", badge: updates },
   { id: "reports", href: "/admin/reports", label: "Reports", badge: reports },
+  { id: "feedback", href: "/admin/feedback", label: "Feedback", badge: feedback },
   { id: "comments", href: "/admin/comments", label: "Comments", badge: 0 },
   { id: "tools", href: "/admin/tools", label: "Tools", badge: 0 },
   { id: "collections", href: "/admin/collections", label: "Collections", badge: 0 },

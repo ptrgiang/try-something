@@ -1,0 +1,66 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { listFeedback, setFeedbackStatus } from "../../lib/db";
+import { FEEDBACK_KINDS } from "../../lib/feedback";
+import { isModerator } from "../../lib/moderation";
+import { timeAgo } from "../../lib/util";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/feedback");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+const status = Astro.url.searchParams.get("status") === "done" ? "done" : "new";
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const to = form.get("action") === "reopen" ? "new" : "done";
+  if (await setFeedbackStatus(env.DB, String(form.get("id") ?? ""), to, user.id)) return Astro.redirect(`/admin/feedback?status=${status}`, 303);
+  error = "That feedback changed meanwhile. Reload and retry.";
+  Astro.response.status = 409;
+}
+const rows = await listFeedback(env.DB, status);
+const kindLabel = (id: string) => FEEDBACK_KINDS.find((k) => k.id === id)?.label ?? id;
+---
+<Base title="Feedback" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">Feedback</h1>
+    <AdminNav current="feedback" />
+    <nav class="chips admin-tabs" aria-label="Status filter">
+      <a class="chip" href="/admin/feedback" aria-current={status === "new" ? "true" : undefined}>New</a>
+      <a class="chip" href="/admin/feedback?status=done" aria-current={status === "done" ? "true" : undefined}>Done</a>
+    </nav>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {rows.length === 0 ? (
+      <p class="empty">{status === "new" ? "No new feedback." : "Nothing marked done yet."}</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feedback</th><th>From</th><th>Action</th></tr></thead>
+          <tbody>
+            {rows.map((f) => (
+              <tr id={f.id}>
+                <td>
+                  <p class="table-quote">{f.message}</p>
+                  <span class="muted small-note">{kindLabel(f.kind)}{f.page && <> · on <a href={f.page}>{f.page}</a></>} · <time datetime={f.created_at}>{timeAgo(f.created_at)}</time></span>
+                </td>
+                <td>
+                  {f.user_name ? (f.user_handle ? <a href={`/users/${f.user_handle}`}>{f.user_name}</a> : f.user_name) : <span class="muted">Anonymous</span>}
+                  {f.user_email && <div class="muted small-note">{f.user_email}</div>}
+                </td>
+                <td>
+                  <form method="post" class="inline-form">
+                    <input type="hidden" name="id" value={f.id} />
+                    {f.status === "new" ? <button class="btn btn-sm" name="action" value="done">Mark done</button> : <button class="btn btn-sm" name="action" value="reopen">Reopen</button>}
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</Base>

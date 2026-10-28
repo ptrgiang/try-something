@@ -131,3 +131,30 @@ test("Top today needs three tools with real activity, and yesterday's winner get
     sql(clear);
   }
 });
+
+test("anyone can send feedback, and moderators work through it", async ({ page }) => {
+  const mod = await createUser("e2e-fb-mod", "Feedback Mod", "moderator");
+  try {
+    // Signed out, "Report listing" leads to Feedback with the tool page filled in.
+    await page.goto("/tools/haikei");
+    await page.getByRole("button", { name: "Report listing" }).click();
+    await expect(page).toHaveURL(/\/feedback\?kind=tool&from=%2Ftools%2Fhaikei$/);
+    await expect(page.getByLabel("What is it about?")).toHaveValue("tool");
+    await page.getByLabel("Your message").fill("E2E the generator page asks me to sign up first");
+    await expect(page.locator('[name="cf-turnstile-response"]')).toHaveValue(/.+/, { timeout: 20_000 });
+    await page.getByRole("button", { name: "Send feedback" }).click();
+    await expect(page.getByRole("status")).toContainText("Thanks, we got it.");
+
+    await page.context().addCookies([{ ...mod.cookie, httpOnly: true, sameSite: "Lax" }]);
+    await page.goto("/admin/feedback");
+    const row = page.locator("tr", { hasText: "E2E the generator page" });
+    await expect(row).toContainText("on /tools/haikei");
+    await expect(row).toContainText("Anonymous");
+    await row.getByRole("button", { name: "Mark done" }).click();
+    await expect(page.locator("tr", { hasText: "E2E the generator page" })).toHaveCount(0);
+    await page.goto("/admin/feedback?status=done");
+    await expect(page.locator("tr", { hasText: "E2E the generator page" })).toHaveCount(1);
+  } finally {
+    sql(`DELETE FROM feedback WHERE message LIKE 'E2E %'; DELETE FROM "user" WHERE id = 'e2e-fb-mod';`);
+  }
+});

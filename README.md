@@ -25,6 +25,8 @@ We don't run an inbound review queue on this repo. To contribute a change: **for
 
 Your PR still has to meet the same bar as our own work: visual evidence for anything user-facing, QA steps, test results, and an AI disclosure naming the model. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guidelines.
 
+Questions, bug reports and ideas go to [Discussions](https://github.com/ptrgiang/try-something/discussions).
+
 Want a tool listed? Use **Submit a tool** on the site; the catalog isn't edited through GitHub.
 
 ## Table of Contents
@@ -32,6 +34,7 @@ Want a tool listed? Use **Submit a tool** on the site; the catalog isn't edited 
 - [Contributing](#contributing)
 - [What it does](#what-it-does)
 - [Stack](#stack)
+- [Technical decisions](#technical-decisions)
 - [Getting Started](#getting-started)
   - [Making yourself a moderator locally](#making-yourself-a-moderator-locally)
 - [Testing](#testing)
@@ -62,6 +65,14 @@ Everything runs on Cloudflare:
 | CI/CD | GitHub Actions for checks; deploys with `wrangler` (Cloudflare Workers Builds planned) |
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for decisions and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for deployment.
+
+## Technical decisions
+
+- **Server-rendered pages on one Worker.** Astro SSR on Cloudflare Workers with D1 keeps every page crawlable with real titles and Open Graph tags, ships little client JavaScript, and puts compute and data in one place with no separate API server.
+- **Fetching user-supplied URLs safely.** Metadata lookups go through one SSRF guard (`src/lib/metadata.ts`): https only, DNS resolved over HTTPS and checked for private addresses, every redirect re-validated, a short timeout and a byte cap. Share images are proxied through our own domain, never hot-linked.
+- **People review every listing.** A submission is a claim ("you can try this in 30 seconds"), and only a person can check it. Status changes follow a small state machine with guarded updates and an audit row, and moderators can't approve their own submissions.
+- **Picks balance new and unseen.** The default order puts editors' picks first, then tools from the last two weeks, then the rest with the least-seen first and a daily shuffle (`src/lib/picks.ts`), so the same few tools don't sit on top forever.
+- **Only real numbers.** Views, tries, hearts and saves are counted once per visitor per day, without cookies, and shown as they are. No paid ranking, no seeded votes, and the GitHub star count is hidden rather than guessed when it can't be fetched.
 
 ## Getting Started
 
