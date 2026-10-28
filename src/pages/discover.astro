@@ -53,7 +53,7 @@ const next = mood && tool ? discoverUrl(mood.id, step < SESSION_LENGTH ? step + 
           </div>
         </article>
         <nav class="discover-nav" aria-label="Discovery">
-          <a class="btn btn-lg" href={next!}><Icon name="shuffle" />{step < SESSION_LENGTH ? "Next discovery" : `${SESSION_LENGTH} more`}</a>
+          <a class="btn btn-lg" href={next!}><Icon name="compass" />{step < SESSION_LENGTH ? "Next discovery" : `${SESSION_LENGTH} more`}</a>
           <a class="btn btn-ghost btn-lg" href={discoverUrl(mood.id, 1, [])}>Restart</a>
         </nav>
       </section>
