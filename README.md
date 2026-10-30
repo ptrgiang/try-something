@@ -15,6 +15,14 @@
 </p>
 
 <p align="center">
+  <picture>
+    <source srcset="docs/assets/screenshot-dark.jpg" media="(prefers-color-scheme: dark)">
+    <source srcset="docs/assets/screenshot.jpg" media="(prefers-color-scheme: light)">
+    <img src="docs/assets/screenshot.jpg" alt="Try Something: the Explore grid on desktop and a Discover card on a phone">
+  </picture>
+</p>
+
+<p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-17141f?style=for-the-badge" alt="MIT License"></a>
   <a href="https://developers.cloudflare.com/workers/"><img src="https://img.shields.io/badge/runs_on-Cloudflare_Workers-ff6a45?style=for-the-badge" alt="Runs on Cloudflare Workers"></a>
 </p>
