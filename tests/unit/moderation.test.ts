@@ -24,6 +24,11 @@ describe("moderatorTransition", () => {
     expect(moderatorTransition(mod, sub("pending", "mod-1"), "approve", "")).toMatchObject({ ok: false, status: 403 });
   });
 
+  it("lets admins moderate their own submission", () => {
+    expect(moderatorTransition(admin, sub("pending", "admin-1"), "approve", "")).toEqual({ ok: true, to: "published" });
+    expect(moderatorTransition(admin, sub("published", "admin-1"), "approve", "")).toMatchObject({ ok: false, status: 409 });
+  });
+
   it("requires a reason for request_changes and reject", () => {
     expect(moderatorTransition(mod, sub("pending"), "reject", " ")).toMatchObject({ ok: false, status: 400 });
     expect(moderatorTransition(mod, sub("pending"), "request_changes", "Broken link on mobile")).toEqual({ ok: true, to: "needs_changes" });

@@ -42,7 +42,7 @@ const dup = await findDuplicate(env.DB, sub.canonical_key, sub.id);
 const own = sub.user_id === user.id;
 const meta = sub.source_meta as { title?: string | null; description?: string | null; favicon?: string | null };
 const submitter = await env.DB.prepare(`SELECT name, email FROM "user" WHERE id = ?`).bind(sub.user_id).first<{ name: string; email: string }>();
-const can = (a: ModeratorAction) => !own && moderatorTransition(user, sub!, a, "reason ok").ok;
+const can = (a: ModeratorAction) => moderatorTransition(user, sub!, a, "reason ok").ok;
 ---
 <Base title={`Review: ${sub.name}`} noindex>
   <div class="page app-page review">
@@ -52,7 +52,7 @@ const can = (a: ModeratorAction) => !own && moderatorTransition(user, sub!, a, "
     {notice && <p class="notice notice-success" role="status">{notice}</p>}
     {error && <p class="form-error" role="alert">{error}</p>}
     {dup && <p class="notice">Possible duplicate: {dup.kind === "tool" ? <a href={`/tools/${dup.slug}`}>/tools/{dup.slug}</a> : "another open submission has the same URL"}.</p>}
-    {own && <p class="notice">This is your own submission — another moderator has to review it.</p>}
+    {own && (user.role === "admin" ? <p class="notice">This is your own submission. As an admin you can review it yourself; the decision is logged under your name.</p> : <p class="notice">This is your own submission — another moderator has to review it.</p>)}
 
     <div class="review-grid">
       <section class="panel">

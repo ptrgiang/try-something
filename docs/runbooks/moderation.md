@@ -4,7 +4,7 @@ Everything lives under `/admin` (moderators and admins only): Submissions, Repor
 
 ## Reviewing submissions
 
-Queue: `/admin/submissions`. Moderators cannot act on their own submissions.
+Queue: `/admin/submissions`. Moderators cannot act on their own submissions; admins can, and the decision is logged under their name like any other.
 
 ### Checklist before publishing
 

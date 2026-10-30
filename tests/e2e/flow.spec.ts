@@ -247,3 +247,27 @@ test("moderator cannot approve their own submission", async ({ page }) => {
   });
   expect(res.status()).toBe(403);
 });
+
+test("admin can approve their own submission", async ({ page }) => {
+  const admin = await createUser("e2e-admin", "Ada Admin", "admin");
+  await signIn(page, admin);
+  await page.goto("/submit");
+  await page.getByLabel("I made this").check();
+  await page.getByLabel("Official URL").fill("https://example.org/e2e-admin-own");
+  await page.getByLabel("Product name").fill("E2E Admin Thing");
+  await page.getByLabel("One-line description").fill("Something the admin made");
+  await page.getByLabel(/try in 30 seconds/).fill("Click the big button");
+  await page.getByLabel("Category").selectOption("fun");
+  await waitForTurnstile(page);
+  await page.getByRole("button", { name: "Submit for review" }).click();
+  await expect(page).toHaveURL(/\/me\/submissions/);
+  const [{ id }] = sqlJson<{ id: string }>("SELECT id FROM submission WHERE name = 'E2E Admin Thing'");
+  await page.goto(`/admin/submissions/${id}`);
+  await expect(page.getByText("As an admin you can review it yourself")).toBeVisible();
+  await page.getByRole("button", { name: "Approve & publish" }).click();
+  await expect(page.getByText(/Published at \/tools\//)).toBeVisible();
+  const [row] = sqlJson<{ status: string; by: string }>(
+    `SELECT t.status, t.submitted_by AS by FROM tool t JOIN submission s ON s.tool_id = t.id WHERE s.id = '${id}'`,
+  );
+  expect(row).toEqual({ status: "published", by: "e2e-admin" });
+});

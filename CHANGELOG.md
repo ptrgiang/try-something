@@ -17,6 +17,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - GitHub Discussions are open for questions, bug reports and ideas; README has a Technical decisions section.
 - "Try it" links carry `utm_source=trysometh.ing&utm_medium=referral`, so a tool's own analytics can see visits from here; a link's existing UTM tags are kept.
 
+### Changed
+
+- Admins can review and publish their own submissions on the moderation page; moderators still need someone else to review theirs.
+
 ### Fixed
 
 - Submissions made without "Fetch details" now get the site's share image too: the server looks it up when the form didn't include one.

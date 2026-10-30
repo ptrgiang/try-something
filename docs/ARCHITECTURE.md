@@ -42,7 +42,7 @@ pending / needs_changes ──owner withdraw──▶ withdrawn
 tool: published ⇄ hidden (reason required to hide)
 ```
 
-Moderators can't act on their own submissions. Every transition is guarded with `WHERE status = <expected>` so concurrent decisions can't both apply; history rows are only inserted when the guarded update applied.
+Moderators can't act on their own submissions (admins can). Every transition is guarded with `WHERE status = <expected>` so concurrent decisions can't both apply; history rows are only inserted when the guarded update applied.
 
 ## Security model
 

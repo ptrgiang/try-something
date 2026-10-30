@@ -41,7 +41,8 @@ export function moderatorTransition(
   if (!isModerator(actor.role)) return { ok: false, status: 403, error: "Moderator role required." };
   const rule = MODERATOR_TRANSITIONS[action];
   if (!rule) return { ok: false, status: 400, error: "Unknown action." };
-  if (submission.user_id === actor.id) {
+  // Admins may publish their own tools; moderators still need someone else to review theirs.
+  if (submission.user_id === actor.id && actor.role !== "admin") {
     return { ok: false, status: 403, error: "You can't moderate your own submission." };
   }
   if (!rule.from.includes(submission.status)) {

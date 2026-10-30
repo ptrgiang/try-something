@@ -70,7 +70,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for decisions and [`docs/DEPL
 
 - **Server-rendered pages on one Worker.** Astro SSR on Cloudflare Workers with D1 keeps every page crawlable with real titles and Open Graph tags, ships little client JavaScript, and puts compute and data in one place with no separate API server.
 - **Fetching user-supplied URLs safely.** Metadata lookups go through one SSRF guard (`src/lib/metadata.ts`): https only, DNS resolved over HTTPS and checked for private addresses, every redirect re-validated, a short timeout and a byte cap. Share images are proxied through our own domain, never hot-linked.
-- **People review every listing.** A submission is a claim ("you can try this in 30 seconds"), and only a person can check it. Status changes follow a small state machine with guarded updates and an audit row, and moderators can't approve their own submissions.
+- **People review every listing.** A submission is a claim ("you can try this in 30 seconds"), and only a person can check it. Status changes follow a small state machine with guarded updates and an audit row, and moderators can't approve their own submissions (only admins can).
 - **Picks balance new and unseen.** The default order puts editors' picks first, then tools from the last two weeks, then the rest with the least-seen first and a daily shuffle (`src/lib/picks.ts`), so the same few tools don't sit on top forever.
 - **Only real numbers.** Views, tries, hearts and saves are counted once per visitor per day, without cookies, and shown as they are. No paid ranking, no seeded votes, and the GitHub star count is hidden rather than guessed when it can't be fetched.
 
