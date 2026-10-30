@@ -52,7 +52,7 @@ Every action is recorded in the moderation history. Never edit statuses directly
 - Makers who listed their own tool ("I made this") can post an update from My submissions: what changed, plus new description, try-this and why. One can wait at a time, three per tool per 30 days.
 - Review them at `/admin/updates`. Open the tool and check the claim. Approve copies the text onto the listing and shows the note under "Updates from the maker"; decline needs a note, which the maker sees.
 - Tick **Resurface in Picks** only for a change worth a second look (a new feature, a redesign), not a typo or a price change. The tool then ranks with new tools for 14 days, and can't be resurfaced again for 90 days.
-- You can't review your own update. Every step is in the audit history.
+- Moderators can't review their own update; admins can. Every step is in the audit history.
 
 ## Roles
 

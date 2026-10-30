@@ -22,7 +22,7 @@ if (Astro.request.method === "POST") {
     error = "Add a note for the maker before declining.";
     Astro.response.status = 400;
   } else {
-    const conflict = await decideToolUpdate(env.DB, String(form.get("updateId") ?? ""), user.id, {
+    const conflict = await decideToolUpdate(env.DB, String(form.get("updateId") ?? ""), user, {
       approve: action === "approve",
       resurface: form.get("resurface") === "on",
       note,
@@ -56,7 +56,7 @@ const changed = (a: string, b: string) => a.trim() !== b.trim();
             <dt>Try in 30 seconds</dt><dd>{changed(u.try_this, u.old_try_this) ? <><del>{u.old_try_this}</del><br /><ins>{u.try_this}</ins></> : <span class="muted">Unchanged</span>}</dd>
             <dt>Why</dt><dd>{changed(u.why, u.old_why) ? <><del>{u.old_why || "—"}</del><br /><ins>{u.why || "—"}</ins></> : <span class="muted">Unchanged</span>}</dd>
           </dl>
-          {u.user_id === user.id ? (
+          {u.user_id === user.id && user.role !== "admin" ? (
             <p class="notice">This is your own update — another moderator has to review it.</p>
           ) : (
             <form method="post" class="form">

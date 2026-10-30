@@ -1931,12 +1931,13 @@ export async function pendingUpdateCount(db: D1Database): Promise<number> {
 export async function decideToolUpdate(
   db: D1Database,
   updateId: string,
-  actorId: string,
+  actor: { id: string; role: string },
   decision: { approve: boolean; resurface: boolean; note: string | null },
 ): Promise<string | null> {
   const u = await db.prepare(`SELECT * FROM tool_update WHERE id = ?`).bind(updateId).first<ToolUpdate>();
   if (!u || u.status !== "pending") return "This update was already decided.";
-  if (u.user_id === actorId) return "Another moderator has to review your own update.";
+  // Same rule as submissions: admins may approve their own, moderators may not.
+  if (u.user_id === actor.id && actor.role !== "admin") return "Another moderator has to review your own update.";
   const now = nowIso();
   const to = decision.approve ? "published" : "rejected";
   const resurface = decision.approve && decision.resurface ? 1 : 0;
@@ -1957,7 +1958,7 @@ export async function decideToolUpdate(
         .bind(u.tagline, u.try_this, u.why, now, resurface, cutoff, now, u.tool_id, u.id, now),
     );
   }
-  stmts.push(updateAudit(db, u.id, u.tool_id, actorId, decision.approve ? "update_approve" : "update_reject", "pending", to, decision.note));
+  stmts.push(updateAudit(db, u.id, u.tool_id, actor.id, decision.approve ? "update_approve" : "update_reject", "pending", to, decision.note));
   const [res] = await db.batch(stmts);
   return res.meta.changes ? null : "This update was already decided.";
 }

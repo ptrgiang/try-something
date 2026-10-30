@@ -25,7 +25,7 @@ test.afterAll(() => {
     DELETE FROM tool_update WHERE tool_id = '${TOOL}';
     UPDATE tool SET submitted_by = NULL, credit_type = 'editorial', refreshed_at = NULL,
       tagline = ${q(original.tagline)}, try_this = ${q(original.try_this)}, why = ${q(original.why)} WHERE id = '${TOOL}';
-    DELETE FROM "user" WHERE id IN ('e2e-upd-maker', 'e2e-upd-other', 'e2e-upd-mod');
+    DELETE FROM "user" WHERE id IN ('e2e-upd-maker', 'e2e-upd-other', 'e2e-upd-mod', 'e2e-upd-admin');
   `);
 });
 
@@ -90,4 +90,23 @@ test("a moderator approves and resurfaces it; Picks moves it up, New doesn't", a
 
   await page.goto("/explore?sort=new");
   expect((await cards())[0]).not.toBe(TOOL);
+});
+
+test("an admin who made the tool approves their own update", async ({ page }) => {
+  const admin = await createUser("e2e-upd-admin", "Ad Min", "admin");
+  sql(`UPDATE tool SET submitted_by = 'e2e-upd-admin' WHERE id = '${TOOL}'`);
+  await asUser(page, admin);
+  await page.goto("/me/tools/kleki/update");
+  await page.getByLabel("What changed").fill("Admin's own change to the listing.");
+  await page.getByLabel("Description").fill("Paint and sketch, approved by its admin maker.");
+  await page.getByRole("button", { name: "Send for review" }).click();
+  await expect(page).toHaveURL(/\/me\/submissions\?update=sent/);
+
+  await page.goto("/admin/updates");
+  const panel = page.locator(".update-review", { hasText: "Kleki" });
+  await expect(panel.getByText("another moderator has to review it")).toHaveCount(0);
+  await panel.getByRole("button", { name: "Approve" }).click();
+  await expect(page.getByText("No updates waiting.")).toBeVisible();
+  await page.goto("/tools/kleki");
+  await expect(page.locator(".detail")).toContainText("Paint and sketch, approved by its admin maker.");
 });

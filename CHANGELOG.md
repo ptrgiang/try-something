@@ -19,7 +19,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Changed
 
-- Admins can review and publish their own submissions on the moderation page; moderators still need someone else to review theirs.
+- Admins can review and publish their own submissions and approve their own tool updates; moderators still need someone else to review theirs.
 
 ### Fixed
 
