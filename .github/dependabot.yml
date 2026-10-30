@@ -16,7 +16,8 @@ updates:
       # @astrojs/check doesn't accept TypeScript 7 yet (npm ci fails with ERESOLVE).
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
-      # Newer satori reads import.meta.url, which is undefined in Workers, so OG images return 500.
+      # Newer satori shapes text with HarfBuzz, which compiles wasm at runtime; Workers forbid it, so OG images 500.
+      # See "Dependencies" in docs/ARCHITECTURE.md.
       - dependency-name: satori
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: github-actions

@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-10-22. Nothing here is a launch promise.
+Status as of 2026-10-30. Nothing here is a launch promise.
 
 The current interface is **design v1**, locked on 2026-10-22: editorial cream/coral/lavender/butter look,
 Gallery-style cards with hover actions and quick view, brand logo, cursor and scrollbar. Later changes build on it
@@ -21,7 +21,7 @@ rather than replacing it.
 - [x] GitHub/Google OAuth with Better Auth on D1, server-side roles
 - [x] Turnstile on submissions, rate limits
 - [x] GitHub header link with real, cached star count (hidden when unknown)
-- [x] Email OTP sign-in wired to Cloudflare Email Service (sending domain verified; live once a real Turnstile secret is set)
+- [x] Email OTP sign-in through Cloudflare Email Service, live in production with Turnstile
 - [x] Repo policy: MIT + trademark policy, fork-and-email contributions, AGENTS.md, runbooks
 - [x] CI (type-check, unit, build, e2e, migration guard); staging environment; manual promote-to-production workflow
 - [x] `hello@trysometh.ing` via Cloudflare Email Routing (contact for contributions and takedowns)
@@ -32,6 +32,7 @@ rather than replacing it.
 - [x] Visual QA at 768px alongside 375px and 1440px (staging, 2026-10-22)
 - [x] Browser check of every seed tool's 30-second try (2026-10-22; listening and feel still need an editor)
 - [x] Seed set grown to 29 tools across all seven categories of the time (nine since Utilities and Business were added), each opened in a browser and usable without an account
+- [x] Link check of all 53 published tools (2026-10-30): every one opens and is usable without an account; four need one extra click to reach the try
 
 ## M1 — Community
 
@@ -106,7 +107,7 @@ P1:
 - [x] Makers and finders see views, tries, saves and hearts for their own listed tools in My submissions
 - [x] Cards hide zero counts (the heart stays clickable); private numbers stay exact
 - [x] A first collection for the home picks on staging: "Tiny tools that are surprisingly useful" (2026-10-23); production
-      needs its own once it launches
+      has its own ("Five-minute design kit")
 - [x] Product updates from makers through moderation: the maker who listed a tool posts what changed and refreshed
       listing text (one waiting at a time, 3 per 30 days); a moderator approves or declines in `/admin/updates`, and
       may resurface a meaningful update so it ranks with new tools in Picks for 14 days, at most once per 90 days
@@ -118,6 +119,8 @@ P1:
       no repeats within the session, less-seen tools first two times in three; state lives in the URL, no account
 - [x] Feedback page for bugs, broken tools and ideas without an account; Surprise me in the desktop header; About lists
       what gets listed (2026-10-28)
+- [x] Animated stickers in empty states, notices and celebrations; a "your tool is live" banner with Share and the
+      badge (2026-10-29)
 
 ## M2 — Growth (only with a real audience)
 

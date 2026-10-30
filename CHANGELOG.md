@@ -4,6 +4,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
+
 ### Added
 
 - Cards show a "New" or "Updated" chip for a week after a tool is published or resurfaced, so it's clear why it sits near the top of Picks.
@@ -29,6 +31,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Architecture, roadmap and deployment docs match what's built; the production security checklist is ticked as of 2026-10-28.
 - The footer says "1 star", not "1 stars".
 - The home slideshow shows up to 10 featured tools instead of 5, so a tool featured at position 6 or later appears in it.
+
+### Security
+
+- `satori` stays on 0.30 despite GHSA-wx4j-mvgx-mqwp: newer releases can't run on Workers, and its SVG is only rasterized to PNG, never served (see "Dependencies" in `docs/ARCHITECTURE.md`).
 
 ## [0.1.0] - 2026-10-27
 
@@ -186,5 +192,6 @@ The interface is design v1 (see ROADMAP.md).
 - Unit tests and Playwright end-to-end flow tests.
 - 13 editorial seed tools (links checked live; manual try QA pending).
 
-[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ptrgiang/try-something/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ptrgiang/try-something/releases/tag/v0.1.0

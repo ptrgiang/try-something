@@ -52,6 +52,7 @@ Moderators can't act on their own submissions (admins can). Every transition is 
 - **XSS.** User text is stored as plain text (control/bidi characters stripped) and always rendered through Astro's escaping. No `set:html` with user data. JSON-LD is serialized with `<` escaped.
 - **CSP.** Astro-generated CSP with hashes for scripts and styles; `frame-ancestors` equivalent via `X-Frame-Options: DENY`; external scripts limited to Turnstile.
 - **Bots/spam.** Turnstile verified server-side (action + hostname checked, fails closed) on submit and on the email-OTP send endpoint; per-user rate limits.
+- **Dependencies.** `satori` stays on 0.30: every release that fixes GHSA-wx4j-mvgx-mqwp (SVG escaping) shapes text with HarfBuzz, which compiles wasm at runtime, and Workers forbid that. The advisory is about the SVG; ours only feeds resvg and is never served, so the share images ship as PNG.
 - **Privacy.** Admin/me/submit/login/api responses are `noindex` and `private, no-store`. Non-production hosts serve `Disallow: /`.
 
 ## Caching

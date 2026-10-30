@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Source for public/og-default.png. Regenerate with: node scripts/render-og.mjs -->
+<!-- Source for public/og-default.png and, with ?repo, the GitHub social preview. Regenerate with: node scripts/render-og.mjs -->
 <html>
   <head>
     <meta charset="utf-8" />
@@ -83,6 +83,19 @@
       h1 em {
         color: #ff6a45;
       }
+      .repo .og {
+        width: 1280px;
+        height: 640px;
+      }
+      .source {
+        display: none;
+        font-size: 24px;
+        font-weight: 700;
+        color: #17141f;
+      }
+      .repo .source {
+        display: block;
+      }
       p {
         font: 500 30px Manrope;
         color: #3a3546;
@@ -92,6 +105,9 @@
     </style>
   </head>
   <body>
+    <script>
+      if (location.search === "?repo") document.body.classList.add("repo");
+    </script>
     <div class="og">
       <div class="shape a"></div>
       <div class="shape b"></div>
@@ -102,6 +118,7 @@
       </div>
       <h1>Discover tools<br />worth <em>trying</em></h1>
       <p>Curated web toys &amp; tools you can try in 30 seconds.</p>
+      <p class="source">Open source · MIT · Astro on Cloudflare Workers</p>
     </div>
   </body>
 </html>
