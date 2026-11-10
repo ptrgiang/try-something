@@ -7,6 +7,7 @@ import { picksOrder, type PicksInput } from "./picks";
 import type { Acquisition } from "./analytics";
 import type { FeedbackInput, FeedbackKind } from "./feedback";
 import { newId, nowIso } from "./util";
+import { parseQuery } from "./search";
 import { parseTags, slugify } from "./validation";
 
 export interface ToolArt {
@@ -193,7 +194,7 @@ export function parsePeriod(value: string | null): Period {
 function toolFilter(opts: { q?: string; category?: string; tag?: string; exclude?: string[] }) {
   const where = ["t.status = 'published'"];
   const binds: unknown[] = [];
-  // Search results rank by where the term matched before the chosen sort, so a tool named for it comes first.
+  // Search results rank by how well the words matched before the chosen sort, so a tool named for them comes first.
   let relevance = "";
   const relevanceBinds: unknown[] = [];
   if (opts.category) {
@@ -208,15 +209,34 @@ function toolFilter(opts: { q?: string; category?: string; tag?: string; exclude
     where.push("EXISTS (SELECT 1 FROM json_each(t.tags) j WHERE j.value = ?)");
     binds.push(opts.tag);
   }
-  if (opts.q) {
-    const like = `%${opts.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-    where.push("(t.name LIKE ? ESCAPE '\\' OR t.tagline LIKE ? ESCAPE '\\' OR t.tags LIKE ? ESCAPE '\\' OR t.try_this LIKE ? ESCAPE '\\')");
-    binds.push(like, like, like, like);
-    relevance = "CASE WHEN t.name LIKE ? ESCAPE '\\' THEN 0 WHEN t.tagline LIKE ? ESCAPE '\\' THEN 1 WHEN t.tags LIKE ? ESCAPE '\\' THEN 2 ELSE 3 END";
-    relevanceBinds.push(like, like, like);
+  const query = opts.q ? parseQuery(opts.q) : null;
+  if (query) {
+    const like = (expr: string, patterns: string[]) => `(${patterns.map(() => `${expr} LIKE ? ESCAPE '\\'`).join(" OR ")})`;
+    for (const term of query.terms) {
+      where.push(like(SEARCH_TEXT, term.patterns));
+      binds.push(...term.patterns);
+    }
+    // Lower sorts first. Synonyms only widen the match; ranking counts the words as typed.
+    const parts = [`CASE WHEN ${SEARCH_NAME} LIKE ? ESCAPE '\\' THEN 8 ELSE 0 END`];
+    relevanceBinds.push(query.phrase);
+    for (const term of query.terms) {
+      parts.push(`CASE WHEN ${SEARCH_NAME} LIKE ? ESCAPE '\\' THEN 3 WHEN ${SEARCH_BLURB} LIKE ? ESCAPE '\\' THEN 2 ELSE 0 END`);
+      relevanceBinds.push(term.primary, term.primary);
+    }
+    relevance = `-(${parts.join(" + ")})`;
   }
   return { where, binds, relevance, relevanceBinds };
 }
+
+/** Space-padded with separators as spaces, so a short-word pattern like "% ai%" means "a word starting ai". */
+function searchable(expr: string): string {
+  let out = `' ' || ${expr} || ' '`;
+  for (const ch of [`"`, "(", ")", "[", "]", ",", ".", "-", "/", ":", ";", "!", "?", "&"]) out = `replace(${out}, '${ch}', ' ')`;
+  return out;
+}
+const SEARCH_NAME = searchable("t.name");
+const SEARCH_BLURB = searchable("t.tagline || ' ' || t.tags");
+const SEARCH_TEXT = searchable("t.name || ' ' || t.tagline || ' ' || t.tags || ' ' || t.try_this || ' ' || t.why");
 
 /** Published tools per category id; categories with none are absent. */
 export async function categoryCounts(db: D1Database): Promise<Record<string, number>> {

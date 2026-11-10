@@ -15,7 +15,7 @@ export interface PicksInput {
   refreshed_at: string | null;
   /** Cards seen on screen in the last 30 days. */
   impressions30: number;
-  /** Search relevance tier (0 = name match); 0 for every tool when there is no search. */
+  /** Search relevance, lower first (minus the match score); 0 for every tool when there is no search. */
   relevance?: number;
 }
 

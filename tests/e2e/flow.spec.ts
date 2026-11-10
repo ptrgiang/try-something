@@ -48,6 +48,11 @@ test("visitor can discover, search, surprise and save without signing in", async
   // Name matches rank above tools that only mention the term.
   await expect(page.locator(".grid .card h2").first()).toHaveText("JSON Crack");
 
+  // Each word matches on its own, through synonyms: SVGOMG says "Shrink SVG files", not "compress".
+  await page.goto("/explore?q=compress+svg");
+  await expect(page.locator(".grid .card h2")).toHaveText(["SVGOMG"]);
+  await page.goto("/explore?q=json");
+
   await page.locator(".card .save-btn").first().click();
   await expect(page.locator(".card .save-btn").first()).toHaveAttribute("aria-pressed", "true");
   await page.reload();
