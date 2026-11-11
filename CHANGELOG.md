@@ -10,7 +10,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Changed
 
-- "You might also like" on a tool page is now "Games like Patatap" / "Tools like Haikei" / "Sites like The Deep Sea", with up to eight tools. Only tools that share the category or a tag are listed, and when the category has enough of them the list keeps to it; random top-ups are gone.
+- "You might also like" on a tool page is now "Games like Patatap" / "Tools like Haikei" / "Sites like The Deep Sea", with up to eight tools. Only tools that share the category or a tag are listed, single-tag matches from other categories only fill a short list, and the heading names the category when every tool is in it; random top-ups are gone.
 
 - Tool pages that can't fit their tagline in the title read "Name: browser game to try in 30 seconds" instead of repeating "browser"; any title over 60 characters drops the " - Try Something" suffix rather than being cut off in search results.
 - Clearer titles for Collections, each collection and Discover. `/collections` and tool pages carry more structured data (the list of collections; the page with its published and updated dates).

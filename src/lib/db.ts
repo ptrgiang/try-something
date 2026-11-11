@@ -344,18 +344,26 @@ export async function discoveryPick(db: D1Database, categories: readonly string[
   return getPublishedTool(db, draw[Math.floor(random() * draw.length)].slug);
 }
 
-/** With this many tools of the tool's own category, the "like" list is only those ("Games like X"). */
-const SAME_KIND_MIN = 4;
+/** With this many strong matches, tools that only share one tag from another category are left out. */
+const STRONG_MIN = 4;
 
-/** Picks the "like" list from candidates ranked best first: all one category when there are enough, else the closest of any. */
-export function pickSimilar<T extends { category: string }>(ranked: T[], category: string, limit: number): { tools: T[]; sameKind: boolean } {
-  const same = ranked.filter((t) => t.category === category);
-  return same.length >= SAME_KIND_MIN ? { tools: same.slice(0, limit), sameKind: true } : { tools: ranked.slice(0, limit), sameKind: false };
+/**
+ * Picks the "like" list from candidates ranked best first. A strong match shares the category or two
+ * tags; weak ones only fill a list that would otherwise be short. `sameKind`: all in the tool's category.
+ */
+export function pickSimilar<T extends { category: string; tags: string[] }>(
+  ranked: T[],
+  tool: { category: string; tags: string[] },
+  limit: number,
+): { tools: T[]; sameKind: boolean } {
+  const strong = ranked.filter((t) => t.category === tool.category || t.tags.filter((tag) => tool.tags.includes(tag)).length >= 2);
+  const tools = (strong.length >= STRONG_MIN ? strong : ranked).slice(0, limit);
+  return { tools, sameKind: tools.every((t) => t.category === tool.category) };
 }
 
 /**
  * Other tools for the detail page. `maker`: same maker name, or the same person's own submissions.
- * `similar`: ranked by same category (3) plus shared tags (2 each), ties shuffled, then narrowed by
+ * `similar`: ranked by same category (3) plus shared tags (2 each), ties shuffled, then trimmed by
  * pickSimilar; never repeats a `maker` tool. A tool that shares neither is left out, because the
  * page calls this list "like" the tool; `sameKind` says whether it can name the category.
  */
@@ -379,7 +387,7 @@ export async function relatedTools(
     )
     .bind(JSON.stringify(exclude), JSON.stringify(tool.tags), tool.category, limit * 3)
     .all<Row>();
-  const picked = pickSimilar(candidates.results.map(toTool), tool.category, limit);
+  const picked = pickSimilar(candidates.results.map(toTool), tool, limit);
   return { maker: maker.results.map(toTool), similar: picked.tools, sameKind: picked.sameKind };
 }
 
