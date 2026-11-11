@@ -3,7 +3,16 @@ import { env } from "cloudflare:workers";
 import Base from "../../../layouts/Base.astro";
 import AdminNav from "../../../components/AdminNav.astro";
 import Icon from "../../../components/Icon.astro";
-import { addToCollection, getCollectionForEdit, moveInCollection, removeFromCollection, saveCollection } from "../../../lib/db";
+import {
+  addToCollection,
+  COLLECTION_INTRO_MAX,
+  COLLECTION_NOTE_MAX,
+  getCollectionForEdit,
+  moveInCollection,
+  removeFromCollection,
+  saveCollection,
+  setCollectionNote,
+} from "../../../lib/db";
 import { isModerator } from "../../../lib/moderation";
 import { plainText, slugify } from "../../../lib/validation";
 
@@ -22,14 +31,23 @@ if (Astro.request.method === "POST") {
     const status = form.get("status") === "published" ? "published" : "draft";
     if (title.length < 3) error = "Give the collection a title.";
     else {
-      const res = await saveCollection(env.DB, user.id, { id, title, slug, description: plainText(form.get("description"), 400), status });
+      const res = await saveCollection(env.DB, user.id, {
+        id,
+        title,
+        slug,
+        description: plainText(form.get("description"), 400),
+        intro: plainText(form.get("intro"), COLLECTION_INTRO_MAX).replace(/\r\n?/g, "\n"),
+        status,
+      });
       if (!res.ok) error = res.error;
     }
   } else if (action === "add") {
     // Accept a full tool URL or just the slug.
     const raw = plainText(form.get("tool"), 200);
     const slug = raw.replace(/^.*\/tools\//, "").replace(/[?#].*$/, "").replace(/\/$/, "");
-    error = (await addToCollection(env.DB, user.id, id, slug, plainText(form.get("note"), 200) || null)) ?? "";
+    error = (await addToCollection(env.DB, user.id, id, slug, plainText(form.get("note"), COLLECTION_NOTE_MAX) || null)) ?? "";
+  } else if (action === "note") {
+    await setCollectionNote(env.DB, user.id, id, String(form.get("toolId") ?? ""), plainText(form.get("note"), COLLECTION_NOTE_MAX) || null);
   } else if (action === "remove") {
     await removeFromCollection(env.DB, user.id, id, String(form.get("toolId") ?? ""));
   } else if (action === "up" || action === "down") {
@@ -60,13 +78,18 @@ if (!c) return Astro.rewrite("/404");
                 <div class="collection-tool">
                   <a href={`/tools/${t.slug}`}><strong>{t.name}</strong></a>
                   {t.status !== "published" && <span class={`status status-${t.status}`}>{t.status}</span>}
-                  {t.note && <div class="muted small-note">{t.note}</div>}
                 </div>
                 <form method="post" class="collection-tool-actions">
                   <input type="hidden" name="toolId" value={t.id} />
                   <button class="btn btn-sm" name="action" value="up" disabled={i === 0} aria-label={`Move ${t.name} up`}>↑</button>
                   <button class="btn btn-sm" name="action" value="down" disabled={i === c.tools.length - 1} aria-label={`Move ${t.name} down`}>↓</button>
                   <button class="btn btn-sm" name="action" value="remove" aria-label={`Remove ${t.name}`}><Icon name="close" /></button>
+                </form>
+                <form method="post" class="collection-note-form">
+                  <input type="hidden" name="toolId" value={t.id} />
+                  <label class="sr-only" for={`note-${t.id}`}>Note for {t.name}</label>
+                  <input id={`note-${t.id}`} name="note" type="text" maxlength={COLLECTION_NOTE_MAX} value={t.note ?? ""} placeholder="Why it's in this collection (shown on the card)" />
+                  <button class="btn btn-sm" name="action" value="note">Save note</button>
                 </form>
               </li>
             ))}
@@ -80,7 +103,7 @@ if (!c) return Astro.rewrite("/404");
             </div>
             <div class="field">
               <label for="note">Editor's note <span class="muted">(optional)</span></label>
-              <input id="note" name="note" type="text" maxlength="200" />
+              <input id="note" name="note" type="text" maxlength={COLLECTION_NOTE_MAX} />
             </div>
           </div>
           <button class="btn btn-dark" name="action" value="add"><Icon name="plus" />Add tool</button>
@@ -98,6 +121,11 @@ if (!c) return Astro.rewrite("/404");
         <div class="field">
           <label for="description">Description</label>
           <textarea id="description" name="description" rows="3" maxlength="400">{c.description}</textarea>
+        </div>
+        <div class="field">
+          <label for="intro">Intro <span class="muted">(optional)</span></label>
+          <textarea id="intro" name="intro" rows="8" maxlength={COLLECTION_INTRO_MAX} aria-describedby="intro-hint">{c.intro}</textarea>
+          <p class="hint" id="intro-hint">A few sentences under the description: who the set is for and how it was picked. A blank line starts a new paragraph.</p>
         </div>
         <fieldset class="field">
           <legend>Visibility</legend>

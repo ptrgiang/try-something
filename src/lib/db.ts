@@ -827,17 +827,32 @@ export async function collectionPreviews(db: D1Database, perCollection = 3): Pro
   return out;
 }
 
+export const COLLECTION_INTRO_MAX = 1200;
+export const COLLECTION_NOTE_MAX = 200;
+
 export async function getCollection(db: D1Database, slug: string) {
   const c = await db
     .prepare(`SELECT * FROM collection WHERE slug = ? AND status = 'published'`)
     .bind(slug)
-    .first<{ id: string; slug: string; title: string; description: string; published_at: string; updated_at: string }>();
+    .first<{ id: string; slug: string; title: string; description: string; intro: string; published_at: string; updated_at: string }>();
   if (!c) return null;
+  const [tools, notes] = await db.batch<Row & { tool_id: string; note: string }>([
+    db.prepare(`${TOOL_SELECT} JOIN collection_tool ct ON ct.tool_id = t.id WHERE ct.collection_id = ? AND t.status = 'published' ORDER BY ct.position`).bind(c.id),
+    db.prepare(`SELECT tool_id, note FROM collection_tool WHERE collection_id = ? AND note IS NOT NULL AND note != ''`).bind(c.id),
+  ]);
+  return { ...c, tools: tools.results.map(toTool), notes: new Map(notes.results.map((r) => [r.tool_id, r.note])) };
+}
+
+/** Published collections that include a tool, newest first, for the links on its page. */
+export async function collectionsForTool(db: D1Database, toolId: string): Promise<{ slug: string; title: string }[]> {
   const { results } = await db
-    .prepare(`${TOOL_SELECT} JOIN collection_tool ct ON ct.tool_id = t.id WHERE ct.collection_id = ? AND t.status = 'published' ORDER BY ct.position`)
-    .bind(c.id)
-    .all<Row>();
-  return { ...c, tools: results.map(toTool) };
+    .prepare(
+      `SELECT c.slug, c.title FROM collection c JOIN collection_tool ct ON ct.collection_id = c.id
+       WHERE ct.tool_id = ? AND c.status = 'published' ORDER BY c.published_at DESC LIMIT 6`,
+    )
+    .bind(toolId)
+    .all<{ slug: string; title: string }>();
+  return results;
 }
 
 /**
@@ -1397,6 +1412,7 @@ export interface CollectionRow {
   slug: string;
   title: string;
   description: string;
+  intro: string;
   status: "draft" | "published";
   published_at: string | null;
   updated_at: string;
@@ -1432,8 +1448,9 @@ function collectionAudit(db: D1Database, collectionId: string, actorId: string, 
 export async function saveCollection(
   db: D1Database,
   actorId: string,
-  input: { id?: string; slug: string; title: string; description: string; status: "draft" | "published" },
+  input: { id?: string; slug: string; title: string; description: string; intro?: string; status: "draft" | "published" },
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const intro = input.intro ?? "";
   const clash = await db.prepare(`SELECT 1 FROM collection WHERE slug = ? AND id != ?`).bind(input.slug, input.id ?? "").first();
   if (clash) return { ok: false, error: "Another collection already uses that URL." };
   const now = nowIso();
@@ -1441,8 +1458,8 @@ export async function saveCollection(
     const id = newId();
     await db.batch([
       db
-        .prepare(`INSERT INTO collection (id, slug, title, description, status, published_at, updated_at) VALUES (?,?,?,?,?,?,?)`)
-        .bind(id, input.slug, input.title, input.description, input.status, input.status === "published" ? now : null, now),
+        .prepare(`INSERT INTO collection (id, slug, title, description, intro, status, published_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+        .bind(id, input.slug, input.title, input.description, intro, input.status, input.status === "published" ? now : null, now),
       collectionAudit(db, id, actorId, "collection_create", input.title),
     ]);
     return { ok: true, id };
@@ -1450,11 +1467,11 @@ export async function saveCollection(
   const [res] = await db.batch([
     db
       .prepare(
-        `UPDATE collection SET slug = ?, title = ?, description = ?, status = ?, updated_at = ?,
+        `UPDATE collection SET slug = ?, title = ?, description = ?, intro = ?, status = ?, updated_at = ?,
            published_at = CASE WHEN ? = 'published' THEN COALESCE(published_at, ?) ELSE published_at END
          WHERE id = ?`,
       )
-      .bind(input.slug, input.title, input.description, input.status, now, input.status, now, input.id),
+      .bind(input.slug, input.title, input.description, intro, input.status, now, input.status, now, input.id),
     collectionAudit(db, input.id, actorId, "collection_edit", `${input.status}: ${input.title}`),
   ]);
   return res.meta.changes ? { ok: true, id: input.id } : { ok: false, error: "Collection not found." };
@@ -1488,6 +1505,15 @@ export async function removeFromCollection(db: D1Database, actorId: string, coll
 }
 
 /** Moves a tool one place by renumbering the whole list, so gaps and ties never build up. */
+export async function setCollectionNote(db: D1Database, actorId: string, collectionId: string, toolId: string, note: string | null): Promise<void> {
+  const res = await db.prepare(`UPDATE collection_tool SET note = ? WHERE collection_id = ? AND tool_id = ?`).bind(note, collectionId, toolId).run();
+  if (!res.meta.changes) return;
+  await db.batch([
+    db.prepare(`UPDATE collection SET updated_at = ? WHERE id = ?`).bind(nowIso(), collectionId),
+    collectionAudit(db, collectionId, actorId, "collection_note", toolId),
+  ]);
+}
+
 export async function moveInCollection(db: D1Database, collectionId: string, toolId: string, dir: -1 | 1): Promise<void> {
   const { results } = await db
     .prepare(`SELECT tool_id FROM collection_tool WHERE collection_id = ? ORDER BY position, rowid`)

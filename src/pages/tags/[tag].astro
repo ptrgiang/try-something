@@ -6,7 +6,7 @@ import ToolCard from "../../components/ToolCard.astro";
 import Icon from "../../components/Icon.astro";
 import { countTools, listTools, parsePeriod, parseSort, relatedTags, tagInfo, TAG_INDEX_MIN } from "../../lib/db";
 import { CATEGORIES, CATEGORY_IDS, parseTags } from "../../lib/validation";
-import { collectionLd, crumbsLd, tagHeading } from "../../lib/seo";
+import { collectionLd, countedTitle, crumbsLd, tagHeading } from "../../lib/seo";
 import { tagCard } from "../../lib/og";
 
 const raw = Astro.params.tag ?? "";
@@ -40,7 +40,7 @@ const jsonLd = [
   crumbsLd([{ name: "Explore", path: "/explore" }, { name: heading, path: `/tags/${tag}` }]),
 ];
 ---
-<Base title={`${heading}: ${all} to try in your browser`} description={description} nav="explore" path={`/tags/${tag}`} noindex={filtered || all < TAG_INDEX_MIN} headerSearch={false} jsonLd={jsonLd} og={filtered ? undefined : tagCard(tag, all, tools)}>
+<Base title={countedTitle(heading, all)} description={description} nav="explore" path={`/tags/${tag}`} noindex={filtered || all < TAG_INDEX_MIN} headerSearch={false} jsonLd={jsonLd} og={filtered ? undefined : tagCard(tag, all, tools)}>
   <div class="explore-head tag-head">
     <div>
       <p class="eyebrow"><a href="/explore">Explore</a> · #{tag}</p>

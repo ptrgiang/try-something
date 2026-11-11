@@ -195,13 +195,23 @@ test("editors build and publish a collection", async ({ page }) => {
   await page.getByLabel("Tool page URL or slug").fill(`https://trysometh.ing/tools/${TOOL}`);
   await page.getByRole("button", { name: "Add tool" }).click();
   await expect(page.locator(".collection-edit-list li")).toHaveCount(1);
+  await page.getByLabel(/^Note for /).fill("The one to open first.");
+  await page.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByLabel(/^Note for /)).toHaveValue("The one to open first.");
   await page.getByLabel("Page address").fill("e2e-weekend-toys");
+  await page.getByLabel(/^Intro/).fill("For a slow afternoon.\n\nEvery pick opens without an account.");
   await page.getByLabel("Published").check();
   await page.getByRole("button", { name: "Save collection" }).click();
   await page.context().clearCookies();
   await page.goto("/collections/e2e-weekend-toys");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("E2E weekend toys");
+  await expect(page).toHaveTitle(/^E2E weekend toys: 1 to try in your browser/);
+  await expect(page.locator(".collection-intro p")).toHaveText(["For a slow afternoon.", "Every pick opens without an account."]);
   await expect(page.locator(".card")).toHaveCount(1);
+  await expect(page.locator(".card .card-note")).toHaveText("The one to open first.");
+  // The tool's own page links back to the collection.
+  await page.goto(`/tools/${TOOL}`);
+  await expect(page.locator(".in-collections a", { hasText: "E2E weekend toys" })).toHaveAttribute("href", "/collections/e2e-weekend-toys");
 });
 
 test("deleting an account signs out and blanks comments", async ({ page }) => {

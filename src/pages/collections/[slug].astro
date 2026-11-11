@@ -2,26 +2,44 @@
 import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import ToolCard from "../../components/ToolCard.astro";
-import { getCollection } from "../../lib/db";
-import { collectionLd, crumbsLd } from "../../lib/seo";
+import { getCollection, listCollections } from "../../lib/db";
+import { collectionLd, countedTitle, crumbsLd } from "../../lib/seo";
 import { collectionCard } from "../../lib/og";
 
-const collection = await getCollection(env.DB, Astro.params.slug ?? "");
+const [collection, published] = await Promise.all([getCollection(env.DB, Astro.params.slug ?? ""), listCollections(env.DB)]);
 if (!collection) return Astro.rewrite("/404");
 const path = `/collections/${collection.slug}`;
+const n = collection.tools.length;
+const description = collection.description || `${n} web ${n === 1 ? "tool" : "tools"} picked by the Try Something editors to try together, each one tried by a person.`;
+const intro = collection.intro.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+const others = published.filter((c) => c.id !== collection.id && c.tool_count > 0).slice(0, 6);
+const updated = collection.updated_at.slice(0, 10);
 const jsonLd = [
-  collectionLd({ path, name: collection.title, description: collection.description, tools: collection.tools }),
+  collectionLd({ path, name: collection.title, description, published: collection.published_at, modified: collection.updated_at, tools: collection.tools }),
   crumbsLd([{ name: "Collections", path: "/collections" }, { name: collection.title, path }]),
 ];
-const n = collection.tools.length;
 ---
-<Base title={`${collection.title}: ${n} web ${n === 1 ? "tool" : "tools"} to try together`} description={collection.description} nav="collections" path={path} jsonLd={jsonLd} og={collectionCard(collection)}>
-  <div class="section-head">
+<Base title={countedTitle(collection.title, n)} description={description} nav="collections" path={path} jsonLd={jsonLd} og={collectionCard(collection)}>
+  <div class="explore-head collection-head">
     <div>
       <p class="eyebrow"><a href="/collections">Collection</a></p>
       <h1 class="page-title">{collection.title}</h1>
-      <p class="lede">{collection.description}</p>
+      {collection.description && <p class="lede">{collection.description}</p>}
+      {intro.length > 0 && <div class="collection-intro">{intro.map((p) => <p>{p}</p>)}</div>}
+      <p class="result-count">
+        {n} {n === 1 ? "pick" : "picks"} · Updated <time datetime={updated}>{new Date(`${updated}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</time>
+      </p>
     </div>
   </div>
-  <div class="grid" data-surface={`collection:${collection.slug}`}>{collection.tools.map((tool) => <ToolCard tool={tool} headingLevel="h2" />)}</div>
+  <div class="grid" data-surface={`collection:${collection.slug}`}>
+    {collection.tools.map((tool, i) => <ToolCard tool={tool} headingLevel="h2" index={i} note={collection.notes.get(tool.id)} />)}
+  </div>
+  {others.length > 0 && (
+    <nav class="related-tags collection-more" aria-label="More collections">
+      <p>More collections</p>
+      <ul>
+        {others.map((c) => <li><a href={`/collections/${c.slug}`}>{c.title}<span>{c.tool_count}</span></a></li>)}
+      </ul>
+    </nav>
+  )}
 </Base>

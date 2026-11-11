@@ -1233,6 +1233,21 @@ textarea {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* Tagline plus an editor's note share the tagline's subgrid track, so cards in a row stay in step. */
+.card-text {
+  margin: 4px 0 10px;
+}
+.card .card-text .tagline {
+  margin: 0 0 8px;
+}
+.card-note {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--line-strong);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
 .tags {
   display: flex;
   flex-wrap: wrap;
@@ -4299,6 +4314,51 @@ a.comment-author:hover {
 }
 .collection-add {
   justify-items: start;
+}
+.collection-note-form {
+  grid-column: 2 / -1;
+  display: flex;
+  gap: 6px;
+}
+.collection-note-form input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--sheet);
+  font: inherit;
+  font-size: 14px;
+}
+.collection-note-form input:focus {
+  border-color: var(--ink);
+  outline: none;
+}
+.collection-head > div {
+  flex: 1 1 420px;
+  min-width: 0;
+  max-width: 720px;
+}
+.collection-more {
+  max-width: none;
+  padding: 0 var(--gutter) 56px;
+}
+.collection-intro {
+  margin-top: 14px;
+  color: var(--ink-2);
+}
+.collection-intro p {
+  margin: 0 0 10px;
+}
+.in-collections {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+.in-collections a {
+  color: var(--ink);
+  font-weight: 600;
 }
 .radio {
   display: flex;

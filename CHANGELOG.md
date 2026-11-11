@@ -7,13 +7,16 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Added
 
 - Editors can give a tag page a title at `/admin/tags` ("Online whiteboards" for #whiteboard). It becomes the page's heading and search title; without one the heading is built from the tag ("Drawing tools", "SVG tools") instead of showing the hashtag.
+- Collections can carry an intro (a few paragraphs under the description) and the editor's note for each tool now shows on its card, so a collection can explain why each pick is there. Notes can be edited in place at `/admin/collections`. Collection pages also show when they were last updated and link to the other collections.
+- A tool page links to the collections it is part of.
 
 ### Changed
 
 - "You might also like" on a tool page is now "Games like Patatap" / "Tools like Haikei" / "Sites like The Deep Sea", with up to eight tools. Only tools that share the category or a tag are listed, single-tag matches from other categories only fill a short list, and the heading names the category when every tool is in it; random top-ups are gone.
 
 - Tool pages that can't fit their tagline in the title read "Name: browser game to try in 30 seconds" instead of repeating "browser"; any title over 60 characters drops the " - Try Something" suffix rather than being cut off in search results.
-- Clearer titles for Collections, each collection and Discover. `/collections` and tool pages carry more structured data (the list of collections; the page with its published and updated dates).
+- Collection titles read "Title: 8 to try in your browser" like tag pages; both shorten to "…: 8 to try", then to the heading alone, before a search result would cut them off.
+- Clearer titles for Collections and Discover. `/collections` and tool pages carry more structured data (the list of collections; the page with its published and updated dates).
 - The sitemap gives the home page and Explore a last-modified date.
 
 ### Fixed

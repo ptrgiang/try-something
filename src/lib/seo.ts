@@ -38,6 +38,12 @@ export function pageTitle(title?: string | null): string {
   return title.length + BRAND_SUFFIX.length <= TITLE_MAX ? title + BRAND_SUFFIX : title;
 }
 
+/** Title for a list page: the heading with how many there are, losing words before it would be cut off. */
+export function countedTitle(heading: string, count: number): string {
+  const options = [`${heading}: ${count} to try in your browser`, `${heading}: ${count} to try`];
+  return options.find((t) => t.length <= TITLE_MAX) ?? heading;
+}
+
 const ACRONYMS = new Set(["3d", "ai", "api", "css", "html", "json", "pdf", "svg", "ui", "ux"]);
 
 /** Heading for a tag page no editor has titled: "open-source" becomes "Open source tools". */
@@ -63,13 +69,22 @@ export function siteGraph(nodes: LdNode[] = []): LdNode {
 }
 
 /** A list page (tag, category, collection) and the tools on it, in display order. */
-export function collectionLd(page: { path: string; name: string; description?: string | null; tools: { slug: string; name: string }[] }): LdNode {
+export function collectionLd(page: {
+  path: string;
+  name: string;
+  description?: string | null;
+  published?: string | null;
+  modified?: string | null;
+  tools: { slug: string; name: string }[];
+}): LdNode {
   return {
     "@type": "CollectionPage",
     "@id": `${abs(page.path)}#page`,
     url: abs(page.path),
     name: page.name,
     ...(page.description ? { description: page.description } : {}),
+    ...(page.published ? { datePublished: page.published } : {}),
+    ...(page.modified ? { dateModified: page.modified } : {}),
     isPartOf: { "@id": WEBSITE_ID },
     mainEntity: {
       "@type": "ItemList",

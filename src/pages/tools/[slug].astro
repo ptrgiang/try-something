@@ -8,7 +8,7 @@ import ToolStats from "../../components/ToolStats.astro";
 import Icon from "../../components/Icon.astro";
 import Sticker from "../../components/Sticker.astro";
 import Comments from "../../components/Comments.astro";
-import { countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
+import { collectionsForTool, countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
 import { CATEGORIES } from "../../lib/validation";
 import { displayHost, outboundUrl } from "../../lib/url";
 import { crumbsLd, SITE, TITLE_MAX, toolPageLd, type LdNode } from "../../lib/seo";
@@ -17,8 +17,9 @@ import { toolCard } from "../../lib/og";
 const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
 if (!tool) return Astro.rewrite("/404");
 const commentsOn = env.COMMENTS_ENABLED === "true";
-const [related, threads, commentCount, wins, updates] = await Promise.all([
+const [related, collections, threads, commentCount, wins, updates] = await Promise.all([
   relatedTools(env.DB, tool, 8),
+  collectionsForTool(env.DB, tool.id),
   commentsOn ? listComments(env.DB, tool.id) : [],
   commentsOn ? countComments(env.DB, tool.id) : 0,
   topDays(env.DB, tool.id),
@@ -117,6 +118,9 @@ jsonLd.push(
         <li class="muted">Official site: {host}</li>
       </ul>
       {tool.tags.length > 0 && <ul class="tags" aria-label="Tags">{tool.tags.map((t) => <li><a href={`/tags/${t}`}>#{t}</a></li>)}</ul>}
+      {collections.length > 0 && (
+        <p class="in-collections">In {collections.length === 1 ? "the collection" : "collections"}: {collections.map((c, i) => <>{i > 0 && ", "}<a href={`/collections/${c.slug}`}>{c.title}</a></>)}</p>
+      )}
       <div class="detail-foot">
         {commentsOn && <a class="detail-comments" href={`/tools/${tool.slug}#comments`}><Icon name="chat" />{commentCount === 1 ? "1 comment" : `${commentCount} comments`}</a>}
         <button type="button" class="link-btn" data-report="tool" data-target={tool.id}><Icon name="flag" />Report listing</button>

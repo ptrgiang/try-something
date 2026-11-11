@@ -12,8 +12,10 @@ interface Props {
   headingLevel?: "h2" | "h3";
   // Position in the list: the first card is the likely LCP image, so it loads with high priority.
   index?: number;
+  // An editor's line on why the tool is in this list (collection pages).
+  note?: string;
 }
-const { tool, headingLevel = "h3", index = Infinity } = Astro.props;
+const { tool, headingLevel = "h3", index = Infinity, note } = Astro.props;
 const H = headingLevel;
 const host = displayHost(tool.url);
 const label = freshLabel(tool);
@@ -25,7 +27,14 @@ const label = freshLabel(tool);
   {label && <span class="fresh-chip">{label}</span>}
   <div class="card-body">
     <H><a href={`/tools/${tool.slug}`}>{tool.name}</a></H>
-    <p class="tagline">{tool.tagline}</p>
+    {note ? (
+      <div class="card-text">
+        <p class="tagline">{tool.tagline}</p>
+        <p class="card-note">{note}</p>
+      </div>
+    ) : (
+      <p class="tagline">{tool.tagline}</p>
+    )}
     <div class="card-meta">
       <a class="card-host" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} title={`Open ${host}`}><span class="card-host-name">{host}</span><Icon name="external" /><span class="sr-only">(opens in a new tab)</span></a>
       <ToolStats tool={tool} />

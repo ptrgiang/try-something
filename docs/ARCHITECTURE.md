@@ -24,7 +24,7 @@ D1 is the only source of truth. Main tables (full schema in `migrations/`):
 | `submission` | User submissions. Partial unique index: one open submission per `canonical_key`. |
 | `moderation_event` | Append-only history: actor, action, from/to status, reason, time |
 | `bookmark` | Saved tools per user |
-| `collection`, `collection_tool` | Editor-curated sets |
+| `collection`, `collection_tool` | Editor-curated sets; `collection.intro` and `collection_tool.note` are the editor's own words, shown on the page |
 | `app_rate_limit` | Fixed-window counters for submissions, metadata lookups, bookmarks, comments, likes |
 | `comment`, `report`, `notification` | Comments on tools, reports that auto-hide at a threshold until a moderator decides, in-app notifications |
 | `tool_like`, `tool_update` | Hearts from accounts; maker product updates, reviewed before they show |
