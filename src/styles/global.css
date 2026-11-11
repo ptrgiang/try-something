@@ -2331,6 +2331,10 @@ tr:last-child td {
   .gh-badge {
     padding: 0 11px;
   }
+  /* Signed in, the bell and avatar need the room; GitHub stays in the footer. */
+  .header-actions:has(.bell) .gh-badge {
+    display: none;
+  }
 }
 
 /* ---------- Brand cursor (mouse and trackpad only) ---------- */

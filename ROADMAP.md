@@ -67,7 +67,7 @@ Reasons for people to return, built on what M1 already stores. In order:
       and a notification when one is published (2026-11-11). Follower counts shown only once moderation and rate limits
       cover it.
 - [x] **R3 Your own collections**: save tools into named lists, private by default; public lists get their own page,
-      indexable from three tools (2026-11-11).
+      kept out of search until moderators have tools for them (2026-11-11).
 - [ ] **R4 Email notifications and a weekly digest**: opt-in per type, one-click unsubscribe in every email. Needs
       maintainer approval to send through Cloudflare Email Service beyond sign-in codes.
 - [ ] **R5 Weekly challenge**: one prompt a week ("find a tool that makes music in 30 seconds"), with submissions

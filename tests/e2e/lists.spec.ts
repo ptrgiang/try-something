@@ -24,7 +24,7 @@ test("make a list from a tool page, make it public, and share it from the profil
   await expect(pop.getByRole("checkbox", { name: /Design kit/ })).toBeChecked();
   await expect(toggle).toHaveText("In 1 list");
 
-  // Fontjoy and Patatap join too, so the public page has enough tools to be indexable.
+  // Fontjoy and Patatap join too.
   for (const slug of ["fontjoy", "patatap"]) {
     await page.goto(`/tools/${slug}`);
     await page.locator(".detail [data-list-toggle]").click();
@@ -61,6 +61,6 @@ test("make a list from a tool page, make it public, and share it from the profil
   await expect(page).toHaveURL(/\/users\/lis-ter\/lists\/design-kit$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Design kit");
   await expect(page.locator(".grid .card h2")).toHaveCount(2);
-  // Two tools: below the indexing threshold.
+  // People's lists stay out of search until moderators have tools for them.
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
 });

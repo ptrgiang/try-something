@@ -4,9 +4,8 @@ import Base from "../../../../layouts/Base.astro";
 import ToolCard from "../../../../components/ToolCard.astro";
 import Avatar from "../../../../components/Avatar.astro";
 import Icon from "../../../../components/Icon.astro";
-import { getProfileByHandle, getPublicList, LIST_INDEX_MIN, listItems } from "../../../../lib/db";
+import { getProfileByHandle, getPublicList, listItems } from "../../../../lib/db";
 import { avatarUrl } from "../../../../lib/avatar";
-import { collectionLd } from "../../../../lib/seo";
 
 const profile = await getProfileByHandle(env.DB, Astro.params.handle ?? "");
 if (!profile) return Astro.rewrite("/404");
@@ -17,14 +16,14 @@ const tools = await listItems(env.DB, list.id);
 const me = Astro.locals.user;
 const path = `/users/${profile.handle}/lists/${list.slug}`;
 const description = list.description || `${list.title}: ${tools.length} ${tools.length === 1 ? "tool" : "tools"} to try in your browser, picked by ${profile.name}.`;
+// Kept out of search until moderators have tools for people's lists; until then only Feedback reports them.
 const updated = new Date(list.updated_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 ---
 <Base
   title={`${list.title} by ${profile.name}`}
   description={description}
   path={path}
-  noindex={tools.length < LIST_INDEX_MIN}
-  jsonLd={collectionLd({ path, name: list.title, description: list.description || null, tools })}
+  noindex
 >
   <header class="explore-head list-head">
     <div>

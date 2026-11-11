@@ -2259,8 +2259,6 @@ export async function makerValue(db: D1Database, from: string, to: string): Prom
 
 export const LISTS_MAX = 50;
 export const LIST_ITEMS_MAX = 200;
-/** A public list is indexable once it holds this many tools. */
-export const LIST_INDEX_MIN = 3;
 
 export interface UserList {
   id: string;
