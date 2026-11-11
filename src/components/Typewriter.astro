@@ -6,10 +6,9 @@ interface Props {
 }
 const { prefix, words } = Astro.props;
 ---
-<h1 class="typewriter" data-words={JSON.stringify(words)}>
-  <span class="sr-only">{prefix} {words[0]}</span>
-  <span aria-hidden="true">{prefix} <span class="typed">{words[0]}</span><span class="caret"></span></span>
-
+{/* The label is the heading's accessible name, so the sentence is in the markup once and the typing isn't read out. */}
+<h1 class="typewriter" data-words={JSON.stringify(words)} aria-label={`${prefix} ${words[0]}`}>
+  {prefix} <span class="typed">{words[0]}</span><span class="caret" aria-hidden="true"></span>
 </h1>
 <script>
   const h1 = document.querySelector<HTMLElement>(".typewriter");

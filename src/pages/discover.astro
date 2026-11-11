@@ -21,7 +21,7 @@ const backs = mood && tool ? SESSION_LENGTH - step : SESSION_LENGTH - 1;
 const notes = ["first card, no pressure", "ooh, another one", "last card of this round!"];
 const moodSticker = { anything: "dice", make: "pen", play: "gamepad", learn: "book", work: "briefcase" } as const;
 ---
-<Base title="Discover" path="/discover" nav="discover" noindex={Boolean(mood)} description="Pick a mood and get three hand-picked web tools to try, one at a time. No account needed.">
+<Base title="Discover web tools by mood" path="/discover" nav="discover" noindex={Boolean(mood)} description="Pick a mood and get three hand-picked web tools to try, one at a time. No account needed.">
   <div class="page discover deal">
     <section class="deal-intro">
       <p class="eyebrow">Discover</p>

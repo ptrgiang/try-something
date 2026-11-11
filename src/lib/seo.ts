@@ -29,6 +29,24 @@ const ORGANIZATION: LdNode = {
   logo: abs("/apple-touch-icon.png"),
 };
 
+const BRAND_SUFFIX = " - Try Something";
+/** Search results cut titles near 60 characters, so the brand is dropped rather than the page's own words. */
+export const TITLE_MAX = 60;
+
+export function pageTitle(title?: string | null): string {
+  if (!title) return "Try Something - Discover tools worth trying";
+  return title.length + BRAND_SUFFIX.length <= TITLE_MAX ? title + BRAND_SUFFIX : title;
+}
+
+// Rules are prefix matches: "/me" would also block /media (tool covers), so directories end in "/".
+const DISALLOW = ["/admin", "/api/", "/me/", "/login", "/submit", "/surprise", "/feedback"];
+
+/** Only the production host is indexable; previews and workers.dev stay out of search. */
+export function robotsTxt(production: boolean): string {
+  if (!production) return "User-agent: *\nDisallow: /\n";
+  return `User-agent: *\n${DISALLOW.map((p) => `Disallow: ${p}`).join("\n")}\nSitemap: ${SITE}/sitemap.xml\n`;
+}
+
 export function siteGraph(nodes: LdNode[] = []): LdNode {
   return { "@context": "https://schema.org", "@graph": [WEBSITE, ORGANIZATION, ...nodes] };
 }
@@ -47,6 +65,38 @@ export function collectionLd(page: { path: string; name: string; description?: s
       numberOfItems: page.tools.length,
       itemListElement: page.tools.map((t, i) => ({ "@type": "ListItem", position: i + 1, url: abs(`/tools/${t.slug}`), name: t.name })),
     },
+  };
+}
+
+/** The /collections index: a list of collection pages rather than of tools. */
+export function collectionIndexLd(page: { path: string; name: string; description: string; items: { path: string; name: string }[] }): LdNode {
+  return {
+    "@type": "CollectionPage",
+    "@id": `${abs(page.path)}#page`,
+    url: abs(page.path),
+    name: page.name,
+    description: page.description,
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: page.items.length,
+      itemListElement: page.items.map((c, i) => ({ "@type": "ListItem", position: i + 1, url: abs(c.path), name: c.name })),
+    },
+  };
+}
+
+/** The listing page itself, with its dates; `about` points at the page's WebApplication node. */
+export function toolPageLd(page: { path: string; name: string; description: string; published: string; modified: string; about: string }): LdNode {
+  return {
+    "@type": "WebPage",
+    "@id": `${abs(page.path)}#page`,
+    url: abs(page.path),
+    name: page.name,
+    description: page.description,
+    isPartOf: { "@id": WEBSITE_ID },
+    datePublished: page.published,
+    dateModified: page.modified,
+    mainEntity: { "@id": page.about },
   };
 }
 

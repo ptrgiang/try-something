@@ -4,6 +4,19 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Changed
+
+- Tool pages that can't fit their tagline in the title read "Name: browser game to try in 30 seconds" instead of repeating "browser"; any title over 60 characters drops the " - Try Something" suffix rather than being cut off in search results.
+- Clearer titles for Collections, each collection and Discover. `/collections` and tool pages carry more structured data (the list of collections; the page with its published and updated dates).
+- The sitemap gives the home page and Explore a last-modified date.
+
+### Fixed
+
+- `robots.txt` blocked tool cover images: `Disallow: /me` also matched `/media/`. Directory rules now end in a slash.
+- Search results, filtered lists and later pages said `noindex, nofollow` while naming `/explore` as canonical. They are now `noindex, follow` with no canonical, so the tools they link to stay reachable.
+- The home page headline was in the markup twice (once for screen readers, once animated); it is there once, with the static sentence as its accessible name.
+- Sign in, Feedback and "Another one" links are `nofollow`, so crawlers stop collecting a blocked URL per page.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added

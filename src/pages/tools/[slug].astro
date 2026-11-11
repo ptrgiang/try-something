@@ -11,7 +11,7 @@ import Comments from "../../components/Comments.astro";
 import { countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
 import { CATEGORIES } from "../../lib/validation";
 import { displayHost, outboundUrl } from "../../lib/url";
-import { crumbsLd, SITE } from "../../lib/seo";
+import { crumbsLd, SITE, TITLE_MAX, toolPageLd, type LdNode } from "../../lib/seo";
 import { toolCard } from "../../lib/og";
 
 const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
@@ -31,7 +31,7 @@ const submitter = tool.submitter_name ? person(tool.submitter_name, tool.submitt
 const category = CATEGORIES.find((c) => c.id === tool.category);
 const host = displayHost(tool.url);
 const cover = toolImageSrc(tool);
-const jsonLd = [
+const jsonLd: LdNode[] = [
   {
     "@type": "WebApplication",
     "@id": `${SITE}/tools/${tool.slug}#app`,
@@ -51,10 +51,13 @@ const jsonLd = [
 ];
 // "Name: tagline" while it fits a search result title, else what kind of tool it is.
 const pageTitle =
-  tool.name.length + tool.tagline.length < 58
+  tool.name.length + tool.tagline.length < TITLE_MAX - 2
     ? `${tool.name}: ${tool.tagline.replace(/\.$/, "")}`
-    : `${tool.name}: ${category?.noun ?? "web tool"} you can try in your browser`;
+    : `${tool.name}: ${category?.noun ?? "web tool"} to try in 30 seconds`;
 const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_name ? ` Made by ${tool.maker_name}.` : ""}`;
+jsonLd.push(
+  toolPageLd({ path: `/tools/${tool.slug}`, name: pageTitle, description: pageDescription, published: tool.published_at, modified: tool.updated_at, about: `${SITE}/tools/${tool.slug}#app` }),
+);
 ---
 <Base title={pageTitle} description={pageDescription} path={`/tools/${tool.slug}`} ogType="article" jsonLd={jsonLd} og={toolCard(tool, category?.label)}>
   <div class:list={["detail-layout", { "has-dock": commentsOn }]} data-surface="direct">
@@ -86,7 +89,7 @@ const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_na
         <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {host} <Icon name="external" /></a>
         <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
         <button type="button" class="btn btn-lg" data-share={`/tools/${tool.slug}`} data-share-title={tool.name}><Icon name="share" /><span>Share</span></button>
-        <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`}><Icon name="shuffle" />Another one</a>
+        <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`} rel="nofollow"><Icon name="shuffle" />Another one</a>
       </div>
       {tool.why && (
         <div>

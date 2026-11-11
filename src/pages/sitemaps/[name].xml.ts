@@ -9,10 +9,12 @@ export const GET: APIRoute = async ({ params }) => {
   const name = params.name as SitemapName;
   if (!SITEMAPS.includes(name)) return new Response("Not found", { status: 404 });
   const { tools, collections, tags } = await sitemapEntries(env.DB);
+  // The home page and Explore change whenever a tool does.
+  const latest = tools.map((t) => t.updated_at).sort().at(-1) ?? null;
   const urls: Record<SitemapName, () => SitemapUrl[]> = {
     pages: () => [
-      { loc: "/" },
-      { loc: "/explore" },
+      { loc: "/", lastmod: latest },
+      { loc: "/explore", lastmod: latest },
       ...CATEGORIES.map((c) => ({ loc: `/explore/${c.id}` })),
       { loc: "/collections" },
       ...collections.map((c) => ({ loc: `/collections/${c.slug}`, lastmod: c.updated_at })),

@@ -4,10 +4,16 @@ import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import ToolCover from "../../components/ToolCover.astro";
 import { collectionPreviews, listCollections } from "../../lib/db";
+import { collectionIndexLd, crumbsLd } from "../../lib/seo";
 
 const [collections, previews] = await Promise.all([listCollections(env.DB), collectionPreviews(env.DB)]);
+const description = "Small, editor-curated sets of web tools worth trying together, each one tried by a person.";
+const jsonLd = [
+  collectionIndexLd({ path: "/collections", name: "Collections", description, items: collections.map((c) => ({ path: `/collections/${c.slug}`, name: c.title })) }),
+  crumbsLd([{ name: "Collections", path: "/collections" }]),
+];
 ---
-<Base title="Collections" nav="collections" description="Small, editor-curated sets of tools worth trying together.">
+<Base title="Collections of web tools to try together" nav="collections" path="/collections" description={description} jsonLd={jsonLd}>
   <div class="page">
     <p class="eyebrow">Collections</p>
     <h1 class="page-title">Little bundles of good stuff</h1>

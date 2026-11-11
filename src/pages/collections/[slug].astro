@@ -13,8 +13,9 @@ const jsonLd = [
   collectionLd({ path, name: collection.title, description: collection.description, tools: collection.tools }),
   crumbsLd([{ name: "Collections", path: "/collections" }, { name: collection.title, path }]),
 ];
+const n = collection.tools.length;
 ---
-<Base title={collection.title} description={collection.description} nav="collections" path={path} jsonLd={jsonLd} og={collectionCard(collection)}>
+<Base title={`${collection.title}: ${n} web ${n === 1 ? "tool" : "tools"} to try together`} description={collection.description} nav="collections" path={path} jsonLd={jsonLd} og={collectionCard(collection)}>
   <div class="section-head">
     <div>
       <p class="eyebrow"><a href="/collections">Collection</a></p>

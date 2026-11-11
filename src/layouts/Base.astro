@@ -15,7 +15,7 @@ import { getStars, formatCount } from "../lib/github";
 import { unreadNotifications } from "../lib/db";
 import { isModerator } from "../lib/moderation";
 import { unreadLabel } from "../lib/notifications";
-import { ldJson, siteGraph, SITE, type LdNode } from "../lib/seo";
+import { ldJson, pageTitle, siteGraph, SITE, type LdNode } from "../lib/seo";
 import { ogAlt, ogPath, type OgCard } from "../lib/og";
 
 interface Props {
@@ -45,7 +45,7 @@ const {
 } = Astro.props;
 
 const site = SITE;
-const fullTitle = title ? `${title} - Try Something` : "Try Something - Discover tools worth trying";
+const fullTitle = pageTitle(title);
 const canonical = new URL(path, site).toString();
 const ogImage = og ? ogPath(og) : "/og-default.png";
 const ogImageAlt = og ? ogAlt(og) : "Try Something: discover tools worth trying";
@@ -66,8 +66,9 @@ const q = Astro.url.searchParams.get("q") ?? "";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
-    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    {/* A noindex page names no canonical: pointing it at an indexable URL sends two conflicting signals.
+        "follow" keeps the tools on filtered and later pages reachable; private routes get nofollow from the middleware. */}
+    {noindex ? <meta name="robots" content="noindex, follow" /> : <link rel="canonical" href={canonical} />}
     <link rel="alternate" type="application/rss+xml" title="Try Something: new tools" href="/feed.xml" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
@@ -140,7 +141,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
               </div>
             </details>
           ) : Astro.url.pathname !== "/login" && (
-            <a class="btn hide-mobile" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>
+            <a class="btn hide-mobile" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`} rel="nofollow">Sign in</a>
           )}
           <details class="user-menu mobile-menu" data-menu>
             <summary aria-label="Menu"><Icon name="menu" /></summary>
@@ -151,7 +152,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
               <a href="/about">About</a>
               <a href="/surprise">Surprise me</a>
               <a href="/submit">Submit a tool</a>
-              {!user && <a href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>Sign in</a>}
+              {!user && <a href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`} rel="nofollow">Sign in</a>}
             </div>
           </details>
         </div>
@@ -179,7 +180,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           <a href="/submit">Submit a tool</a>
           <a href="/contribute">Contribute</a>
           <a href="/about">About</a>
-          <a href={`/feedback?from=${encodeURIComponent(Astro.url.pathname)}`}>Feedback</a>
+          <a href={`/feedback?from=${encodeURIComponent(Astro.url.pathname)}`} rel="nofollow">Feedback</a>
           <a href="/feed.xml">RSS</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
