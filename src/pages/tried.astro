@@ -1,0 +1,75 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import ToolCard from "../components/ToolCard.astro";
+import Sticker from "../components/Sticker.astro";
+import { toolsBySlugs } from "../lib/db";
+import { parseSeen } from "../lib/discover";
+
+// The list lives in this browser (scripts/tried.ts). The page script asks for ?slugs= and swaps in the cards,
+// so the server never stores what anyone tried.
+const raw = Astro.url.searchParams.get("slugs");
+const slugs = parseSeen(raw).reverse();
+const tools = raw ? await toolsBySlugs(env.DB, slugs) : [];
+if (raw) Astro.response.headers.set("cache-control", "private, no-store");
+---
+<Base title="Tools you've tried" noindex>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">On this device</p>
+      <h1 class="page-title">Tools you've tried</h1>
+      <p class="section-intro">Every tool you opened with <strong>Try it</strong>, newest first. Kept in this browser only; we never store it.</p>
+    </div>
+    <button type="button" class="btn btn-sm" data-tried-clear hidden>Clear this list</button>
+  </div>
+  <div data-tried-list data-surface="tried" aria-live="polite">
+    {tools.length > 0 && <div class="grid">{tools.map((t) => <ToolCard tool={t} headingLevel="h2" />)}</div>}
+  </div>
+  <div class="page app-page" data-tried-empty hidden>
+    <div class="gate">
+      <Sticker name="compass" size="md" />
+      <h2>Nothing tried yet</h2>
+      <p>Open any tool with <strong>Try it</strong> and it shows up here, with a small “Tried” mark on its card. Surprise me and Discover skip the ones you've already tried.</p>
+      <div class="gate-actions">
+        <a class="btn btn-dark" href="/discover">Draw a card in Discover</a>
+        <a class="btn" href="/surprise" rel="nofollow">Surprise me</a>
+      </div>
+    </div>
+  </div>
+</Base>
+<script>
+  import { announceContent, askConfirm, fetchDocument } from "../scripts/client";
+  import { clearTried, triedList } from "../scripts/tried";
+
+  const list = document.querySelector<HTMLElement>("[data-tried-list]")!;
+  const empty = document.querySelector<HTMLElement>("[data-tried-empty]")!;
+  const clear = document.querySelector<HTMLButtonElement>("[data-tried-clear]")!;
+
+  async function load() {
+    // Newest last, as the server's parser keeps the end of a long list.
+    const slugs = triedList().map((e) => e.slug).slice(-40);
+    clear.hidden = !slugs.length;
+    if (!slugs.length) {
+      list.replaceChildren();
+      empty.hidden = false;
+      return;
+    }
+    try {
+      const doc = await fetchDocument(`/tried?slugs=${encodeURIComponent(slugs.join(","))}`);
+      const next = doc.querySelector("[data-tried-list]");
+      list.replaceChildren(...Array.from(next?.childNodes ?? [], (n) => document.importNode(n, true)));
+      empty.hidden = list.querySelector(".card") !== null;
+      announceContent();
+    } catch {
+      empty.hidden = false;
+    }
+  }
+
+  clear.addEventListener("click", async () => {
+    const ok = await askConfirm({ title: "Clear the tools you've tried?", body: "The Tried marks disappear from this browser. This can't be undone.", confirm: "Clear list", danger: true });
+    if (!ok) return;
+    clearTried();
+    load();
+  });
+  load();
+</script>

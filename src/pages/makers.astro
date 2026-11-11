@@ -1,0 +1,124 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import ToolCard from "../components/ToolCard.astro";
+import { makerShowcase } from "../lib/db";
+
+const user = Astro.locals.user;
+const submitHref = user ? "/submit" : "/login?next=/submit";
+const { tools, tries30, examples } = await makerShowcase(env.DB);
+const fmt = (n: number) => n.toLocaleString("en-US");
+const badgeTool = examples[0];
+---
+<Base title="List your tool" description="Made something people can try in their browser? List it on Try Something for free: human review, credit with a link back, your own numbers and a badge for your site.">
+  <div class="page">
+    <header class="page-head makers-head">
+      <p class="eyebrow">For makers</p>
+      <h1 class="page-title">Made something people can try? Put it in front of curious people.</h1>
+      <p class="lede">Try Something lists browser tools, toys and experiments that work in about 30 seconds. Listing is free, an editor tries every one, and nobody can buy their way up.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-dark btn-lg" href={submitHref} rel={user ? undefined : "nofollow"}><Icon name="plus" />Submit your tool</a>
+        <a class="btn btn-ghost btn-lg" href="/about#criteria">What gets listed <Icon name="arrow" /></a>
+      </div>
+      {tools > 0 && (
+        <ul class="maker-numbers" aria-label="Try Something in numbers">
+          <li><strong>{fmt(tools)}</strong> tools listed</li>
+          {tries30 >= 100 && <li><strong>{fmt(tries30)}</strong> “Try it” clicks to makers' sites in the last 30 days</li>}
+          <li><strong>$0</strong> to list, now and later</li>
+        </ul>
+      )}
+    </header>
+
+    <section class="about-section" aria-labelledby="perks">
+      <h2 class="section-heading" id="perks">What you get</h2>
+      <div class="feature-grid feature-grid-3">
+        <div class="feature">
+          <span class="feature-icon"><Icon name="link" /></span>
+          <h3>Credit that links back</h3>
+          <p>Your name and site on the listing, and every “Try it” goes to your official URL with UTM tags your own analytics can see.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="check" /></span>
+          <h3>A Verified maker mark</h3>
+          <p>Prove it's yours with a meta tag or a <code>/.well-known</code> file. Already listed by our editors? Claim the listing the same way.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="eye" /></span>
+          <h3>Your own numbers</h3>
+          <p>Cards seen, page views, try clicks, saves, hearts and comments for each of your tools, by day and by where people found it.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="spark" /></span>
+          <h3>Updates that resurface</h3>
+          <p>Shipped something new? Post an update. If an editor agrees it's meaningful, your tool sits with the new ones again for two weeks.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="star" /></span>
+          <h3>A badge for your site</h3>
+          <p>A “Listed on” or “Verified maker” badge for your site or README, as a plain image with no cookies or tracking.</p>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><Icon name="heart" /></span>
+          <h3>Real people, real feedback</h3>
+          <p>Hearts, saves and comments come from signed-in people. No bought votes, no fake numbers, no ranking for sale.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="about-section" aria-labelledby="how">
+      <h2 class="section-heading" id="how">How it works</h2>
+      <ol class="steps steps-row">
+        <li><strong>Paste your link</strong> and say what to do in the first 30 seconds. We fetch the name, description and share image for you.</li>
+        <li><strong>An editor tries it</strong> themselves and may ask for changes. You can follow every step in My submissions.</li>
+        <li><strong>It goes live</strong> with credit to you. Verify you made it, grab a badge and share the listing.</li>
+      </ol>
+    </section>
+
+    {examples.length > 0 && (
+      <section class="about-section" aria-labelledby="examples" data-surface="makers">
+        <div class="section-head">
+          <h2 class="section-heading" id="examples">Recently verified makers</h2>
+          {badgeTool && (
+            <a class="maker-badge-sample" href={`/tools/${badgeTool.slug}`} aria-label={`${badgeTool.name} on Try Something`}>
+              <img src={`/badge/${badgeTool.slug}.svg?style=verified&theme=light`} alt="" height="54" loading="lazy" />
+            </a>
+          )}
+        </div>
+        <div class="grid">{examples.map((t) => <ToolCard tool={t} />)}</div>
+      </section>
+    )}
+
+    <section class="about-section makers-faq" aria-labelledby="faq">
+      <h2 class="section-heading" id="faq">Questions makers ask</h2>
+      <details>
+        <summary>Does it cost anything?</summary>
+        <p>No. Listings are never sold, and editors pick the featured tools. If sponsorships ever happen, they'll be clearly labeled and kept apart from curation.</p>
+      </details>
+      <details>
+        <summary>What if my tool needs an account?</summary>
+        <p>The first try has to work without signing up, downloading or paying. A demo, a playground or a free first step is enough.</p>
+      </details>
+      <details>
+        <summary>Someone already listed my tool. Now what?</summary>
+        <p>If our editors listed it, open its page and use “Made it? Claim this listing”: prove you run the site and it moves to your account, verified. If another person shared it as a find, email <a href="mailto:hello@trysometh.ing">hello@trysometh.ing</a> and we'll look into it.</p>
+      </details>
+      <details>
+        <summary>How long does review take?</summary>
+        <p>Editors are people with other jobs, so there's no fixed time. You'll get a notification on the site when the status changes.</p>
+      </details>
+      <details>
+        <summary>Can I change or remove my listing?</summary>
+        <p>Post an update to change the description and what to try. To take a listing or an image down, use <a href="/feedback">Feedback</a> or email <a href="mailto:hello@trysometh.ing">hello@trysometh.ing</a>.</p>
+      </details>
+    </section>
+
+    <section class="cta-band">
+      <h2>Ready when you are.</h2>
+      <div class="hero-ctas">
+        <a class="btn btn-dark btn-lg" href={submitHref} rel={user ? undefined : "nofollow"}><Icon name="plus" />Submit your tool</a>
+        <a class="btn btn-lg" href="/explore">See what's listed <Icon name="arrow" /></a>
+      </div>
+    </section>
+  </div>
+</Base>

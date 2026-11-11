@@ -6,6 +6,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Added
 
+- A page for makers at `/makers`: what listing gives them (credit and a link back, the Verified maker mark, their own numbers, updates that resurface, the badge), how review works, recently verified makers and a short FAQ. Linked from the home hero, the footer and the mobile menu; signed out, `/submit` now says what you get before asking you to sign in.
+- **Submit** is always in the desktop header (an icon below 1240px). Between 901 and 1180px the header search becomes an icon that opens quick search, which also fixes a horizontal scroll at 901px.
+- **Tried** marks: opening a tool with Try it marks its card and tool page on this device. Surprise me and Discover skip tools you've already tried while others are left, and `/tried` lists them newest first with a way to clear the list. Nothing is stored on the server.
+
 - Editors can give a tag page a title at `/admin/tags` ("Online whiteboards" for #whiteboard). It becomes the page's heading and search title; without one the heading is built from the tag ("Drawing tools", "SVG tools") instead of showing the hashtag.
 - Collections can carry an intro (a few paragraphs under the description) and the editor's note for each tool now shows on its card, so a collection can explain why each pick is there. Notes can be edited in place at `/admin/collections`. Collection pages also show when they were last updated and link to the other collections.
 - A tool page links to the collections it is part of.

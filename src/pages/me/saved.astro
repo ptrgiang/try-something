@@ -15,6 +15,7 @@ const tools = await listSavedTools(env.DB, user.id);
       <p class="eyebrow">Your account</p>
       <h1 class="page-title">Saved tools</h1>
       {tools.length > 0 && <p class="section-intro">{tools.length === 1 ? "1 tool" : `${tools.length} tools`} saved to come back to. Only you can see this list.</p>}
+      <p class="section-intro"><a href="/tried">Tools you've tried on this device</a></p>
     </div>
   </div>
   {tools.length ? (

@@ -7,6 +7,7 @@ const signedIn = Boolean(Astro.locals.user);
 <div id="save-config" data-signed-in={signedIn ? "1" : "0"} hidden></div>
 <script>
   import { surfaceOf, trackingAllowed } from "../scripts/discovery";
+  import "../scripts/tried";
 
   const KEY = "ts:saved";
   const cfg = document.getElementById("save-config");

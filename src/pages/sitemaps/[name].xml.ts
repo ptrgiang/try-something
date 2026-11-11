@@ -21,6 +21,7 @@ export const GET: APIRoute = async ({ params }) => {
       { loc: "/discover" },
       { loc: "/about" },
       { loc: "/contribute" },
+      { loc: "/makers" },
     ],
     tools: () =>
       tools.map((t) => {

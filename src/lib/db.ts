@@ -299,11 +299,11 @@ export async function getPublishedTool(db: D1Database, slug: string): Promise<To
 }
 
 /**
- * Surprise me. Skips the tool it came from and those already seen this visit (all of them once nothing
- * else is left), prefers another category than the one it came from, and two times in three draws from
- * the half of the catalog with the fewest views and tries in the last 30 days, so it isn't the hits again.
+ * Surprise me. Skips the tool it came from and those already seen this visit or tried on this device (`skip`
+ * goes first once nothing else is left, then `seen`), prefers another category than the one it came from, and
+ * two times in three draws from the half of the catalog with the fewest views and tries in the last 30 days.
  */
-export async function surpriseSlug(db: D1Database, from: string | null, seen: string[], random = Math.random): Promise<string | null> {
+export async function surpriseSlug(db: D1Database, from: string | null, seen: string[], random = Math.random, skip: string[] = []): Promise<string | null> {
   const { results } = await db
     .prepare(
       `SELECT t.slug, t.category,
@@ -312,8 +312,9 @@ export async function surpriseSlug(db: D1Database, from: string | null, seen: st
     )
     .all<{ slug: string; category: string; exposure: number }>();
   const others = results.filter((t) => t.slug !== from);
-  const fresh = others.filter((t) => !seen.includes(t.slug));
-  const pool = fresh.length ? fresh : others;
+  const unseen = others.filter((t) => !seen.includes(t.slug));
+  const untried = unseen.filter((t) => !skip.includes(t.slug));
+  const pool = untried.length ? untried : unseen.length ? unseen : others;
   if (!pool.length) return null;
   const fromCategory = results.find((t) => t.slug === from)?.category;
   const elsewhere = pool.filter((t) => t.category !== fromCategory);
@@ -325,9 +326,10 @@ export async function surpriseSlug(db: D1Database, from: string | null, seen: st
 
 /**
  * Next tool for a discovery session: from the mood's categories (all when null), never one already shown this
- * session, and two times in three from the less-seen half so quiet tools get their turn. Null once all were shown.
+ * session, untried ones (`skip`) while any are left, and two times in three from the less-seen half so quiet tools
+ * get their turn. Null once all were shown.
  */
-export async function discoveryPick(db: D1Database, categories: readonly string[] | null, seen: string[], random = Math.random): Promise<ToolWithCredit | null> {
+export async function discoveryPick(db: D1Database, categories: readonly string[] | null, seen: string[], random = Math.random, skip: string[] = []): Promise<ToolWithCredit | null> {
   const { results } = await db
     .prepare(
       `SELECT t.slug,
@@ -337,7 +339,9 @@ export async function discoveryPick(db: D1Database, categories: readonly string[
     )
     .bind(categories ? JSON.stringify(categories) : null)
     .all<{ slug: string }>();
-  const pool = results.filter((t) => !seen.includes(t.slug));
+  const unseen = results.filter((t) => !seen.includes(t.slug));
+  const untried = unseen.filter((t) => !skip.includes(t.slug));
+  const pool = untried.length ? untried : unseen;
   if (!pool.length) return null;
   const quiet = pool.slice(0, Math.max(1, Math.ceil(pool.length / 2)));
   const draw = random() < 2 / 3 ? quiet : pool;
@@ -2180,6 +2184,32 @@ export async function makerValue(db: D1Database, from: string, to: string): Prom
     .bind(from, to)
     .first<MakerValue>();
   return row!;
+}
+
+/** Published tools for the given slugs, in the order given; unknown or hidden slugs are left out. */
+export async function toolsBySlugs(db: D1Database, slugs: string[]): Promise<ToolWithCredit[]> {
+  if (!slugs.length) return [];
+  const { results } = await db
+    .prepare(`${TOOL_SELECT} WHERE t.status = 'published' AND t.slug IN (SELECT value FROM json_each(?))`)
+    .bind(JSON.stringify(slugs))
+    .all<Row>();
+  const bySlug = new Map(results.map((r) => [r.slug as string, toTool(r)]));
+  return slugs.flatMap((s) => bySlug.get(s) ?? []);
+}
+
+/** Real numbers and examples for the public makers page; examples are verified "I made this" listings only. */
+export async function makerShowcase(db: D1Database, examples = 4): Promise<{ tools: number; tries30: number; examples: ToolWithCredit[] }> {
+  const [counts, list] = await db.batch([
+    db.prepare(
+      `SELECT (SELECT COUNT(*) FROM tool WHERE status = 'published') AS tools,
+         COALESCE((SELECT SUM(s.tries) FROM tool_stat_daily s JOIN tool t ON t.id = s.tool_id WHERE t.status = 'published' AND s.day >= date('now', '-30 days')), 0) AS tries30`,
+    ),
+    db
+      .prepare(`${TOOL_SELECT} WHERE t.status = 'published' AND t.credit_type = 'made' AND t.maker_verified_at IS NOT NULL ORDER BY t.maker_verified_at DESC LIMIT ?`)
+      .bind(examples),
+  ]);
+  const c = (counts.results[0] ?? {}) as { tools?: number; tries30?: number };
+  return { tools: Number(c.tools ?? 0), tries30: Number(c.tries30 ?? 0), examples: (list.results as Row[]).map(toTool) };
 }
 
 // ---------- Feedback ----------

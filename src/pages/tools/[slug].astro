@@ -87,7 +87,7 @@ jsonLd.push(
         <p>{tool.try_this}</p>
       </div>
       <div class="hero-ctas">
-        <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {host} <Icon name="external" /></a>
+        <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} data-slug={tool.slug}>Try it on {host} <Icon name="external" /></a>
         <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
         <button type="button" class="btn btn-lg" data-share={`/tools/${tool.slug}`} data-share-title={tool.name}><Icon name="share" /><span>Share</span></button>
         <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`} rel="nofollow"><Icon name="shuffle" />Another one</a>
@@ -147,7 +147,7 @@ jsonLd.push(
   <div class="try-bar" data-try-bar>
     <div class="try-bar-name"><strong>{tool.name}</strong><span>{host}</span></div>
     <button type="button" class="btn save-btn" data-save={tool.id} aria-pressed="false" aria-label={`Save ${tool.name}`}><Icon name="bookmark" /><span>Save</span></button>
-    <a class="btn btn-dark" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it <Icon name="external" /></a>
+    <a class="btn btn-dark" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} data-slug={tool.slug}>Try it <Icon name="external" /></a>
   </div>
 </Base>
 <script>

@@ -2852,6 +2852,11 @@ tr:last-child td {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 16px;
 }
+@media (min-width: 900px) {
+  .feature-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 .feature {
   display: flex;
   flex-direction: column;
@@ -5920,4 +5925,164 @@ td.num {
 }
 .lost-plane {
   margin: 0 0 8px -12px;
+}
+
+/* ---------- Makers page and header Submit ---------- */
+.header-submit {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  gap: 6px;
+}
+@media (max-width: 1240px) {
+  .header-submit {
+    width: 44px;
+    padding: 0;
+  }
+  .header-submit-label {
+    display: none;
+  }
+}
+/* Between the phone layout and wide screens the search box has no room; an icon opens quick search instead. */
+.header-search-icon {
+  display: none;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+}
+.header-search-icon svg {
+  width: 18px;
+  height: 18px;
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  .site-header .header-search {
+    display: none;
+  }
+  .header-search-icon {
+    display: grid;
+  }
+  .site-header {
+    gap: 12px;
+  }
+}
+@media (min-width: 901px) and (max-width: 1000px) {
+  .header-actions .gh-badge {
+    display: none;
+  }
+}
+.makers-head {
+  max-width: 860px;
+}
+.makers-head .hero-ctas {
+  margin-top: 24px;
+}
+.maker-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 28px 0 0;
+  padding: 18px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.maker-numbers strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.maker-badge-sample {
+  flex: none;
+}
+.maker-badge-sample img {
+  height: 54px;
+  width: auto;
+}
+.makers-faq {
+  max-width: 760px;
+}
+.makers-faq details {
+  border-top: 1px solid var(--line);
+}
+.makers-faq details:last-of-type {
+  border-bottom: 1px solid var(--line);
+}
+.makers-faq summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: var(--cursor-pointer);
+  list-style: none;
+}
+.makers-faq summary::-webkit-details-marker {
+  display: none;
+}
+.makers-faq summary::after {
+  content: "+";
+  flex: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.makers-faq details[open] summary::after {
+  transform: rotate(45deg);
+}
+.makers-faq details p {
+  margin: -4px 0 18px;
+  color: var(--ink-2);
+  max-width: 68ch;
+}
+.submit-gate .checklist {
+  justify-items: start;
+  margin: 4px 0 12px;
+  text-align: left;
+}
+
+/* ---------- Tried marks (scripts/tried.ts) ---------- */
+.tried-chip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  background: #dff6f3;
+  color: #0b6b62;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px rgba(11, 107, 98, 0.15);
+}
+.tried-chip::before {
+  content: "✓";
+  font-size: 11px;
+}
+.tried-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.tried-note a {
+  color: var(--ink-2);
+}
+/* Every card on the Tried page is tried; the chip would only repeat the heading. */
+[data-tried-list] .tried-chip {
+  display: none;
 }

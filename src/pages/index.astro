@@ -61,7 +61,7 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
       <p class="lede">Curated web tools, experiments and tiny apps from indie makers. Every pick is something you can actually try in 30 seconds.</p>
       <ul class="hero-points">
         <li><Icon name="check" />Reviewed by people, not ranked by ads</li>
-        <li><Icon name="check" /><span>Made it or found it? <a href="/submit">Share it with credit</a></span></li>
+        <li><Icon name="check" /><span>Made it or found it? <a href="/makers">Share it with credit</a></span></li>
       </ul>
       <div class="hero-ctas">
         <a class="btn btn-dark btn-lg" href="/explore">Explore tools <Icon name="arrow" /></a>
@@ -105,7 +105,7 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
             <div class="pick-text">
               <h3><a href={`/tools/${t.slug}`}>{t.name}</a></h3>
               <p>{t.tagline}</p>
-              <a class="pick-try" href={outboundUrl(t.url)} target="_blank" rel="noopener noreferrer" data-try={t.id}>Try it <Icon name="external" /><span class="sr-only">(opens {displayHost(t.url)} in a new tab)</span></a>
+              <a class="pick-try" href={outboundUrl(t.url)} target="_blank" rel="noopener noreferrer" data-try={t.id} data-slug={t.slug}>Try it <Icon name="external" /><span class="sr-only">(opens {displayHost(t.url)} in a new tab)</span></a>
             </div>
           </li>
         ))}

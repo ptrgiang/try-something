@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverUrl, parseMood, parseSeen, parseStep, SESSION_LENGTH } from "../../src/lib/discover";
+import { discoverUrl, parseMood, parseSeen, parseSkip, parseStep, SESSION_LENGTH, SKIP_MAX } from "../../src/lib/discover";
 
 describe("discovery session params", () => {
   it("reads known moods only", () => {
@@ -25,5 +25,13 @@ describe("discovery session params", () => {
   it("builds the next URL", () => {
     expect(discoverUrl("make", 2, ["kleki"])).toBe("/discover?mood=make&step=2&seen=kleki");
     expect(discoverUrl("make", 1, [])).toBe("/discover?mood=make&step=1");
+  });
+
+  it("carries tried tools through the round, newest kept", () => {
+    expect(discoverUrl("play", 2, ["a"], ["x", "y"])).toBe("/discover?mood=play&step=2&seen=a&skip=x%2Cy");
+    const many = Array.from({ length: 50 }, (_, i) => `t${i}`).join(",");
+    expect(parseSkip(many)).toHaveLength(SKIP_MAX);
+    expect(parseSkip(many).at(-1)).toBe("t49");
+    expect(parseSkip("ok,Not OK")).toEqual(["ok"]);
   });
 });

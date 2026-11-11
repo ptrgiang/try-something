@@ -3,6 +3,8 @@
 
 export const SESSION_LENGTH = 3;
 const SEEN_MAX = 40;
+/** Tools this browser already tried (scripts/tried.ts); only steers picks, so a short recent list is enough. */
+export const SKIP_MAX = 30;
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 export const MOODS = [
@@ -23,14 +25,20 @@ export function parseSeen(raw: string | null): string[] {
   return [...new Set((raw ?? "").split(",").filter((s) => SLUG.test(s)))].slice(-SEEN_MAX);
 }
 
+/** Slugs tried on this device, newest last; same rules as `seen`, capped at SKIP_MAX. */
+export function parseSkip(raw: string | null): string[] {
+  return parseSeen(raw).slice(-SKIP_MAX);
+}
+
 /** 1-based position within the current round of SESSION_LENGTH. */
 export function parseStep(raw: string | null): number {
   const n = Math.trunc(Number(raw));
   return n >= 1 && n <= SESSION_LENGTH ? n : 1;
 }
 
-export function discoverUrl(mood: string, step: number, seen: string[]): string {
+export function discoverUrl(mood: string, step: number, seen: string[], skip: string[] = []): string {
   const q = new URLSearchParams({ mood, step: String(step) });
   if (seen.length) q.set("seen", seen.slice(-SEEN_MAX).join(","));
+  if (skip.length) q.set("skip", skip.slice(-SKIP_MAX).join(","));
   return `/discover?${q}`;
 }

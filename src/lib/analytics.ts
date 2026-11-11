@@ -46,7 +46,7 @@ export function sourceOf(referrer: unknown, tag: unknown, siteHost: string): str
 }
 
 // Discovery surfaces a beacon may name; anything else is dropped rather than stored.
-const SURFACE = /^(hero|picks|home|top|explore|search|category|tag|collection(:[a-z0-9-]{1,80})?|related|profile|saved|palette|surprise|direct)$/;
+const SURFACE = /^(hero|picks|home|top|explore|search|category|tag|collection(:[a-z0-9-]{1,80})?|related|profile|saved|tried|palette|surprise|makers|direct)$/;
 
 export function cleanSurface(raw: unknown): string | null {
   return typeof raw === "string" && SURFACE.test(raw) ? raw : null;

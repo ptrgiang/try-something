@@ -49,11 +49,19 @@ if (Astro.request.method === "POST") {
         </aside>
       </div>
     ) : (
-      <div class="gate">
+      <div class="gate submit-gate">
         <span class="gate-icon"><Icon name="plus" /></span>
         <h2>Sign in to submit a tool</h2>
         <p>An account lets you follow the review and get credit when it's published. Browsing and trying tools never needs one.</p>
-        <a class="btn btn-dark btn-lg" href="/login?next=/submit">Sign in to continue</a>
+        <ul class="checklist">
+          <li><Icon name="check" />Free, and reviewed by a person, not ranked by ads</li>
+          <li><Icon name="check" />Credit and a link back, whether you made it or found it</li>
+          <li><Icon name="check" />Makers get their own numbers, updates and a badge</li>
+        </ul>
+        <div class="gate-actions">
+          <a class="btn btn-dark btn-lg" href="/login?next=/submit" rel="nofollow">Sign in to continue</a>
+          <a class="btn btn-ghost btn-lg" href="/makers">What makers get <Icon name="arrow" /></a>
+        </div>
       </div>
     )}
   </div>

@@ -15,7 +15,7 @@ const sections = [
 <LegalPage
   title="Privacy"
   description="What Try Something stores, why, and how to delete it."
-  updated="23 October 2026"
+  updated="11 November 2026"
   summary={[
     "No ads and no advertising trackers.",
     "You can browse and try everything without an account.",
@@ -52,7 +52,7 @@ const sections = [
   <p>If you verify that you made a tool, we load the page or file you point us to to check your token. We don't keep a copy.</p>
 
   <h2 id="cookies">Cookies and local storage</h2>
-  <p>We use one session cookie (HttpOnly, Secure) to keep you signed in. Local storage remembers your signed-out saves and whether you've closed the “Know a cool tool?” prompt. Session storage, cleared when you close the tab, remembers which cards were already counted and which tools you opened, so Surprise me doesn't repeat them. We don't use advertising or analytics cookies.</p>
+  <p>We use one session cookie (HttpOnly, Secure) to keep you signed in. Local storage remembers your signed-out saves, the tools you opened with “Try it” (for the Tried marks and <a href="/tried">Tools you've tried</a>), and whether you've closed the “Know a cool tool?” prompt. Surprise me, Discover and that page send the most recently tried tools along with the request so they can skip or show them; we don't store that list. Session storage, cleared when you close the tab, remembers which cards were already counted and which tools you opened, so Surprise me doesn't repeat them. We don't use advertising or analytics cookies.</p>
 
   <h2 id="providers">Who processes data</h2>
   <p>The site runs on Cloudflare: Workers, the D1 database, KV cache, R2 storage for uploaded profile photos and tool covers, and Turnstile bot protection. Cloudflare processes requests on our behalf. Sign-in through GitHub or Google is handled by those services under their own privacy policies.</p>

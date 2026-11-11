@@ -5,17 +5,19 @@ import Icon from "../components/Icon.astro";
 import Sticker from "../components/Sticker.astro";
 import ToolCover from "../components/ToolCover.astro";
 import { discoveryPick } from "../lib/db";
-import { discoverUrl, MOODS, parseMood, parseSeen, parseStep, SESSION_LENGTH } from "../lib/discover";
+import { discoverUrl, MOODS, parseMood, parseSeen, parseSkip, parseStep, SESSION_LENGTH } from "../lib/discover";
 import { toolImageSrc } from "../lib/tool-image";
 import { displayHost, outboundUrl } from "../lib/url";
 
 const mood = parseMood(Astro.url.searchParams.get("mood"));
 const seen = parseSeen(Astro.url.searchParams.get("seen"));
 const step = parseStep(Astro.url.searchParams.get("step"));
-const tool = mood ? await discoveryPick(env.DB, mood.categories, seen) : null;
+// Tools already tried on this device; carried through the round's links once a mood chip sent them.
+const skip = parseSkip(Astro.url.searchParams.get("skip"));
+const tool = mood ? await discoveryPick(env.DB, mood.categories, seen, Math.random, skip) : null;
 // Each request draws a different tool, so nothing about a session may be cached or indexed.
 if (mood) Astro.response.headers.set("cache-control", "private, no-store");
-const next = mood && tool ? discoverUrl(mood.id, step < SESSION_LENGTH ? step + 1 : 1, [...seen, tool.slug]) : null;
+const next = mood && tool ? discoverUrl(mood.id, step < SESSION_LENGTH ? step + 1 : 1, [...seen, tool.slug], skip) : null;
 // Face-down cards behind the current one: what is left of this round.
 const backs = mood && tool ? SESSION_LENGTH - step : SESSION_LENGTH - 1;
 const notes = ["first card, no pressure", "ooh, another one", "last card of this round!"];
@@ -62,7 +64,7 @@ const moodSticker = { anything: "dice", make: "pen", play: "gamepad", learn: "bo
                     <p>{tool.try_this}</p>
                   </div>
                   <div class="hero-ctas">
-                    <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id}>Try it on {displayHost(tool.url)} <Icon name="external" /></a>
+                    <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} data-slug={tool.slug}>Try it on {displayHost(tool.url)} <Icon name="external" /></a>
                     <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
                   </div>
                 </div>
@@ -80,7 +82,7 @@ const moodSticker = { anything: "dice", make: "pen", play: "gamepad", learn: "bo
                 {Array.from({ length: SESSION_LENGTH }, (_, i) => <span class:list={{ done: i + 1 < step, now: i + 1 === step }}></span>)}
               </span>
               <p class="discover-progress">Discovery {step} of {SESSION_LENGTH}</p>
-              <a class="btn btn-ghost btn-lg" href={discoverUrl(mood.id, 1, [])} data-deal="restart">Restart</a>
+              <a class="btn btn-ghost btn-lg" href={discoverUrl(mood.id, 1, [], skip)} data-deal="restart">Restart</a>
               <a class="btn btn-coral btn-lg" href={next!} data-deal="next"><Icon name="compass" />{step < SESSION_LENGTH ? "Next discovery" : `${SESSION_LENGTH} more`}</a>
             </nav>
           )}
