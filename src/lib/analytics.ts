@@ -46,7 +46,7 @@ export function sourceOf(referrer: unknown, tag: unknown, siteHost: string): str
 }
 
 // Discovery surfaces a beacon may name; anything else is dropped rather than stored.
-const SURFACE = /^(hero|picks|home|top|explore|search|category|tag|collection(:[a-z0-9-]{1,80})?|related|profile|saved|tried|palette|surprise|discover|makers|direct)$/;
+const SURFACE = /^(hero|picks|home|top|explore|search|category|tag|collection(:[a-z0-9-]{1,80})?|related|profile|following|saved|tried|palette|surprise|discover|makers|direct)$/;
 
 /** Names for surfaces in /admin/stats and makers' own numbers. */
 export const SURFACE_LABELS: Record<string, string> = {
@@ -61,6 +61,7 @@ export const SURFACE_LABELS: Record<string, string> = {
   collection: "Collections",
   related: "Related on tool pages",
   profile: "Profiles",
+  following: "Following feed",
   saved: "Saved tools",
   tried: "Tried on this device",
   palette: "Quick search",

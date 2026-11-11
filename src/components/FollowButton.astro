@@ -1,0 +1,46 @@
+---
+// Follow a person with a public profile. Signed out it's a sign-in link; nothing shows on your own profile.
+// The script is bundled once however many buttons a page has.
+import Icon from "./Icon.astro";
+
+interface Props {
+  person: { id: string; name: string };
+  following: boolean;
+  class?: string;
+}
+const { person, following, class: cls } = Astro.props;
+const me = Astro.locals.user;
+---
+{me ? (
+  me.id !== person.id && (
+    <button type="button" class:list={["btn btn-sm follow-btn", cls]} data-follow={person.id} aria-pressed={following ? "true" : "false"} aria-label={`Follow ${person.name}`}>
+      <Icon name="user" /><span>{following ? "Following" : "Follow"}</span>
+    </button>
+  )
+) : (
+  <a class:list={["btn btn-sm follow-btn", cls]} href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`} rel="nofollow"><Icon name="user" /><span>Follow</span></a>
+)}
+<script>
+  document.addEventListener("click", async (e) => {
+    const btn = (e.target as Element).closest<HTMLButtonElement>("button[data-follow]");
+    if (!btn || btn.disabled) return;
+    const id = btn.dataset.follow!;
+    const follow = btn.getAttribute("aria-pressed") !== "true";
+    const paint = (on: boolean) =>
+      document.querySelectorAll<HTMLButtonElement>(`button[data-follow="${CSS.escape(id)}"]`).forEach((b) => {
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        const label = b.querySelector("span");
+        if (label) label.textContent = on ? "Following" : "Follow";
+      });
+    paint(follow);
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/follows", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: id, follow }) });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      paint(!follow);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>

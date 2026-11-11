@@ -763,6 +763,14 @@ export async function applyModeration(
     db.prepare(`UPDATE submission SET tool_id = ? WHERE id = ? AND status = 'published'`).bind(toolId, sub.id),
     audit,
     ...notify,
+    // People who follow the submitter hear about the new tool; the tool row exists only if the publish applied.
+    db
+      .prepare(
+        `INSERT INTO notification (id, user_id, kind, tool_id, created_at)
+         SELECT lower(hex(randomblob(16))), f.follower_id, 'new_tool', ?, ? FROM follow f
+         WHERE f.followee_id = ? AND EXISTS (SELECT 1 FROM tool WHERE id = ? AND status = 'published')`,
+      )
+      .bind(toolId, now, sub.user_id, toolId),
   ]);
   if (!res.meta.changes) return { conflict: "Submission changed meanwhile. Reload and retry." };
   return { slug };
@@ -1255,18 +1263,22 @@ export async function recentComments(db: D1Database, status: CommentStatus | "al
 // ---------- Notifications ----------
 
 // Comment notices count only while the comment and its tool are still public.
+// Tool notices (an update, a new tool from someone followed) point at the tool and drop out if it's hidden.
 const NOTIFICATION_FROM = `FROM notification n
   LEFT JOIN submission s ON s.id = n.submission_id
   LEFT JOIN comment c ON c.id = n.comment_id
-  LEFT JOIN tool t ON t.id = COALESCE(c.tool_id, s.tool_id)
-  LEFT JOIN "user" u ON u.id = c.user_id
-  WHERE n.user_id = ? AND (n.comment_id IS NULL OR (c.status = 'visible' AND t.status = 'published'))`;
+  LEFT JOIN tool_update tu ON tu.id = n.update_id
+  LEFT JOIN tool t ON t.id = COALESCE(c.tool_id, s.tool_id, tu.tool_id, n.tool_id)
+  LEFT JOIN "user" u ON u.id = CASE WHEN n.kind = 'new_tool' THEN t.submitted_by ELSE c.user_id END
+  WHERE n.user_id = ? AND (n.comment_id IS NULL OR (c.status = 'visible' AND t.status = 'published'))
+    AND (n.kind NOT IN ('tool_update', 'new_tool') OR t.status = 'published')`;
 
 export async function listNotifications(db: D1Database, userId: string, limit = 50): Promise<NotificationRow[]> {
   const { results } = await db
     .prepare(
       `SELECT n.id, n.kind, n.status, n.created_at, n.read_at, n.submission_id, s.name AS submission_name, s.moderator_note,
-         n.comment_id, c.body AS comment_body, u.name AS actor_name, t.slug AS tool_slug, t.name AS tool_name, t.credit_type AS tool_credit
+         n.comment_id, c.body AS comment_body, u.name AS actor_name, t.slug AS tool_slug, t.name AS tool_name, t.credit_type AS tool_credit,
+         t.tagline AS tool_tagline, tu.note AS update_note
        ${NOTIFICATION_FROM} ORDER BY n.created_at DESC LIMIT ?`,
     )
     .bind(userId, limit)
@@ -2091,6 +2103,18 @@ export async function decideToolUpdate(
         .bind(u.tagline, u.try_this, u.why, now, resurface, cutoff, now, u.tool_id, u.id, now),
     );
   }
+  if (decision.approve) {
+    // Everyone who saved the tool hears about it, but not the maker who posted the update.
+    stmts.push(
+      db
+        .prepare(
+          `INSERT INTO notification (id, user_id, kind, update_id, created_at)
+           SELECT lower(hex(randomblob(16))), b.user_id, 'tool_update', ?, ? FROM bookmark b
+           WHERE b.tool_id = ? AND b.user_id IS NOT ? AND EXISTS (SELECT 1 FROM tool_update WHERE id = ? AND status = 'published' AND decided_at = ?)`,
+        )
+        .bind(u.id, now, u.tool_id, u.user_id, u.id, now),
+    );
+  }
   stmts.push(updateAudit(db, u.id, u.tool_id, actor.id, decision.approve ? "update_approve" : "update_reject", "pending", to, decision.note));
   const [res] = await db.batch(stmts);
   return res.meta.changes ? null : "This update was already decided.";
@@ -2229,6 +2253,62 @@ export async function makerValue(db: D1Database, from: string, to: string): Prom
     .bind(from, to)
     .first<MakerValue>();
   return row!;
+}
+
+// ---------- Follows ----------
+
+/** Only people with a public profile (a handle) can be followed. Returns false when there's no such person. */
+export async function setFollow(db: D1Database, followerId: string, followeeId: string, on: boolean): Promise<boolean> {
+  if (followerId === followeeId) return false;
+  if (!on) {
+    await db.prepare(`DELETE FROM follow WHERE follower_id = ? AND followee_id = ?`).bind(followerId, followeeId).run();
+    return true;
+  }
+  const res = await db
+    .prepare(
+      `INSERT INTO follow (follower_id, followee_id, created_at) SELECT ?, id, ? FROM "user" WHERE id = ? AND handle IS NOT NULL
+       ON CONFLICT DO NOTHING`,
+    )
+    .bind(followerId, nowIso(), followeeId)
+    .run();
+  return res.meta.changes > 0 || (await isFollowing(db, followerId, followeeId));
+}
+
+export async function isFollowing(db: D1Database, followerId: string, followeeId: string): Promise<boolean> {
+  return Boolean(await db.prepare(`SELECT 1 FROM follow WHERE follower_id = ? AND followee_id = ?`).bind(followerId, followeeId).first());
+}
+
+export interface FollowedPerson {
+  id: string;
+  name: string;
+  handle: string;
+  image: string | null;
+  avatar: string | null;
+  tools: number;
+}
+
+export async function listFollowing(db: D1Database, userId: string): Promise<FollowedPerson[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT u.id, u.name, u.handle, u.image, u.avatar,
+         (SELECT COUNT(*) FROM tool t WHERE t.submitted_by = u.id AND t.status = 'published') AS tools
+       FROM follow f JOIN "user" u ON u.id = f.followee_id WHERE f.follower_id = ? AND u.handle IS NOT NULL ORDER BY f.created_at DESC`,
+    )
+    .bind(userId)
+    .all<FollowedPerson>();
+  return results;
+}
+
+/** Newest tools listed by people the user follows. */
+export async function followingTools(db: D1Database, userId: string, limit = 24): Promise<ToolWithCredit[]> {
+  const { results } = await db
+    .prepare(
+      `${TOOL_SELECT} WHERE t.status = 'published' AND t.submitted_by IN (SELECT followee_id FROM follow WHERE follower_id = ?)
+       ORDER BY COALESCE(t.refreshed_at, t.published_at) DESC LIMIT ?`,
+    )
+    .bind(userId, limit)
+    .all<Row>();
+  return results.map(toTool);
 }
 
 /** Published tools for the given slugs, in the order given; unknown or hidden slugs are left out. */

@@ -16,10 +16,28 @@ const row = (over: Partial<NotificationRow>): NotificationRow => ({
   tool_slug: null,
   tool_name: null,
   tool_credit: null,
+  tool_tagline: null,
+  update_note: null,
   ...over,
 });
 
 describe("notificationView", () => {
+  it("tells savers about an approved update and followers about a new tool", () => {
+    expect(notificationView(row({ kind: "tool_update", submission_id: null, tool_slug: "haikei", tool_name: "Haikei", update_note: "Now with\n gradients" }))).toMatchObject({
+      title: "Haikei has an update",
+      detail: "Now with gradients",
+      href: "/tools/haikei#updates",
+      icon: "spark",
+    });
+    expect(notificationView(row({ kind: "new_tool", submission_id: null, tool_slug: "silk", tool_name: "Silk", actor_name: "Ina", tool_tagline: "Draw glowing art." }))).toMatchObject({
+      title: "Ina listed Silk",
+      detail: "Draw glowing art.",
+      href: "/tools/silk",
+    });
+    // A hidden tool drops out of the query; without a slug there's nothing to link to.
+    expect(notificationView(row({ kind: "new_tool", submission_id: null }))).toBeNull();
+  });
+
   it("links a published submission to its tool page", () => {
     const v = notificationView(row({ status: "published", tool_slug: "sketch-pad", tool_credit: "made", read_at: "2026-10-22T11:00:00Z" }));
     expect(v).toMatchObject({ title: "Sketch Pad is live", href: "/tools/sketch-pad", icon: "check", unread: false, live: { slug: "sketch-pad", name: "Sketch Pad", made: true } });

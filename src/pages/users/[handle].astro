@@ -4,8 +4,9 @@ import Base from "../../layouts/Base.astro";
 import ToolCard from "../../components/ToolCard.astro";
 import Icon from "../../components/Icon.astro";
 import Avatar from "../../components/Avatar.astro";
+import FollowButton from "../../components/FollowButton.astro";
 import { avatarUrl, isAvatarKey } from "../../lib/avatar";
-import { getProfileByHandle, listLikedTools, listSavedTools, profileTools, removeAvatarAsModerator } from "../../lib/db";
+import { getProfileByHandle, isFollowing, listLikedTools, listSavedTools, profileTools, removeAvatarAsModerator } from "../../lib/db";
 import { isModerator } from "../../lib/moderation";
 import { displayHost } from "../../lib/url";
 import { profileLd } from "../../lib/seo";
@@ -26,10 +27,11 @@ if (Astro.request.method === "POST") {
 }
 const own = me?.id === profile.id;
 // Saved and Hearted are private (see Privacy): the tabs exist only for the profile's owner.
-const [tools, saved, liked] = await Promise.all([
+const [tools, saved, liked, following] = await Promise.all([
   profileTools(env.DB, profile.id),
   own ? listSavedTools(env.DB, profile.id) : [],
   own ? listLikedTools(env.DB, profile.id) : [],
+  me && !own ? isFollowing(env.DB, me.id, profile.id) : false,
 ]);
 const made = tools.filter((t) => t.credit_type === "made");
 const found = tools.filter((t) => t.credit_type === "found");
@@ -72,16 +74,14 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
       {tools.length > 0 && <li><strong>{hearts}</strong> {plural(hearts, "heart")}</li>}
       {tools.length > 0 && <li><strong>{saves}</strong> {plural(saves, "save")}</li>}
     </ul>
-    {(own || canRemovePhoto) && (
-      <div class="profile-actions">
-        {own && <a class="btn" href="/me/settings">Edit profile</a>}
+    <div class="profile-actions">
+        {own ? <a class="btn" href="/me/settings">Edit profile</a> : <FollowButton person={profile} following={following} class="btn-follow-lg" />}
         {canRemovePhoto && (
           <form method="post">
             <button class="btn btn-sm" type="submit">Remove photo</button>
           </form>
         )}
-      </div>
-    )}
+    </div>
   </header>
 
   <nav class="profile-tabs" aria-label="Profile sections">

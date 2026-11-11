@@ -8,7 +8,8 @@ import ToolStats from "../../components/ToolStats.astro";
 import Icon from "../../components/Icon.astro";
 import Sticker from "../../components/Sticker.astro";
 import Comments from "../../components/Comments.astro";
-import { collectionsForTool, countComments, getPublishedTool, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
+import FollowButton from "../../components/FollowButton.astro";
+import { collectionsForTool, countComments, getPublishedTool, isFollowing, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
 import { CATEGORIES } from "../../lib/validation";
 import { displayHost, outboundUrl } from "../../lib/url";
 import { crumbsLd, SITE, TITLE_MAX, toolPageLd, type LdNode } from "../../lib/seo";
@@ -17,16 +18,17 @@ import { toolCard } from "../../lib/og";
 const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
 if (!tool) return Astro.rewrite("/404");
 const commentsOn = env.COMMENTS_ENABLED === "true";
-const [related, collections, threads, commentCount, wins, updates] = await Promise.all([
+const me = Astro.locals.user;
+const [related, collections, threads, commentCount, wins, updates, followsSubmitter] = await Promise.all([
   relatedTools(env.DB, tool, 8),
   collectionsForTool(env.DB, tool.id),
   commentsOn ? listComments(env.DB, tool.id) : [],
   commentsOn ? countComments(env.DB, tool.id) : 0,
   topDays(env.DB, tool.id),
   publishedUpdates(env.DB, tool.id),
+  me && tool.submitted_by && tool.submitter_handle ? isFollowing(env.DB, me.id, tool.submitted_by) : false,
 ]);
 const dayLabel = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-const me = Astro.locals.user;
 const person = (name: string, handle: string | null) => ({ name, href: handle ? `/users/${handle}` : null });
 const submitter = tool.submitter_name ? person(tool.submitter_name, tool.submitter_handle) : null;
 const category = CATEGORIES.find((c) => c.id === tool.category);
@@ -99,7 +101,7 @@ jsonLd.push(
         </div>
       )}
       {updates.length > 0 && (
-        <div class="tool-updates">
+        <div class="tool-updates" id="updates">
           <h2 class="section-title">Updates from the maker</h2>
           <ol>
             {updates.map((u) => <li><time datetime={u.decided_at}>{dayLabel(u.decided_at.slice(0, 10))}</time><p>{u.note}</p></li>)}
@@ -110,9 +112,9 @@ jsonLd.push(
         {tool.maker_name && (
           <li>Made by <strong>{tool.maker_url ? <a href={tool.maker_url} rel="noopener nofollow ugc" target="_blank">{tool.maker_name}</a> : tool.maker_name}</strong>{tool.credit_type === "made" && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (maker-submitted, not verified)")}</li>
         )}
-        {tool.credit_type === "found" && submitter && <li>Discovered by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong></li>}
+        {tool.credit_type === "found" && submitter && <li>Discovered by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{submitter.href && <FollowButton person={{ id: tool.submitted_by!, name: submitter.name }} following={followsSubmitter} class="credit-follow" />}</li>}
         {tool.credit_type === "made" && submitter && (
-          <li>Submitted by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{!tool.maker_name && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (says they made it — not verified)")}</li>
+          <li>Submitted by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{!tool.maker_name && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (says they made it — not verified)")}{submitter.href && <FollowButton person={{ id: tool.submitted_by!, name: submitter.name }} following={followsSubmitter} class="credit-follow" />}</li>
         )}
         {tool.credit_type === "editorial" && <li>Picked by the Try Something editors{!tool.submitted_by && <> · <a class="claim-link" href={`/me/verify/${tool.slug}`} rel="nofollow">Made it? Claim this listing</a></>}</li>}
         <li class="muted">Official site: {host}</li>

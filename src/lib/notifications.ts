@@ -2,7 +2,7 @@
 
 import { STATUS_LABELS, type SubmissionStatus } from "./moderation";
 
-export type NotificationKind = "submission" | "comment_reply" | "tool_comment";
+export type NotificationKind = "submission" | "comment_reply" | "tool_comment" | "tool_update" | "new_tool";
 
 /** Submission statuses the submitter is told about; the rest are their own actions or routine. */
 export const NOTIFY_STATUSES: readonly SubmissionStatus[] = ["needs_changes", "published", "rejected"];
@@ -24,12 +24,14 @@ export interface NotificationRow {
   tool_slug: string | null;
   tool_name: string | null;
   tool_credit: string | null;
+  tool_tagline: string | null;
+  update_note: string | null;
 }
 
 export interface NotificationView {
   id: string;
   unread: boolean;
-  icon: "check" | "flag" | "close" | "chat";
+  icon: "check" | "flag" | "close" | "chat" | "spark" | "user";
   title: string;
   /** Moderator note or a snippet of the comment; plain text. */
   detail: string | null;
@@ -62,6 +64,14 @@ export function notificationView(n: NotificationRow): NotificationView | null {
       };
     }
     return null;
+  }
+  if (n.kind === "tool_update") {
+    if (!n.tool_slug) return null;
+    return { ...base, icon: "spark", title: `${n.tool_name} has an update`, detail: snippet(n.update_note), href: `/tools/${n.tool_slug}#updates` };
+  }
+  if (n.kind === "new_tool") {
+    if (!n.tool_slug) return null;
+    return { ...base, icon: "user", title: `${n.actor_name ?? "Someone you follow"} listed ${n.tool_name}`, detail: snippet(n.tool_tagline), href: `/tools/${n.tool_slug}` };
   }
   if (!n.tool_slug || !n.comment_id) return null;
   const who = n.actor_name ?? "Someone";

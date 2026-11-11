@@ -52,7 +52,7 @@ test("only the maker can post an update, one at a time", async ({ page }) => {
   await page.getByLabel("Description").fill("Paint, sketch and now layer in the browser.");
   await page.getByRole("button", { name: "Send for review" }).click();
   await expect(page).toHaveURL(/\/me\/submissions\?update=sent/);
-  await expect(page.getByRole("row", { name: /Kleki/ })).toContainText("Update waiting for review");
+  await expect(page.getByRole("article", { name: "Kleki" })).toContainText("Update waiting for review");
 
   await page.goto("/me/tools/kleki/update");
   await expect(page.getByText("Waiting for review")).toBeVisible();
@@ -63,6 +63,9 @@ test("only the maker can post an update, one at a time", async ({ page }) => {
 });
 
 test("a moderator approves and resurfaces it; Picks moves it up, New doesn't", async ({ page }) => {
+  // Someone who saved the tool hears about the approved update; the maker who posted it doesn't.
+  const saver = await createUser("e2e-upd-other", "Otto Ther", "user");
+  sql(`INSERT OR IGNORE INTO bookmark (user_id, tool_id, created_at) VALUES ('e2e-upd-other', '${TOOL}', datetime('now')), ('e2e-upd-maker', '${TOOL}', datetime('now'));`);
   const mod = await createUser("e2e-upd-mod", "Mo Derator", "moderator");
   await asUser(page, mod);
   await page.goto("/admin/updates");
@@ -79,6 +82,16 @@ test("a moderator approves and resurfaces it; Picks moves it up, New doesn't", a
   await page.goto("/tools/kleki");
   await expect(page.locator(".tool-updates")).toContainText(NOTE);
   await expect(page.locator(".detail")).toContainText("Paint, sketch and now layer in the browser.");
+
+  await asUser(page, saver);
+  await page.goto("/me/notifications");
+  const notice = page.locator(".notif", { hasText: "Kleki has an update" });
+  await expect(notice).toContainText(NOTE);
+  await expect(notice).toHaveAttribute("href", "/tools/kleki#updates");
+  await asUser(page, maker);
+  await page.goto("/me/notifications");
+  await expect(page.getByText("Kleki has an update")).toHaveCount(0);
+  await asUser(page, mod);
   const audit = sqlJson<{ n: number }>(`SELECT COUNT(*) AS n FROM moderation_event WHERE tool_id = '${TOOL}' AND action = 'update_approve'`)[0];
   expect(audit.n).toBe(1);
 

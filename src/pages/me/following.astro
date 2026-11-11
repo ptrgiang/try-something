@@ -1,0 +1,57 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import ToolCard from "../../components/ToolCard.astro";
+import Avatar from "../../components/Avatar.astro";
+import FollowButton from "../../components/FollowButton.astro";
+import Sticker from "../../components/Sticker.astro";
+import { followingTools, listFollowing } from "../../lib/db";
+import { avatarUrl } from "../../lib/avatar";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/following");
+const [people, tools] = await Promise.all([listFollowing(env.DB, user.id), followingTools(env.DB, user.id)]);
+---
+<Base title="Following" noindex>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Your account</p>
+      <h1 class="page-title">Following</h1>
+      <p class="section-intro">New tools from the makers and finders you follow, newest first. You also get a notification when they list one. Only you can see who you follow.</p>
+    </div>
+  </div>
+  {people.length ? (
+    <>
+      {tools.length > 0 ? (
+        <div class="grid" data-surface="following">{tools.map((t) => <ToolCard tool={t} headingLevel="h2" />)}</div>
+      ) : (
+        <p class="empty">Nothing listed yet by the people you follow. New tools show up here once they're published.</p>
+      )}
+      <section class="following-people" aria-labelledby="people-title">
+        <h2 id="people-title" class="section-title">People you follow</h2>
+        <ul>
+          {people.map((p) => (
+            <li>
+              <a class="following-person" href={`/users/${p.handle}`}>
+                <Avatar class="following-avatar" name={p.name} url={avatarUrl(p.avatar, p.image)} seed={p.handle} size={40} />
+                <span><strong>{p.name}</strong><span class="muted small-note">@{p.handle} · {p.tools === 1 ? "1 tool" : `${p.tools} tools`}</span></span>
+              </a>
+              <FollowButton person={p} following={true} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    </>
+  ) : (
+    <div class="page app-page">
+      <div class="gate">
+        <Sticker name="gift" size="md" />
+        <h2>You're not following anyone yet</h2>
+        <p>Follow a maker or finder from their profile, or from “Made by” and “Discovered by” on a tool page. Their new tools land here and in your notifications.</p>
+        <div class="gate-actions">
+          <a class="btn btn-dark" href="/explore?sort=new">See the newest tools</a>
+        </div>
+      </div>
+    </div>
+  )}
+</Base>

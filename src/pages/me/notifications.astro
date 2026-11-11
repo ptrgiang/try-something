@@ -22,7 +22,7 @@ const live = items.find((n) => n.unread && n.live)?.live;
     {live && <LiveBanner {...live} />}
     {items.length ? (
       <>
-        <p class="section-intro notif-intro">Reviews of your submissions and new comments on your tools and comments, from the last {NOTIFICATION_DAYS} days.</p>
+        <p class="section-intro notif-intro">Reviews of your submissions, comments on your tools and replies to you, updates to tools you saved and new tools from people you follow, from the last {NOTIFICATION_DAYS} days.</p>
         <ul class="notif-list">
           {items.map((n) => (
             <li>
@@ -42,7 +42,7 @@ const live = items.find((n) => n.unread && n.live)?.live;
       <div class="gate">
         <Sticker name="bell" size="md" />
         <h2>Nothing new yet</h2>
-        <p>When an editor reviews something you submitted, or someone comments on your tool or replies to you, it shows up here.</p>
+        <p>When an editor reviews something you submitted, someone comments on your tool or replies to you, a tool you saved gets an update, or someone you follow lists a new tool, it shows up here.</p>
         <a class="btn btn-dark" href="/submit">Submit a tool</a>
       </div>
     )}

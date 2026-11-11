@@ -6199,3 +6199,68 @@ td.num {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Follow ---------- */
+.follow-btn[aria-pressed="true"] {
+  background: var(--lavender-soft);
+  border-color: var(--lavender-soft);
+}
+.follow-btn[aria-pressed="true"]:hover {
+  border-color: var(--lavender);
+}
+.credit-follow {
+  min-height: 30px;
+  margin-left: 10px;
+  padding: 0 10px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.credit-follow svg {
+  width: 14px;
+  height: 14px;
+}
+.btn-follow-lg {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 15px;
+}
+.following-people {
+  margin-top: clamp(32px, 4vw, 48px);
+  max-width: 720px;
+}
+.following-people ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.following-people li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+.following-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+}
+.following-person > span {
+  display: grid;
+  min-width: 0;
+}
+.following-person strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.following-avatar {
+  flex: none;
+}
