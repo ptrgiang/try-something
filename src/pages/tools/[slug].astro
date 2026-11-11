@@ -119,7 +119,7 @@ jsonLd.push(
       </ul>
       {tool.tags.length > 0 && <ul class="tags" aria-label="Tags">{tool.tags.map((t) => <li><a href={`/tags/${t}`}>#{t}</a></li>)}</ul>}
       {collections.length > 0 && (
-        <p class="in-collections">In {collections.length === 1 ? "the collection" : "collections"}: {collections.map((c, i) => <>{i > 0 && ", "}<a href={`/collections/${c.slug}`}>{c.title}</a></>)}</p>
+        <p class="in-collections">In {collections.length === 1 ? "the collection" : "collections"}: {collections.map((c, i) => <>{i > 0 && " · "}<a href={`/collections/${c.slug}`}>{c.title}</a></>)}</p>
       )}
       <div class="detail-foot">
         {commentsOn && <a class="detail-comments" href={`/tools/${tool.slug}#comments`}><Icon name="chat" />{commentCount === 1 ? "1 comment" : `${commentCount} comments`}</a>}
