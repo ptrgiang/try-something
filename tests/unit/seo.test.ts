@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectionIndexLd, pageTitle, robotsTxt, TITLE_MAX, toolPageLd } from "../../src/lib/seo";
+import { collectionIndexLd, pageTitle, robotsTxt, tagHeading, TITLE_MAX, toolPageLd } from "../../src/lib/seo";
 
 const disallowed = (txt: string) => [...txt.matchAll(/^Disallow: (.+)$/gm)].map((m) => m[1]);
 const blocked = (txt: string, path: string) => disallowed(txt).some((rule) => path.startsWith(rule));
@@ -35,6 +35,16 @@ describe("pageTitle", () => {
     const fits = "x".repeat(TITLE_MAX - " - Try Something".length);
     expect(pageTitle(fits)).toHaveLength(TITLE_MAX);
     expect(pageTitle(`${fits}x`)).toBe(`${fits}x`);
+  });
+});
+
+describe("tagHeading", () => {
+  it("turns a tag into a readable heading", () => {
+    expect(tagHeading("drawing")).toBe("Drawing tools");
+    expect(tagHeading("open-source")).toBe("Open source tools");
+    expect(tagHeading("svg")).toBe("SVG tools");
+    expect(tagHeading("ai")).toBe("AI tools");
+    expect(tagHeading("3d-print")).toBe("3D print tools");
   });
 });
 

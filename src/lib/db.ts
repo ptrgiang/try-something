@@ -344,26 +344,43 @@ export async function discoveryPick(db: D1Database, categories: readonly string[
   return getPublishedTool(db, draw[Math.floor(random() * draw.length)].slug);
 }
 
+/** With this many tools of the tool's own category, the "like" list is only those ("Games like X"). */
+const SAME_KIND_MIN = 4;
+
+/** Picks the "like" list from candidates ranked best first: all one category when there are enough, else the closest of any. */
+export function pickSimilar<T extends { category: string }>(ranked: T[], category: string, limit: number): { tools: T[]; sameKind: boolean } {
+  const same = ranked.filter((t) => t.category === category);
+  return same.length >= SAME_KIND_MIN ? { tools: same.slice(0, limit), sameKind: true } : { tools: ranked.slice(0, limit), sameKind: false };
+}
+
 /**
  * Other tools for the detail page. `maker`: same maker name, or the same person's own submissions.
- * `similar`: ranked by shared tags (2 each) plus same category (1), ties shuffled, topped up with
- * random picks so the section is never short; never repeats a `maker` tool.
+ * `similar`: ranked by same category (3) plus shared tags (2 each), ties shuffled, then narrowed by
+ * pickSimilar; never repeats a `maker` tool. A tool that shares neither is left out, because the
+ * page calls this list "like" the tool; `sameKind` says whether it can name the category.
  */
-export async function relatedTools(db: D1Database, tool: Tool, limit = 3): Promise<{ maker: ToolWithCredit[]; similar: ToolWithCredit[] }> {
+export async function relatedTools(
+  db: D1Database,
+  tool: Tool,
+  limit = 3,
+): Promise<{ maker: ToolWithCredit[]; similar: ToolWithCredit[]; sameKind: boolean }> {
   const makerWhere = `t.status = 'published' AND t.id != ?1 AND ((?2 != '' AND lower(t.maker_name) = lower(?2))
     OR (?3 != '' AND t.credit_type = 'made' AND t.submitted_by = ?3))`;
   const ownMaker = tool.credit_type === "made" ? (tool.submitted_by ?? "") : "";
   const maker = await db
     .prepare(`${TOOL_SELECT} WHERE ${makerWhere} ORDER BY t.published_at DESC LIMIT ?4`)
-    .bind(tool.id, tool.maker_name ?? "", ownMaker, limit)
+    .bind(tool.id, tool.maker_name ?? "", ownMaker, Math.min(limit, 4))
     .all<Row>();
   const exclude = [tool.id, ...maker.results.map((r) => String(r.id))];
-  const score = `(2 * (SELECT COUNT(*) FROM json_each(t.tags) j WHERE j.value IN (SELECT value FROM json_each(?2))) + (t.category = ?3))`;
-  const similar = await db
-    .prepare(`${TOOL_SELECT} WHERE t.status = 'published' AND t.id NOT IN (SELECT value FROM json_each(?1)) ORDER BY ${score} DESC, random() LIMIT ?4`)
-    .bind(JSON.stringify(exclude), JSON.stringify(tool.tags), tool.category, limit)
+  const score = `(2 * (SELECT COUNT(*) FROM json_each(t.tags) j WHERE j.value IN (SELECT value FROM json_each(?2))) + 3 * (t.category = ?3))`;
+  const candidates = await db
+    .prepare(
+      `${TOOL_SELECT} WHERE t.status = 'published' AND t.id NOT IN (SELECT value FROM json_each(?1)) AND ${score} > 0 ORDER BY ${score} DESC, random() LIMIT ?4`,
+    )
+    .bind(JSON.stringify(exclude), JSON.stringify(tool.tags), tool.category, limit * 3)
     .all<Row>();
-  return { maker: maker.results.map(toTool), similar: similar.results.map(toTool) };
+  const picked = pickSimilar(candidates.results.map(toTool), tool.category, limit);
+  return { maker: maker.results.map(toTool), similar: picked.tools, sameKind: picked.sameKind };
 }
 
 /** Tags that appear on the same tools as `tag`, most shared first. */
@@ -380,36 +397,49 @@ export async function relatedTags(db: D1Database, tag: string, limit = 8): Promi
 }
 
 export const TAG_DESCRIPTION_MAX = 280;
+export const TAG_TITLE_MAX = 60;
 
-export async function tagDescription(db: D1Database, tag: string): Promise<string | null> {
-  const row = await db.prepare(`SELECT description FROM tag_info WHERE tag = ?`).bind(tag).first<{ description: string }>();
-  return row?.description ?? null;
+/** What an editor wrote for a tag page; either part is null when left empty. */
+export async function tagInfo(db: D1Database, tag: string): Promise<{ title: string | null; description: string | null }> {
+  const row = await db.prepare(`SELECT title, description FROM tag_info WHERE tag = ?`).bind(tag).first<{ title: string; description: string }>();
+  return { title: row?.title || null, description: row?.description || null };
 }
 
-/** Every tag on a published tool, with its tool count and any editor description. */
-export async function listTagsForAdmin(db: D1Database): Promise<{ tag: string; n: number; description: string | null; updated_at: string | null }[]> {
+export interface AdminTag {
+  tag: string;
+  n: number;
+  title: string | null;
+  description: string | null;
+  updated_at: string | null;
+}
+
+/** Every tag on a published tool, with its tool count and anything an editor wrote for it. */
+export async function listTagsForAdmin(db: D1Database): Promise<AdminTag[]> {
   const { results } = await db
     .prepare(
-      `SELECT j.value AS tag, COUNT(*) AS n, i.description, i.updated_at FROM tool t, json_each(t.tags) j
+      `SELECT j.value AS tag, COUNT(*) AS n, i.title, i.description, i.updated_at FROM tool t, json_each(t.tags) j
        LEFT JOIN tag_info i ON i.tag = j.value
        WHERE t.status = 'published' GROUP BY j.value ORDER BY n DESC, j.value ASC`,
     )
-    .all<{ tag: string; n: number; description: string | null; updated_at: string | null }>();
+    .all<AdminTag>();
   return results;
 }
 
-/** Sets or clears (empty text) a tag description, with an audit row. */
-export async function setTagDescription(db: D1Database, tag: string, description: string, actorId: string): Promise<void> {
+/** Sets a tag's title and description (both empty clears the row), with an audit row. */
+export async function setTagInfo(db: D1Database, tag: string, info: { title: string; description: string }, actorId: string): Promise<void> {
   const now = nowIso();
-  const write = description
-    ? db
-        .prepare(
-          `INSERT INTO tag_info (tag, description, updated_at, updated_by) VALUES (?,?,?,?)
-           ON CONFLICT(tag) DO UPDATE SET description = excluded.description, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
-        )
-        .bind(tag, description, now, actorId)
-    : db.prepare(`DELETE FROM tag_info WHERE tag = ?`).bind(tag);
-  await db.batch([write, auditStmt(db, { actorId, action: "tag_description", from: null, to: null, reason: `#${tag}: ${description || "(cleared)"}`.slice(0, 600) })]);
+  const { title, description } = info;
+  const write =
+    title || description
+      ? db
+          .prepare(
+            `INSERT INTO tag_info (tag, title, description, updated_at, updated_by) VALUES (?,?,?,?,?)
+             ON CONFLICT(tag) DO UPDATE SET title = excluded.title, description = excluded.description, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+          )
+          .bind(tag, title, description, now, actorId)
+      : db.prepare(`DELETE FROM tag_info WHERE tag = ?`).bind(tag);
+  const said = [title && `“${title}”`, description].filter(Boolean).join(" · ") || "(cleared)";
+  await db.batch([write, auditStmt(db, { actorId, action: "tag_description", from: null, to: null, reason: `#${tag}: ${said}`.slice(0, 600) })]);
 }
 
 /** A tag page with fewer tools than this is thin: kept out of the sitemap and noindexed. */

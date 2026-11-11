@@ -5392,7 +5392,12 @@ td.num {
 .tag-admin-head a {
   text-decoration: none;
 }
+.tag-admin-form .btn {
+  grid-column: 2;
+}
+.tag-admin-title,
 .tag-admin-form textarea {
+  grid-column: 1;
   width: 100%;
   min-height: 0;
   padding: 10px 12px;
@@ -5402,6 +5407,7 @@ td.num {
   font: inherit;
   resize: vertical;
 }
+.tag-admin-title:focus,
 .tag-admin-form textarea:focus {
   border-color: var(--ink);
   outline: none;
@@ -5409,6 +5415,9 @@ td.num {
 @media (max-width: 640px) {
   .tag-admin-form {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .tag-admin-form .btn {
+    grid-column: 1;
   }
 }
 

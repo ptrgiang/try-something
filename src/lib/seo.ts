@@ -38,6 +38,17 @@ export function pageTitle(title?: string | null): string {
   return title.length + BRAND_SUFFIX.length <= TITLE_MAX ? title + BRAND_SUFFIX : title;
 }
 
+const ACRONYMS = new Set(["3d", "ai", "api", "css", "html", "json", "pdf", "svg", "ui", "ux"]);
+
+/** Heading for a tag page no editor has titled: "open-source" becomes "Open source tools". */
+export function tagHeading(tag: string): string {
+  const text = tag
+    .split("-")
+    .map((w) => (ACRONYMS.has(w) ? w.toUpperCase() : w))
+    .join(" ");
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)} tools`;
+}
+
 // Rules are prefix matches: "/me" would also block /media (tool covers), so directories end in "/".
 const DISALLOW = ["/admin", "/api/", "/me/", "/login", "/submit", "/surprise", "/feedback"];
 

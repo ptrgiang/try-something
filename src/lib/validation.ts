@@ -4,15 +4,15 @@
 import { canonicalKey, cleanUrl, parseUserUrl, UnsafeUrlError } from "./url";
 
 export const CATEGORIES = [
-  { id: "create", label: "Create", noun: "creative tool", blurb: "Draw, compose, generate and make things right in your browser." },
-  { id: "build", label: "Build", noun: "developer tool", blurb: "Developer tools for code, data and the web that work without an install." },
-  { id: "play", label: "Play", noun: "browser game", blurb: "Small games and toys you can start playing in a few seconds." },
-  { id: "learn", label: "Learn", noun: "interactive explainer", blurb: "Interactive explainers and playgrounds that teach by doing." },
-  { id: "design", label: "Design", noun: "design tool", blurb: "Generators and tools for colors, shapes, type and images." },
-  { id: "productivity", label: "Productivity", noun: "productivity tool", blurb: "Focused little apps for timers, notes, to-dos and getting things done." },
-  { id: "utilities", label: "Utilities", noun: "web utility", blurb: "Handy single-purpose helpers that convert, compress, share and fix files in a click." },
-  { id: "business", label: "Business", noun: "business tool", blurb: "Tools for running a small business or side project: invoices, pitches, branding and numbers." },
-  { id: "fun", label: "Fun", noun: "web toy", blurb: "Delightful odds and ends of the web, worth a minute of your time." },
+  { id: "create", label: "Create", noun: "creative tool", like: "Tools", blurb: "Draw, compose, generate and make things right in your browser." },
+  { id: "build", label: "Build", noun: "developer tool", like: "Tools", blurb: "Developer tools for code, data and the web that work without an install." },
+  { id: "play", label: "Play", noun: "browser game", like: "Games", blurb: "Small games and toys you can start playing in a few seconds." },
+  { id: "learn", label: "Learn", noun: "interactive explainer", like: "Sites", blurb: "Interactive explainers and playgrounds that teach by doing." },
+  { id: "design", label: "Design", noun: "design tool", like: "Tools", blurb: "Generators and tools for colors, shapes, type and images." },
+  { id: "productivity", label: "Productivity", noun: "productivity tool", like: "Tools", blurb: "Focused little apps for timers, notes, to-dos and getting things done." },
+  { id: "utilities", label: "Utilities", noun: "web utility", like: "Tools", blurb: "Handy single-purpose helpers that convert, compress, share and fix files in a click." },
+  { id: "business", label: "Business", noun: "business tool", like: "Tools", blurb: "Tools for running a small business or side project: invoices, pitches, branding and numbers." },
+  { id: "fun", label: "Fun", noun: "web toy", like: "Sites", blurb: "Delightful odds and ends of the web, worth a minute of your time." },
 ] as const;
 export type Category = (typeof CATEGORIES)[number]["id"];
 export const CATEGORY_IDS: readonly string[] = CATEGORIES.map((c) => c.id);

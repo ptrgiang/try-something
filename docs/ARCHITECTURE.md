@@ -28,7 +28,7 @@ D1 is the only source of truth. Main tables (full schema in `migrations/`):
 | `app_rate_limit` | Fixed-window counters for submissions, metadata lookups, bookmarks, comments, likes |
 | `comment`, `report`, `notification` | Comments on tools, reports that auto-hide at a threshold until a moderator decides, in-app notifications |
 | `tool_like`, `tool_update` | Hearts from accounts; maker product updates, reviewed before they show |
-| `tag_info` | Editor-written descriptions for tag pages |
+| `tag_info` | Editor-written titles and descriptions for tag pages |
 | `*_stat_daily`, `visit_day`, `user_active_day`, `funnel_*_daily` | Cookie-free counters: views, try clicks, impressions, searches, sources and the discovery funnel, one row per day |
 
 ### Submission state machine (`src/lib/moderation.ts`)

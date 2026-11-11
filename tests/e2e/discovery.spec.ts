@@ -4,7 +4,8 @@ import { sqlJson } from "./helpers";
 test("tag pages list tagged tools with related tags, and tool tags link to them", async ({ page }) => {
   const res = await page.goto("/tags/svg");
   expect(res?.status()).toBe(200);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("#svg");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("SVG tools");
+  await expect(page).toHaveTitle(/^SVG tools: \d+ to try in your browser/);
   const names = await page.locator(".grid .card h2").allTextContents();
   expect(names).toEqual(expect.arrayContaining(["Haikei", "fffuel"]));
   await expect(page.getByRole("navigation", { name: "Related tags" })).toContainText("#backgrounds");
@@ -36,8 +37,12 @@ test("Popular has a timeframe and the tool page suggests similar tools", async (
   await expect(page.getByRole("navigation", { name: "Timeframe" })).toHaveCount(0);
 
   await page.goto("/tools/haikei");
-  const similar = page.locator("[data-related=similar] .card h3");
-  await expect(similar).toHaveCount(4);
+  const section = page.locator("[data-related=similar]");
+  await expect(section.getByRole("heading", { level: 2 })).toHaveText("Tools like Haikei");
+  // Design has five other tools in the seed, enough for a list of only design tools; eight at most.
+  const similar = section.locator(".card h3");
+  await expect(similar.nth(4)).toBeVisible();
+  expect(await similar.count()).toBeLessThanOrEqual(8);
   // fffuel (svg), PatternPad and Fontjoy (generative) each share a tag and the category, so they tie for the top.
   for (const name of (await similar.allTextContents()).slice(0, 3)) expect(["Fontjoy", "PatternPad", "fffuel"]).toContain(name);
 });

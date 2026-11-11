@@ -4,9 +4,9 @@ import Base from "../../layouts/Base.astro";
 import Filters from "../../components/Filters.astro";
 import ToolCard from "../../components/ToolCard.astro";
 import Icon from "../../components/Icon.astro";
-import { countTools, listTools, parsePeriod, parseSort, relatedTags, tagDescription, TAG_INDEX_MIN } from "../../lib/db";
+import { countTools, listTools, parsePeriod, parseSort, relatedTags, tagInfo, TAG_INDEX_MIN } from "../../lib/db";
 import { CATEGORIES, CATEGORY_IDS, parseTags } from "../../lib/validation";
-import { collectionLd, crumbsLd } from "../../lib/seo";
+import { collectionLd, crumbsLd, tagHeading } from "../../lib/seo";
 import { tagCard } from "../../lib/og";
 
 const raw = Astro.params.tag ?? "";
@@ -20,28 +20,31 @@ const category = categoryParam && CATEGORY_IDS.includes(categoryParam) ? categor
 const sort = parseSort(sp.get("sort"));
 const period = sort === "popular" ? parsePeriod(sp.get("period")) : "all";
 const limit = 48;
-const [all, total, tools, related, intro] = await Promise.all([
+const [all, total, tools, related, info] = await Promise.all([
   countTools(env.DB, { tag }),
   countTools(env.DB, { tag, category: category ?? undefined }),
   listTools(env.DB, { tag, category: category ?? undefined, sort, period, limit }),
   relatedTags(env.DB, tag, 10),
-  tagDescription(env.DB, tag),
+  tagInfo(env.DB, tag),
 ]);
 if (all === 0) return Astro.rewrite("/404");
+const intro = info.description;
+// Searchers type "online whiteboards", not "#whiteboard": the heading is the editor's title, or one built from the tag.
+const heading = info.title ?? tagHeading(tag);
 const label = CATEGORIES.find((c) => c.id === category)?.label;
 const filtered = Boolean(category) || sort !== "picks";
 const moreHref = `/explore${category ? `/${category}` : ""}?${new URLSearchParams({ tag })}`;
 const description = intro ?? `${all} hand-picked ${all === 1 ? "tool" : "tools"} tagged #${tag} that you can try in your browser, each one tried by a person.`;
 const jsonLd = [
-  collectionLd({ path: `/tags/${tag}`, name: `#${tag} tools`, description, tools }),
-  crumbsLd([{ name: "Explore", path: "/explore" }, { name: `#${tag}`, path: `/tags/${tag}` }]),
+  collectionLd({ path: `/tags/${tag}`, name: heading, description, tools }),
+  crumbsLd([{ name: "Explore", path: "/explore" }, { name: heading, path: `/tags/${tag}` }]),
 ];
 ---
-<Base title={`${all} ${tag} ${all === 1 ? "tool" : "tools"} you can try in your browser`} description={description} nav="explore" path={`/tags/${tag}`} noindex={filtered || all < TAG_INDEX_MIN} headerSearch={false} jsonLd={jsonLd} og={filtered ? undefined : tagCard(tag, all, tools)}>
+<Base title={`${heading}: ${all} to try in your browser`} description={description} nav="explore" path={`/tags/${tag}`} noindex={filtered || all < TAG_INDEX_MIN} headerSearch={false} jsonLd={jsonLd} og={filtered ? undefined : tagCard(tag, all, tools)}>
   <div class="explore-head tag-head">
     <div>
-      <p class="eyebrow"><a href="/explore">Explore</a> · Tag</p>
-      <h1 class="page-title">#{tag}{label && <span class="muted"> in {label}</span>}</h1>
+      <p class="eyebrow"><a href="/explore">Explore</a> · #{tag}</p>
+      <h1 class="page-title">{heading}{label && <span class="muted"> in {label}</span>}</h1>
       {intro && <p class="lede tag-intro">{intro}</p>}
       <p class="result-count">{total} {total === 1 ? "tool" : "tools"}</p>
     </div>

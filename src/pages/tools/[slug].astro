@@ -18,7 +18,7 @@ const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
 if (!tool) return Astro.rewrite("/404");
 const commentsOn = env.COMMENTS_ENABLED === "true";
 const [related, threads, commentCount, wins, updates] = await Promise.all([
-  relatedTools(env.DB, tool, 4),
+  relatedTools(env.DB, tool, 8),
   commentsOn ? listComments(env.DB, tool.id) : [],
   commentsOn ? countComments(env.DB, tool.id) : 0,
   topDays(env.DB, tool.id),
@@ -134,7 +134,7 @@ jsonLd.push(
   {related.similar.length > 0 && (
     <section data-related="similar" data-surface="related">
       <div class="section-head">
-        <h2>You might also like</h2>
+        <h2>{(related.sameKind && category?.like) || "Sites"} like {tool.name}</h2>
         <a class="section-link" href={`/explore/${tool.category}`}>More {category?.label ?? tool.category} <Icon name="arrow" /></a>
       </div>
       <div class="grid">{related.similar.map((t) => <ToolCard tool={t} />)}</div>

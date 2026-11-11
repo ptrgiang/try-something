@@ -78,10 +78,12 @@ test("editors can describe a tag, with an audit row", async ({ page }) => {
     await page.context().addCookies([{ ...mod.cookie, httpOnly: true, sameSite: "Lax" }]);
     await page.goto("/admin/tags");
     const text = "Generators and tools that give you a vector file you can drop straight into a design.";
+    await page.getByLabel("Title for #svg").fill("SVG generators and editors");
     await page.getByLabel("Description for #svg").fill(text);
     await page.locator("#tag-svg").getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("status")).toContainText("Saved #svg");
     await page.goto("/tags/svg");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("SVG generators and editors");
     await expect(page.locator(".tag-intro")).toHaveText(text);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", text);
     expect(sqlJson<{ n: number }>(`SELECT COUNT(*) AS n FROM moderation_event WHERE action = 'tag_description' AND actor_id = 'e2e-tag-mod'`)[0].n).toBeGreaterThan(0);

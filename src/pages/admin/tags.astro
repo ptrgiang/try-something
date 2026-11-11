@@ -2,9 +2,10 @@
 import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import AdminNav from "../../components/AdminNav.astro";
-import { listTagsForAdmin, setTagDescription, TAG_DESCRIPTION_MAX } from "../../lib/db";
+import { listTagsForAdmin, setTagInfo, TAG_DESCRIPTION_MAX, TAG_TITLE_MAX } from "../../lib/db";
 import { isModerator } from "../../lib/moderation";
 import { parseTags, plainText } from "../../lib/validation";
+import { tagHeading } from "../../lib/seo";
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect("/login?next=/admin/tags");
@@ -15,11 +16,13 @@ if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
   const raw = String(form.get("tag") ?? "");
   const tag = parseTags(raw)[0];
+  const title = plainText(form.get("title"), TAG_TITLE_MAX);
   const description = plainText(form.get("description"), TAG_DESCRIPTION_MAX);
   if (!tag || tag !== raw) error = "Unknown tag.";
+  else if (title && title.length < 3) error = "That title is too short. Leave it empty for the default.";
   else if (description && description.length < 20) error = "Write at least a sentence, or leave it empty to clear it.";
   else {
-    await setTagDescription(env.DB, tag, description, user.id);
+    await setTagInfo(env.DB, tag, { title, description }, user.id);
     return Astro.redirect(`/admin/tags?saved=${tag}#tag-${tag}`, 303);
   }
   Astro.response.status = 400;
@@ -32,7 +35,7 @@ const saved = Astro.url.searchParams.get("saved");
     <p class="eyebrow">Moderation</p>
     <h1 class="page-title">Tags</h1>
     <AdminNav current="tags" />
-    <p class="muted">A short intro shown at the top of each tag page. Say what the tools have in common and who they're for; keep it factual. Leave empty for the default line.</p>
+    <p class="muted">The title is the tag page's heading and search result title: name the tools the way someone would search for them ("Online whiteboards"). The intro sits under it: say what the tools have in common and who they're for; keep it factual. Leave either empty for the default.</p>
     {error && <p class="form-error" role="alert">{error}</p>}
     {saved && !error && <p class="notice" role="status">Saved #{saved}.</p>}
     <ul class="tag-admin">
@@ -44,6 +47,8 @@ const saved = Astro.url.searchParams.get("saved");
               <span class="muted small-note">{t.n} {t.n === 1 ? "tool" : "tools"}{t.updated_at && ` · edited ${t.updated_at.slice(0, 10)}`}</span>
             </div>
             <input type="hidden" name="tag" value={t.tag} />
+            <label class="sr-only" for={`t-${t.tag}`}>Title for #{t.tag}</label>
+            <input id={`t-${t.tag}`} class="tag-admin-title" type="text" name="title" maxlength={TAG_TITLE_MAX} value={t.title ?? ""} placeholder={tagHeading(t.tag)} />
             <label class="sr-only" for={`d-${t.tag}`}>Description for #{t.tag}</label>
             <textarea id={`d-${t.tag}`} name="description" rows="2" maxlength={TAG_DESCRIPTION_MAX} placeholder="No description yet">{t.description ?? ""}</textarea>
             <button class="btn btn-sm" type="submit">Save</button>
