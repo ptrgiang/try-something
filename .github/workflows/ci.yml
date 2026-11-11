@@ -36,10 +36,20 @@ jobs:
       - name: Staging build resolves its own bindings
         run: CLOUDFLARE_ENV=staging npm run build
       - run: npm run build
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      # No --with-deps: it apt-installs fonts from the Azure Ubuntu mirror, whose DNS outages failed CI.
+      # The runner image ships Chrome, so Chromium's shared libraries are already there, and no test compares pixels.
+      - name: Install Chromium
+        run: npx playwright install chromium
       - name: End-to-end tests (local Workers runtime + local D1)
         run: |
           printf 'PUBLIC_SITE_URL=http://localhost:4321\nBETTER_AUTH_SECRET=%s\nTURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA\n' "$(openssl rand -base64 32)" > .dev.vars
           npm run db:migrate:local
           npm run db:seed:local
-          npx playwright install --with-deps chromium
           npm run e2e
