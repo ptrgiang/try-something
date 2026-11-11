@@ -1,5 +1,5 @@
 ---
-// One report dialog per page, opened by any [data-report="tool"|"comment"][data-target] button.
+// One report dialog per page, opened by any [data-report="tool"|"comment"|"list"][data-target] button.
 import Icon from "./Icon.astro";
 import { REPORT_REASONS } from "../lib/validation";
 
@@ -50,13 +50,13 @@ const signedIn = Boolean(Astro.locals.user);
       const btn = (e.target as Element).closest<HTMLElement>("[data-report][data-target]");
       if (!btn) return;
       if (dialog.dataset.signedIn !== "1") {
-        // A broken listing can be flagged without an account through Feedback; comment reports stay signed-in only.
+        // A broken listing can be flagged without an account through Feedback; other reports stay signed-in only.
         const from = encodeURIComponent(location.pathname);
         location.assign(btn.dataset.report === "tool" ? `/feedback?kind=tool&from=${from}` : `/login?next=${from}`);
         return;
       }
       target = { type: btn.dataset.report!, id: btn.dataset.target! };
-      title.textContent = target.type === "tool" ? "Report this listing" : "Report this comment";
+      title.textContent = target.type === "tool" ? "Report this listing" : target.type === "list" ? "Report this list" : "Report this comment";
       form.reset();
       form.hidden = false;
       done.hidden = true;

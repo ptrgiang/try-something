@@ -9,6 +9,15 @@ export const NOTIFY_STATUSES: readonly SubmissionStatus[] = ["needs_changes", "p
 
 export const NOTIFICATION_DAYS = 90;
 
+/** Kinds a person can turn off in Settings. Submission status changes always arrive: they're about your own listing. */
+export const MUTABLE_KINDS = [
+  { kind: "comment_reply", label: "Replies to your comments" },
+  { kind: "tool_comment", label: "New comments on tools you listed" },
+  { kind: "tool_update", label: "Updates to tools you saved" },
+  { kind: "new_tool", label: "New tools from people you follow" },
+] as const;
+export type MutableKind = (typeof MUTABLE_KINDS)[number]["kind"];
+
 export interface NotificationRow {
   id: string;
   kind: NotificationKind;

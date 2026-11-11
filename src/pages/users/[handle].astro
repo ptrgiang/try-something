@@ -6,7 +6,7 @@ import Icon from "../../components/Icon.astro";
 import Avatar from "../../components/Avatar.astro";
 import FollowButton from "../../components/FollowButton.astro";
 import { avatarUrl, isAvatarKey } from "../../lib/avatar";
-import { getProfileByHandle, isFollowing, listLikedTools, listSavedTools, myLists, profileTools, publicLists, removeAvatarAsModerator } from "../../lib/db";
+import { followerCount, getProfileByHandle, isFollowing, listLikedTools, listSavedTools, myLists, profileTools, publicLists, removeAvatarAsModerator } from "../../lib/db";
 import { isModerator } from "../../lib/moderation";
 import { displayHost } from "../../lib/url";
 import { profileLd } from "../../lib/seo";
@@ -27,13 +27,14 @@ if (Astro.request.method === "POST") {
 }
 const own = me?.id === profile.id;
 // Saved and Hearted are private (see Privacy): the tabs exist only for the profile's owner.
-const [tools, saved, liked, following, lists] = await Promise.all([
+const [tools, saved, liked, following, lists, followers] = await Promise.all([
   profileTools(env.DB, profile.id),
   own ? listSavedTools(env.DB, profile.id) : [],
   own ? listLikedTools(env.DB, profile.id) : [],
   me && !own ? isFollowing(env.DB, me.id, profile.id) : false,
   // The owner sees their private lists too, marked as such.
   own ? myLists(env.DB, profile.id) : publicLists(env.DB, profile.id),
+  followerCount(env.DB, profile.id),
 ]);
 const made = tools.filter((t) => t.credit_type === "made");
 const found = tools.filter((t) => t.credit_type === "found");
@@ -76,6 +77,7 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
       <li><strong>{found.length}</strong> found</li>
       {tools.length > 0 && <li><strong>{hearts}</strong> {plural(hearts, "heart")}</li>}
       {tools.length > 0 && <li><strong>{saves}</strong> {plural(saves, "save")}</li>}
+      <li data-followers={profile.id} data-count={followers} hidden={followers === 0}><strong>{followers}</strong> <span>{plural(followers, "follower")}</span></li>
     </ul>
     <div class="profile-actions">
         {own ? <a class="btn" href="/me/settings">Edit profile</a> : <FollowButton person={profile} following={following} class="btn-follow-lg" />}
@@ -102,10 +104,10 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
       <ul class="profile-lists">
         {lists.map((l) => (
           <li>
-            <a class="profile-list" href={l.public ? `/users/${profile.handle}/lists/${l.slug}` : `/me/lists/${l.id}`}>
+            <a class="profile-list" href={l.public && !l.hidden_at ? `/users/${profile.handle}/lists/${l.slug}` : `/me/lists/${l.id}`}>
               <strong>{l.title}</strong>
               {l.description && <span class="profile-list-desc">{l.description}</span>}
-              <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`}{own && ` · ${l.public ? "Public" : "Private, only you can see it"}`}</span>
+              <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`}{own && ` · ${l.hidden_at ? "Hidden by a moderator" : l.public ? "Public" : "Private, only you can see it"}`}</span>
             </a>
           </li>
         ))}

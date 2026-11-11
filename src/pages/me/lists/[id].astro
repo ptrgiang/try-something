@@ -38,7 +38,7 @@ if (Astro.request.method === "POST") {
   }
 }
 const tools = await listItems(env.DB, list.id);
-const publicHref = user.handle && list.public ? `/users/${user.handle}/lists/${list.slug}` : null;
+const publicHref = user.handle && list.public && !list.hidden_at ? `/users/${user.handle}/lists/${list.slug}` : null;
 ---
 <Base title={list.title} noindex>
   <div class="page app-page settings">
@@ -47,6 +47,12 @@ const publicHref = user.handle && list.public ? `/users/${user.handle}/lists/${l
       <h1 class="page-title">{list.title}</h1>
       {publicHref && <p class="lede">Public at <a href={publicHref}>{publicHref}</a></p>}
     </header>
+    {list.hidden_at && (
+      <p class="notice" role="note">
+        A moderator hid this list, so only you can see it{list.hidden_reason && <>: “{list.hidden_reason}”</>}. You can still edit it.
+        Think it's a mistake? <a href={`/feedback?from=${encodeURIComponent(`/me/lists/${list.id}`)}`}>Tell us</a>.
+      </p>
+    )}
     {notice && <p class="notice notice-success" role="status">{notice}</p>}
     {error && <p class="form-error" role="alert">{error}</p>}
 

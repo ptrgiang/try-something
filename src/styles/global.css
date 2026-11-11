@@ -2095,7 +2095,8 @@ tr:last-child td {
   font-weight: 700;
   font-size: 13px;
 }
-.admin-filters select {
+.admin-filters select,
+.admin-filters input[type="search"] {
   min-height: 38px;
   border-radius: 10px;
   border: 1.5px solid var(--line-strong);
@@ -6474,4 +6475,40 @@ td.num {
   .maker-tool .stat-value {
     font-size: 26px;
   }
+}
+
+/* Moderation and notification settings for lists and follows */
+.notif-prefs {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.notif-prefs .check {
+  align-items: flex-start;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.notif-prefs .check input {
+  margin-top: 3px;
+  flex: none;
+}
+.notif-settings {
+  margin: 4px 0 0;
+}
+.admin-filters input[type="search"] {
+  min-width: min(280px, 100%);
+}
+.list-hidden-note {
+  margin: 16px var(--gutter, 16px) 0;
+}
+.follow-error {
+  flex-basis: 100%;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.list-foot .link-btn {
+  display: inline-flex;
+  vertical-align: baseline;
 }

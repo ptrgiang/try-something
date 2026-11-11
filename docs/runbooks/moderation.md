@@ -1,6 +1,6 @@
 # Moderation
 
-Everything lives under `/admin` (moderators and admins only): Submissions, Reports, Comments, Tools, Collections, Stats, and Roles (admins only). Every action is written to `moderation_event`.
+Everything lives under `/admin` (moderators and admins only): Submissions, Updates, Reports, Feedback, Comments, Lists, Tools, Collections, Tags, Stats, and Roles (admins only). Every action is written to `moderation_event`.
 
 ## Reviewing submissions
 
@@ -27,8 +27,9 @@ Every action is recorded in the moderation history. Never edit statuses directly
 ## Reports and comments
 
 - **Reports** (`/admin/reports`): grouped by target, most-reported first. **Keep** closes the reports (and restores a comment that was auto-hidden); **Hide** hides the comment or listing and closes them. Write the reason; it goes in the audit log, not to the reporter.
-- A comment is hidden automatically once **3 different people** report it. It stays hidden until someone here decides.
+- A comment or a list is hidden automatically once **3 different people** report it. It stays hidden until someone here decides.
 - **Comments** (`/admin/comments`): recent comments by status. Hide with a reason, or restore a hidden one. Authors' own deletions show as "deleted" and can't be restored.
+- **Lists** (`/admin/lists`): people's public lists, most recently changed first, or the hidden ones; search by title, description or @handle. Hiding one needs a reason, which the owner sees on their list; the list leaves their profile and its link returns 404 for everyone but the owner and moderators (who see it marked). Restore puts it back. Hiding or restoring here also closes open reports on it. Private lists never reach moderators.
 - Hide, don't argue. If a comment is borderline, keep it and move on; if it's abuse aimed at a person, hide it and check the author's other comments.
 - **Profile photos**: open the person's profile and press **Remove photo**. They get initials, the uploaded file is deleted and the audit log records `remove_avatar`. Moderators can do this for members; only admins can for other staff. They can upload a new one, so if it keeps happening, treat it like repeated abusive comments.
 - To switch comments off everywhere, set `COMMENTS_ENABLED` to `"false"` and deploy; existing comments stay in the database.

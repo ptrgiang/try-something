@@ -1,0 +1,91 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../layouts/Base.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { closeReports, getModList, moderationLists, setListHidden } from "../../lib/db";
+import { isModerator } from "../../lib/moderation";
+import { timeAgo } from "../../lib/util";
+import { plainText } from "../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/admin/lists");
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+
+const status = Astro.url.searchParams.get("status") === "hidden" ? "hidden" : "public";
+const q = plainText(Astro.url.searchParams.get("q"), 80);
+const back = `/admin/lists?status=${status}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const hide = form.get("action") === "hide";
+  const reason = plainText(form.get("reason"), 300);
+  const list = await getModList(env.DB, String(form.get("id") ?? ""));
+  if (!list) error = "List not found.";
+  else if (hide && reason.length < 5) error = "Add a reason before hiding a list. Its owner sees it.";
+  else if (!(await setListHidden(env.DB, list, user.id, hide, reason || null))) error = "That list changed meanwhile. Reload and retry.";
+  // Deciding here settles any open reports on the list too.
+  else await closeReports(env.DB, "list", list.id, user.id, hide ? "resolved" : "dismissed", reason || (hide ? "Hidden" : "Restored"));
+  if (!error) return Astro.redirect(back, 303);
+  Astro.response.status = 400;
+}
+const rows = await moderationLists(env.DB, status, q);
+---
+<Base title="Lists" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Moderation</p>
+    <h1 class="page-title">People's lists</h1>
+    <AdminNav current="lists" />
+    <p class="lede">Public lists, most recently changed first. Hiding one takes it off its owner's profile and its link for everyone else; the owner keeps it and sees your reason. Private lists never show here.</p>
+    <nav class="chips admin-tabs" aria-label="Status filter">
+      <a class="chip" href="/admin/lists" aria-current={status === "public" ? "true" : undefined}>Public</a>
+      <a class="chip" href="/admin/lists?status=hidden" aria-current={status === "hidden" ? "true" : undefined}>Hidden</a>
+    </nav>
+    <form class="admin-filters" method="get" role="search">
+      <input type="hidden" name="status" value={status} />
+      <label class="sr-only" for="lists-q">Search lists</label>
+      <input id="lists-q" name="q" type="search" value={q} placeholder="Title, description or @handle" maxlength="80" />
+      <button class="btn btn-sm" type="submit">Search</button>
+    </form>
+    {error && <p class="form-error" role="alert">{error}</p>}
+    {rows.length === 0 ? (
+      <p class="empty">{q ? "No lists match that." : status === "hidden" ? "No hidden lists." : "No public lists yet."}</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>List</th><th>Owner</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            {rows.map((l) => (
+              <tr id={l.id}>
+                <td>
+                  <a href={`/users/${l.owner_handle}/lists/${l.slug}`}><strong>{l.title}</strong></a>
+                  {l.description && <p class="table-quote">{l.description}</p>}
+                  <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`} · changed <time datetime={l.updated_at}>{timeAgo(l.updated_at)}</time></span>
+                </td>
+                <td>{l.owner_name}<div class="muted small-note">@{l.owner_handle}</div></td>
+                <td>
+                  <span class={`status status-${l.hidden_at ? "hidden" : "visible"}`}>{l.hidden_at ? "hidden" : "public"}</span>
+                  {l.open_reports > 0 && <div class="small-note"><a href="/admin/reports">{l.open_reports} open report{l.open_reports === 1 ? "" : "s"}</a></div>}
+                  {l.hidden_reason && <div class="muted small-note">{l.hidden_reason}</div>}
+                </td>
+                <td>
+                  <form method="post" action={back} class="inline-form">
+                    <input type="hidden" name="id" value={l.id} />
+                    {l.hidden_at ? (
+                      <button class="btn btn-sm" name="action" value="restore">Restore</button>
+                    ) : (
+                      <>
+                        <label class="sr-only" for={`r-${l.id}`}>Reason for hiding {l.title}</label>
+                        <input id={`r-${l.id}`} name="reason" type="text" placeholder="Reason (the owner sees it)" maxlength="300" />
+                        <button class="btn btn-sm" name="action" value="hide">Hide</button>
+                      </>
+                    )}
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</Base>

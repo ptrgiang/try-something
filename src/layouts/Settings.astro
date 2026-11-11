@@ -4,7 +4,7 @@ import Base from "./Base.astro";
 import Icon from "../components/Icon.astro";
 
 interface Props {
-  current: "profile" | "sign-in" | "account";
+  current: "profile" | "notifications" | "sign-in" | "account";
   title: string;
   lede?: string;
 }
@@ -12,6 +12,7 @@ const { current, title, lede } = Astro.props;
 const user = Astro.locals.user!;
 const sections = [
   { id: "profile", href: "/me/settings", label: "Profile", icon: "user" },
+  { id: "notifications", href: "/me/settings/notifications", label: "Notifications", icon: "bell" },
   { id: "sign-in", href: "/me/settings/sign-in", label: "Sign-in methods", icon: "link" },
   { id: "account", href: "/me/settings/account", label: "Delete account", icon: "trash" },
 ] as const;

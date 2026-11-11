@@ -2,7 +2,7 @@
 import { env } from "cloudflare:workers";
 import Base from "../../layouts/Base.astro";
 import AdminNav from "../../components/AdminNav.astro";
-import { closeReports, getComment, listOpenReports, moderateComment, setToolVisibility } from "../../lib/db";
+import { closeReports, getComment, getModList, listOpenReports, moderateComment, setListHidden, setToolVisibility } from "../../lib/db";
 import { commentModTransition, isModerator } from "../../lib/moderation";
 import { timeAgo } from "../../lib/util";
 import { plainText, REPORT_REASONS } from "../../lib/validation";
@@ -14,7 +14,8 @@ if (!isModerator(user.role)) return Astro.rewrite("/403");
 let error = "";
 if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
-  const type = form.get("type") === "tool" ? "tool" : "comment";
+  const rawType = form.get("type");
+  const type = rawType === "tool" || rawType === "list" ? rawType : "comment";
   const id = String(form.get("id") ?? "");
   const action = String(form.get("action") ?? "");
   const reason = plainText(form.get("reason"), 300);
@@ -23,6 +24,10 @@ if (Astro.request.method === "POST") {
     if (type === "comment") {
       const c = await getComment(env.DB, id);
       if (c?.status === "hidden") await moderateComment(env.DB, c, user.id, "restore", "visible", "Reports dismissed");
+    }
+    if (type === "list") {
+      const l = await getModList(env.DB, id);
+      if (l?.hidden_at) await setListHidden(env.DB, l, user.id, false, reason || "Reports dismissed");
     }
     await closeReports(env.DB, type, id, user.id, "dismissed", reason || "Kept");
   } else if (action === "remove" && type === "comment") {
@@ -33,6 +38,14 @@ if (Astro.request.method === "POST") {
       const t = commentModTransition(user, c, "hide", reason);
       if (!t.ok) error = t.error;
       else await moderateComment(env.DB, c, user.id, "hide", t.to, reason);
+    }
+  } else if (action === "remove" && type === "list") {
+    const l = await getModList(env.DB, id);
+    if (!l) await closeReports(env.DB, "list", id, user.id, "resolved", "List no longer exists");
+    else if (reason.length < 5 && !l.hidden_at) error = "Add a reason before hiding a list. Its owner sees it.";
+    else {
+      if (!l.hidden_at) await setListHidden(env.DB, l, user.id, true, reason);
+      await closeReports(env.DB, "list", id, user.id, "resolved", reason || l.hidden_reason || "Hidden");
     }
   } else if (action === "remove" && type === "tool") {
     if (reason.length < 5) error = "Add a reason before hiding a tool.";
@@ -53,7 +66,7 @@ const reasonLabel = (id: string) => REPORT_REASONS.find((r) => r.id === id)?.lab
     <p class="eyebrow">Moderation</p>
     <h1 class="page-title">Reports</h1>
     <AdminNav current="reports" />
-    <p class="lede">Most-reported first. A comment with 3 reports is hidden until someone here decides.</p>
+    <p class="lede">Most-reported first. A comment or list with 3 reports is hidden until someone here decides.</p>
     {error && <p class="form-error" role="alert">{error}</p>}
     {groups.length === 0 ? (
       <p class="empty">No open reports.</p>
@@ -69,6 +82,14 @@ const reasonLabel = (id: string) => REPORT_REASONS.find((r) => r.id === id)?.lab
                     {g.comment.status !== "visible" && <span class={`status status-${g.comment.status}`}>{g.comment.status}</span>}
                   </p>
                   <blockquote class="report-quote">{g.comment.body || "(text deleted)"}</blockquote>
+                </>
+              ) : g.target_type === "list" && g.list ? (
+                <>
+                  <p class="report-kind">
+                    List <a href={`/users/${g.list.owner_handle}/lists/${g.list.slug}`}><strong>{g.list.title}</strong></a> by @{g.list.owner_handle}
+                    {g.list.hidden_at && <span class="status status-hidden">hidden</span>}
+                  </p>
+                  {g.list.description && <blockquote class="report-quote">{g.list.description}</blockquote>}
                 </>
               ) : g.tool ? (
                 <p class="report-kind">
@@ -94,7 +115,7 @@ const reasonLabel = (id: string) => REPORT_REASONS.find((r) => r.id === id)?.lab
               <input id={`reason-${g.target_id}`} name="reason" type="text" maxlength="300" placeholder="Reason (goes in the audit log)" />
               <div class="report-buttons">
                 <button class="btn btn-sm" name="action" value="dismiss">Keep</button>
-                <button class="btn btn-sm btn-danger" name="action" value="remove">{g.target_type === "tool" ? "Hide listing" : "Hide comment"}</button>
+                <button class="btn btn-sm btn-danger" name="action" value="remove">{g.target_type === "tool" ? "Hide listing" : g.target_type === "list" ? "Hide list" : "Hide comment"}</button>
               </div>
             </form>
           </li>

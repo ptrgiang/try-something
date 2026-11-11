@@ -5,7 +5,7 @@ import { rateLimit } from "../../lib/rate-limit";
 import { isSameOrigin, json } from "../../lib/util";
 import { plainText, REPORT_REASON_IDS } from "../../lib/validation";
 
-// { targetType: "tool" | "comment", targetId, reason, note? } files a report for the moderators.
+// { targetType: "tool" | "comment" | "list", targetId, reason, note? } files a report for the moderators.
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!isSameOrigin(request)) return json({ error: "Bad origin." }, 403);
   const user = locals.user;
@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   } catch {
     return json({ error: "Invalid request." }, 400);
   }
-  const targetType = body.targetType === "tool" || body.targetType === "comment" ? body.targetType : null;
+  const targetType = body.targetType === "tool" || body.targetType === "comment" || body.targetType === "list" ? body.targetType : null;
   const targetId = typeof body.targetId === "string" && body.targetId.length <= 64 ? body.targetId : "";
   const reason = typeof body.reason === "string" && REPORT_REASON_IDS.includes(body.reason) ? body.reason : null;
   if (!targetType || !targetId || !reason) return json({ error: "Pick a reason." }, 400);

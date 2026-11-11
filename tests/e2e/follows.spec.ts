@@ -2,11 +2,12 @@ import { expect, test } from "@playwright/test";
 import { createUser, sql, sqlJson } from "./helpers";
 
 const SUB = "e2e-fol-sub";
+const SUB2 = "e2e-fol-sub2";
 
 test.afterAll(() => {
   sql(`
-    DELETE FROM tool WHERE submission_id = '${SUB}';
-    DELETE FROM submission WHERE id = '${SUB}';
+    DELETE FROM tool WHERE submission_id IN ('${SUB}', '${SUB2}');
+    DELETE FROM submission WHERE id IN ('${SUB}', '${SUB2}');
     DELETE FROM "user" WHERE id IN ('e2e-fol-finder', 'e2e-fol-fan', 'e2e-fol-mod');
   `);
 });
@@ -30,11 +31,16 @@ test("follow a finder, then hear about and see their next published tool", async
   await expect(page.getByRole("heading", { name: "You're not following anyone yet" })).toBeVisible();
   await page.goto("/users/fol-finder");
   const follow = page.getByRole("button", { name: "Follow Fin Der" });
+  const followers = page.locator(".profile-stats [data-followers]");
   await expect(follow).toHaveAttribute("aria-pressed", "false");
+  await expect(followers).toBeHidden();
   await follow.click();
   await expect(follow).toHaveAttribute("aria-pressed", "true");
   await expect(follow).toHaveText("Following");
+  await expect(followers).toHaveText("1 follower");
   await expect.poll(() => sqlJson<{ n: number }>(`SELECT COUNT(*) AS n FROM follow WHERE follower_id = 'e2e-fol-fan' AND followee_id = 'e2e-fol-finder'`)[0].n).toBe(1);
+  await page.reload();
+  await expect(followers).toHaveText("1 follower");
 
   // Nobody follows themselves.
   await as(finder);
@@ -58,8 +64,26 @@ test("follow a finder, then hear about and see their next published tool", async
   await expect(page.locator(".grid .card h2")).toHaveText(["E2E Followed Find"]);
   await expect(page.locator(".following-people")).toContainText("@fol-finder");
 
+  // Turning off "new tools from people you follow" stops the next one from showing up under the bell.
+  await page.goto("/me/settings/notifications");
+  await page.getByLabel("New tools from people you follow").uncheck();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toContainText("Saved.");
+  await expect(page.getByLabel("New tools from people you follow")).not.toBeChecked();
+  await expect(page.getByLabel("Updates to tools you saved")).toBeChecked();
+  const later = new Date().toISOString();
+  sql(`INSERT INTO submission (id, user_id, origin, url, canonical_key, name, tagline, try_this, category, status, created_at, updated_at)
+      VALUES ('${SUB2}', 'e2e-fol-finder', 'found', 'https://example.com/followed-2', 'example.com/followed-2', 'E2E Muted Find', 'Nobody hears about this one.', 'Click it.', 'play', 'pending', '${later}', '${later}');`);
+  await as(mod);
+  await page.goto(`/admin/submissions/${SUB2}`);
+  await page.getByRole("button", { name: "Approve & publish" }).click();
+  await expect(page.getByRole("status")).toContainText("Published at /tools/");
+  expect(sqlJson<{ n: number }>(`SELECT COUNT(*) AS n FROM notification WHERE user_id = 'e2e-fol-fan' AND kind = 'new_tool'`)[0].n).toBe(1);
+  await as(fan);
+
   // The tool page offers Follow next to the finder, already on.
-  await page.locator(".grid .card h2 a").click();
+  await page.goto("/me/following");
+  await page.locator(".grid .card h2 a", { hasText: "E2E Followed Find" }).click();
   await expect(page.locator(".credits").getByRole("button", { name: "Follow Fin Der" })).toHaveAttribute("aria-pressed", "true");
   await page.locator(".credits").getByRole("button", { name: "Follow Fin Der" }).click();
   await expect.poll(() => sqlJson<{ n: number }>(`SELECT COUNT(*) AS n FROM follow WHERE follower_id = 'e2e-fol-fan'`)[0].n).toBe(0);

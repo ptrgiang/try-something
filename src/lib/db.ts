@@ -2,7 +2,7 @@
 
 import type { SubmissionInput, ToolUpdateInput } from "./validation";
 import { AUTO_HIDE_REPORTS, RESURFACE_COOLDOWN_DAYS, UPDATE_WINDOW_DAYS, type CommentStatus, type SubmissionStatus } from "./moderation";
-import { NOTIFY_STATUSES, type NotificationRow } from "./notifications";
+import { MUTABLE_KINDS, NOTIFY_STATUSES, type MutableKind, type NotificationRow } from "./notifications";
 import { picksOrder, type PicksInput } from "./picks";
 import type { Acquisition } from "./analytics";
 import type { FeedbackInput, FeedbackKind } from "./feedback";
@@ -79,6 +79,10 @@ export interface Submission {
 }
 
 type Row = Record<string, unknown>;
+
+/** SQL guard for a notification fan-out: true unless the recipient turned this kind off in Settings. */
+const notMuted = (recipient: string, kind: MutableKind) =>
+  `NOT EXISTS (SELECT 1 FROM notification_mute m WHERE m.user_id = ${recipient} AND m.kind = '${kind}')`;
 
 function parseJson<T>(value: unknown, fallback: T): T {
   if (typeof value !== "string") return fallback;
@@ -768,7 +772,7 @@ export async function applyModeration(
       .prepare(
         `INSERT INTO notification (id, user_id, kind, tool_id, created_at)
          SELECT lower(hex(randomblob(16))), f.follower_id, 'new_tool', ?, ? FROM follow f
-         WHERE f.followee_id = ? AND EXISTS (SELECT 1 FROM tool WHERE id = ? AND status = 'published')`,
+         WHERE f.followee_id = ? AND EXISTS (SELECT 1 FROM tool WHERE id = ? AND status = 'published') AND ${notMuted("f.follower_id", "new_tool")}`,
       )
       .bind(toolId, now, sub.user_id, toolId),
   ]);
@@ -1182,7 +1186,8 @@ export async function createComment(
     db
       .prepare(
         `INSERT INTO notification (id, user_id, kind, comment_id, created_at)
-         SELECT ?, p.user_id, 'comment_reply', ?, ? FROM comment p WHERE p.id = ? AND p.user_id IS NOT NULL AND p.user_id != ?`,
+         SELECT ?, p.user_id, 'comment_reply', ?, ? FROM comment p
+         WHERE p.id = ? AND p.user_id IS NOT NULL AND p.user_id != ? AND ${notMuted("p.user_id", "comment_reply")}`,
       )
       .bind(newId(), id, now, input.parentId, input.userId),
     // Whoever listed the tool hears about new comments on it, unless the reply notice above already went to them.
@@ -1190,7 +1195,7 @@ export async function createComment(
       .prepare(
         `INSERT INTO notification (id, user_id, kind, comment_id, created_at)
          SELECT ?, t.submitted_by, 'tool_comment', ?, ? FROM tool t
-         WHERE t.id = ? AND t.submitted_by IS NOT NULL AND t.submitted_by != ?
+         WHERE t.id = ? AND t.submitted_by IS NOT NULL AND t.submitted_by != ? AND ${notMuted("t.submitted_by", "tool_comment")}
            AND NOT EXISTS (SELECT 1 FROM comment p WHERE p.id = ? AND p.user_id = t.submitted_by)`,
       )
       .bind(newId(), id, now, input.toolId, input.userId, input.parentId),
@@ -1299,16 +1304,33 @@ export async function pruneNotifications(db: D1Database, before: string): Promis
   await db.prepare(`DELETE FROM notification WHERE created_at < ?`).bind(before).run();
 }
 
+export async function notificationMutes(db: D1Database, userId: string): Promise<MutableKind[]> {
+  const { results } = await db.prepare(`SELECT kind FROM notification_mute WHERE user_id = ?`).bind(userId).all<{ kind: MutableKind }>();
+  return results.map((r) => r.kind);
+}
+
+/** Replaces the kinds a person has turned off; unknown kinds are ignored. */
+export async function setNotificationMutes(db: D1Database, userId: string, kinds: readonly string[]): Promise<void> {
+  const keep = MUTABLE_KINDS.map((k) => k.kind).filter((k) => kinds.includes(k));
+  const now = nowIso();
+  await db.batch([
+    db.prepare(`DELETE FROM notification_mute WHERE user_id = ?`).bind(userId),
+    ...keep.map((k) => db.prepare(`INSERT INTO notification_mute (user_id, kind, created_at) VALUES (?,?,?)`).bind(userId, k, now)),
+  ]);
+}
+
 // ---------- Reports ----------
 
 export async function createReport(
   db: D1Database,
-  input: { targetType: "tool" | "comment"; targetId: string; reporterId: string; reason: string; note: string | null },
+  input: { targetType: ReportTarget; targetId: string; reporterId: string; reason: string; note: string | null },
 ): Promise<{ ok: true; duplicate: boolean; autoHidden: boolean } | { ok: false; error: string }> {
-  const target =
-    input.targetType === "tool"
-      ? await db.prepare(`SELECT id FROM tool WHERE id = ? AND status = 'published'`).bind(input.targetId).first()
-      : await db.prepare(`SELECT id FROM comment WHERE id = ? AND status = 'visible'`).bind(input.targetId).first();
+  const TARGET_SQL: Record<ReportTarget, string> = {
+    tool: `SELECT id FROM tool WHERE id = ? AND status = 'published'`,
+    comment: `SELECT id FROM comment WHERE id = ? AND status = 'visible'`,
+    list: `SELECT id FROM user_list WHERE id = ? AND public = 1 AND hidden_at IS NULL`,
+  };
+  const target = await db.prepare(TARGET_SQL[input.targetType]).bind(input.targetId).first();
   if (!target) return { ok: false, error: "There's nothing to report there any more." };
   const res = await db
     .prepare(`INSERT OR IGNORE INTO report (id, target_type, target_id, reporter_id, reason, note, status, created_at) VALUES (?,?,?,?,?,?,'open',?)`)
@@ -1337,21 +1359,39 @@ export async function createReport(
       autoHidden = hide.meta.changes > 0;
     }
   }
+  if (!duplicate && input.targetType === "list") {
+    const row = await db
+      .prepare(`SELECT COUNT(DISTINCT reporter_id) AS n FROM report WHERE target_type = 'list' AND target_id = ? AND status = 'open'`)
+      .bind(input.targetId)
+      .first<{ n: number }>();
+    if ((row?.n ?? 0) >= AUTO_HIDE_REPORTS) {
+      const reason = `Hidden after ${AUTO_HIDE_REPORTS} reports, awaiting review`;
+      const now = nowIso();
+      const [hide] = await db.batch([
+        db.prepare(`UPDATE user_list SET hidden_at = ?, hidden_reason = ? WHERE id = ? AND hidden_at IS NULL`).bind(now, reason, input.targetId),
+        listAudit(db, input.targetId, null, "auto_hide", "public", "hidden", `${AUTO_HIDE_REPORTS} open reports`, now),
+      ]);
+      autoHidden = hide.meta.changes > 0;
+    }
+  }
   return { ok: true, duplicate, autoHidden };
 }
 
+export type ReportTarget = "tool" | "comment" | "list";
+
 export interface OpenReportGroup {
-  target_type: "tool" | "comment";
+  target_type: ReportTarget;
   target_id: string;
   reports: { id: string; reason: string; note: string | null; created_at: string; reporter_name: string | null }[];
   tool?: { id: string; slug: string; name: string; status: string };
   comment?: CommentWithTool;
+  list?: ModListRow;
 }
 
 export async function listOpenReports(db: D1Database): Promise<OpenReportGroup[]> {
   const { results } = await db
     .prepare(`SELECT r.*, u.name AS reporter_name FROM report r LEFT JOIN "user" u ON u.id = r.reporter_id WHERE r.status = 'open' ORDER BY r.created_at ASC LIMIT 500`)
-    .all<{ id: string; target_type: "tool" | "comment"; target_id: string; reason: string; note: string | null; created_at: string; reporter_name: string | null }>();
+    .all<{ id: string; target_type: ReportTarget; target_id: string; reason: string; note: string | null; created_at: string; reporter_name: string | null }>();
   const groups = new Map<string, OpenReportGroup>();
   for (const r of results) {
     const key = `${r.target_type}:${r.target_id}`;
@@ -1364,14 +1404,17 @@ export async function listOpenReports(db: D1Database): Promise<OpenReportGroup[]
   const marks = (n: number) => Array(n).fill("?").join(",");
   const toolIds = idsOf("tool");
   const commentIds = idsOf("comment");
-  const [tools, comments] = await Promise.all([
+  const listIds = idsOf("list");
+  const [tools, comments, lists] = await Promise.all([
     toolIds.length
       ? db.prepare(`SELECT id, slug, name, status FROM tool WHERE id IN (${marks(toolIds.length)})`).bind(...toolIds).all<{ id: string; slug: string; name: string; status: string }>()
       : { results: [] },
     commentIds.length ? db.prepare(`${COMMENT_SELECT} WHERE c.id IN (${marks(commentIds.length)})`).bind(...commentIds).all<CommentWithTool>() : { results: [] },
+    listIds.length ? db.prepare(`${MOD_LIST_SELECT} WHERE l.id IN (${marks(listIds.length)})`).bind(...listIds).all<ModListRow>() : { results: [] },
   ]);
   for (const g of list) {
     if (g.target_type === "tool") g.tool = tools.results.find((t) => t.id === g.target_id);
+    else if (g.target_type === "list") g.list = lists.results.find((l) => l.id === g.target_id);
     else g.comment = comments.results.find((c) => c.id === g.target_id);
   }
   // Most-reported first, then oldest.
@@ -1386,7 +1429,7 @@ export async function openReportCount(db: D1Database): Promise<number> {
 /** Closes every open report on a target after a moderator keeps or removes it. */
 export async function closeReports(
   db: D1Database,
-  targetType: "tool" | "comment",
+  targetType: ReportTarget,
   targetId: string,
   actorId: string,
   status: "resolved" | "dismissed",
@@ -1398,11 +1441,12 @@ export async function closeReports(
       .prepare(`UPDATE report SET status = ?, resolution = ?, resolved_by = ?, resolved_at = ? WHERE target_type = ? AND target_id = ? AND status = 'open'`)
       .bind(status, resolution, actorId, now, targetType, targetId),
     db
-      .prepare(`INSERT INTO moderation_event (id, tool_id, comment_id, actor_id, action, reason, created_at) SELECT ?,?,?,?,?,?,? WHERE changes() > 0`)
+      .prepare(`INSERT INTO moderation_event (id, tool_id, comment_id, list_id, actor_id, action, reason, created_at) SELECT ?,?,?,?,?,?,?,? WHERE changes() > 0`)
       .bind(
         newId(),
         targetType === "tool" ? targetId : null,
         targetType === "comment" ? targetId : null,
+        targetType === "list" ? targetId : null,
         actorId,
         status === "dismissed" ? "dismiss_reports" : "resolve_reports",
         resolution,
@@ -2110,7 +2154,8 @@ export async function decideToolUpdate(
         .prepare(
           `INSERT INTO notification (id, user_id, kind, update_id, created_at)
            SELECT lower(hex(randomblob(16))), b.user_id, 'tool_update', ?, ? FROM bookmark b
-           WHERE b.tool_id = ? AND b.user_id IS NOT ? AND EXISTS (SELECT 1 FROM tool_update WHERE id = ? AND status = 'published' AND decided_at = ?)`,
+           WHERE b.tool_id = ? AND b.user_id IS NOT ? AND ${notMuted("b.user_id", "tool_update")}
+             AND EXISTS (SELECT 1 FROM tool_update WHERE id = ? AND status = 'published' AND decided_at = ?)`,
         )
         .bind(u.id, now, u.tool_id, u.user_id, u.id, now),
     );
@@ -2259,6 +2304,8 @@ export async function makerValue(db: D1Database, from: string, to: string): Prom
 
 export const LISTS_MAX = 50;
 export const LIST_ITEMS_MAX = 200;
+/** A public list is offered to search engines once it has this many tools; thinner ones stay noindex. */
+export const LIST_INDEX_MIN = 3;
 
 export interface UserList {
   id: string;
@@ -2269,6 +2316,9 @@ export interface UserList {
   public: number;
   created_at: string;
   updated_at: string;
+  /** Set when a moderator or enough reports hid it; only its owner sees it then. */
+  hidden_at: string | null;
+  hidden_reason: string | null;
   count: number;
   /** Set when listed for a tool: whether that tool is in the list. */
   has?: number;
@@ -2361,31 +2411,112 @@ export async function setListItem(db: D1Database, userId: string, listId: string
 
 /** Public lists on a profile, with a few covers each for the preview. */
 export async function publicLists(db: D1Database, userId: string): Promise<UserList[]> {
-  const { results } = await db.prepare(`${LIST_SELECT} WHERE l.user_id = ? AND l.public = 1 ORDER BY l.updated_at DESC`).bind(userId).all<UserList>();
+  const { results } = await db.prepare(`${LIST_SELECT} WHERE l.user_id = ? AND l.public = 1 AND l.hidden_at IS NULL ORDER BY l.updated_at DESC`).bind(userId).all<UserList>();
   return results;
 }
 
-export async function getPublicList(db: D1Database, userId: string, slug: string): Promise<UserList | null> {
-  return db.prepare(`${LIST_SELECT} WHERE l.user_id = ? AND l.slug = ? AND l.public = 1`).bind(userId, slug).first<UserList>();
+/** `withHidden` is for moderators, who need to see a hidden list to decide on it. */
+export async function getPublicList(db: D1Database, userId: string, slug: string, withHidden = false): Promise<UserList | null> {
+  return db
+    .prepare(`${LIST_SELECT} WHERE l.user_id = ? AND l.slug = ? AND l.public = 1 AND (? OR l.hidden_at IS NULL)`)
+    .bind(userId, slug, withHidden ? 1 : 0)
+    .first<UserList>();
+}
+
+// ---------- List moderation ----------
+
+export interface ModListRow {
+  id: string;
+  user_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  public: number;
+  created_at: string;
+  updated_at: string;
+  hidden_at: string | null;
+  hidden_reason: string | null;
+  owner_name: string;
+  owner_handle: string | null;
+  count: number;
+  open_reports: number;
+}
+
+const MOD_LIST_SELECT = `SELECT l.id, l.user_id, l.slug, l.title, l.description, l.public, l.created_at, l.updated_at, l.hidden_at, l.hidden_reason,
+    u.name AS owner_name, u.handle AS owner_handle,
+    (SELECT COUNT(*) FROM user_list_item i WHERE i.list_id = l.id) AS count,
+    (SELECT COUNT(*) FROM report r WHERE r.target_type = 'list' AND r.target_id = l.id AND r.status = 'open') AS open_reports
+  FROM user_list l JOIN "user" u ON u.id = l.user_id`;
+
+/** Audit row for a list, naming its owner; written only if the statement before it changed something. */
+function listAudit(db: D1Database, listId: string, actorId: string | null, action: string, from: string, to: string, reason: string | null, now = nowIso()) {
+  return db
+    .prepare(
+      `INSERT INTO moderation_event (id, list_id, subject_user_id, actor_id, action, from_status, to_status, reason, created_at)
+       SELECT ?, id, user_id, ?, ?, ?, ?, ?, ? FROM user_list WHERE id = ? AND changes() > 0`,
+    )
+    .bind(newId(), actorId, action, from, to, reason, now, listId);
+}
+
+/** Lists moderators look over: public ones (newest change first) or hidden ones; private lists never show here. */
+export async function moderationLists(db: D1Database, filter: "public" | "hidden", q: string): Promise<ModListRow[]> {
+  const where = filter === "hidden" ? `l.hidden_at IS NOT NULL` : `l.public = 1 AND l.hidden_at IS NULL`;
+  const like = q ? `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+  const { results } = await db
+    .prepare(
+      `${MOD_LIST_SELECT} WHERE ${where}
+         AND (?1 IS NULL OR l.title LIKE ?1 ESCAPE '\\' OR l.description LIKE ?1 ESCAPE '\\' OR u.handle LIKE ?1 ESCAPE '\\')
+       ORDER BY ${filter === "hidden" ? "l.hidden_at" : "l.updated_at"} DESC LIMIT 100`,
+    )
+    .bind(like)
+    .all<ModListRow>();
+  return results;
+}
+
+export async function getModList(db: D1Database, id: string): Promise<ModListRow | null> {
+  return db.prepare(`${MOD_LIST_SELECT} WHERE l.id = ?`).bind(id).first<ModListRow>();
+}
+
+/** Hides a list from everyone but its owner, or puts it back. False if someone else changed it meanwhile. */
+export async function setListHidden(db: D1Database, list: { id: string; hidden_at: string | null }, actorId: string, hide: boolean, reason: string | null): Promise<boolean> {
+  const now = nowIso();
+  const [res] = await db.batch([
+    db
+      .prepare(`UPDATE user_list SET hidden_at = ?, hidden_reason = ? WHERE id = ? AND hidden_at IS ?`)
+      .bind(hide ? now : null, hide ? reason : null, list.id, list.hidden_at),
+    listAudit(db, list.id, actorId, hide ? "hide_list" : "restore_list", hide ? "public" : "hidden", hide ? "hidden" : "public", reason, now),
+  ]);
+  return res.meta.changes > 0;
 }
 
 // ---------- Follows ----------
 
-/** Only people with a public profile (a handle) can be followed. Returns false when there's no such person. */
-export async function setFollow(db: D1Database, followerId: string, followeeId: string, on: boolean): Promise<boolean> {
-  if (followerId === followeeId) return false;
+/** How many people one account can follow; keeps a throwaway account from inflating everyone's follower counts. */
+export const FOLLOWS_MAX = 500;
+
+/** Only people with a public profile (a handle) can be followed. */
+export async function setFollow(db: D1Database, followerId: string, followeeId: string, on: boolean): Promise<"ok" | "missing" | "full"> {
+  if (followerId === followeeId) return "missing";
   if (!on) {
     await db.prepare(`DELETE FROM follow WHERE follower_id = ? AND followee_id = ?`).bind(followerId, followeeId).run();
-    return true;
+    return "ok";
   }
   const res = await db
     .prepare(
-      `INSERT INTO follow (follower_id, followee_id, created_at) SELECT ?, id, ? FROM "user" WHERE id = ? AND handle IS NOT NULL
+      `INSERT INTO follow (follower_id, followee_id, created_at) SELECT ?1, id, ?2 FROM "user"
+       WHERE id = ?3 AND handle IS NOT NULL AND (SELECT COUNT(*) FROM follow WHERE follower_id = ?1) < ?4
        ON CONFLICT DO NOTHING`,
     )
-    .bind(followerId, nowIso(), followeeId)
+    .bind(followerId, nowIso(), followeeId, FOLLOWS_MAX)
     .run();
-  return res.meta.changes > 0 || (await isFollowing(db, followerId, followeeId));
+  if (res.meta.changes > 0 || (await isFollowing(db, followerId, followeeId))) return "ok";
+  const person = await db.prepare(`SELECT 1 FROM "user" WHERE id = ? AND handle IS NOT NULL`).bind(followeeId).first();
+  return person ? "full" : "missing";
+}
+
+export async function followerCount(db: D1Database, userId: string): Promise<number> {
+  const row = await db.prepare(`SELECT COUNT(*) AS n FROM follow WHERE followee_id = ?`).bind(userId).first<{ n: number }>();
+  return row?.n ?? 0;
 }
 
 export async function isFollowing(db: D1Database, followerId: string, followeeId: string): Promise<boolean> {

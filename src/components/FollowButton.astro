@@ -32,13 +32,35 @@ const me = Astro.locals.user;
         const label = b.querySelector("span");
         if (label) label.textContent = on ? "Following" : "Follow";
       });
+    // A profile's follower count ([data-followers]) moves with the button; it hides again at zero.
+    const count = (delta: number) =>
+      document.querySelectorAll<HTMLElement>(`[data-followers="${CSS.escape(id)}"]`).forEach((el) => {
+        const n = Math.max(0, Number(el.dataset.count ?? 0) + delta);
+        el.dataset.count = String(n);
+        el.hidden = n === 0;
+        el.querySelector("strong")!.textContent = n.toLocaleString("en-US");
+        el.querySelector("span")!.textContent = n === 1 ? "follower" : "followers";
+      });
+    btn.parentElement?.querySelector(".follow-error")?.remove();
     paint(follow);
+    count(follow ? 1 : -1);
     btn.disabled = true;
     try {
       const res = await fetch("/api/follows", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: id, follow }) });
-      if (!res.ok) throw new Error(String(res.status));
-    } catch {
+      if (!res.ok) {
+        const out = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(res.status === 409 && out?.error ? out.error : "");
+      }
+    } catch (err) {
       paint(!follow);
+      count(follow ? -1 : 1);
+      if (err instanceof Error && err.message) {
+        const note = document.createElement("p");
+        note.className = "form-error follow-error";
+        note.setAttribute("role", "alert");
+        note.textContent = err.message;
+        btn.insertAdjacentElement("afterend", note);
+      }
     } finally {
       btn.disabled = false;
     }

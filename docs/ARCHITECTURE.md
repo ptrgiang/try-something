@@ -26,10 +26,10 @@ D1 is the only source of truth. Main tables (full schema in `migrations/`):
 | `bookmark` | Saved tools per user |
 | `collection`, `collection_tool` | Editor-curated sets; `collection.intro` and `collection_tool.note` are the editor's own words, shown on the page |
 | `app_rate_limit` | Fixed-window counters for submissions, metadata lookups, bookmarks, comments, likes |
-| `comment`, `report`, `notification` | Comments on tools, reports that auto-hide at a threshold until a moderator decides, in-app notifications |
+| `comment`, `report`, `notification`, `notification_mute` | Comments on tools; reports on tools, comments and lists, which auto-hide comments and lists at a threshold until a moderator decides; in-app notifications and the kinds each person turned off |
 | `tool_like`, `tool_update` | Hearts from accounts; maker product updates, reviewed before they show |
-| `follow` | Who follows whom; private to the follower, drives the `new_tool` notification and `/me/following` |
-| `user_list`, `user_list_item` | People's own lists of tools, private unless made public |
+| `follow` | Who follows whom; private to the follower (profiles show only a count), drives the `new_tool` notification and `/me/following` |
+| `user_list`, `user_list_item` | People's own lists of tools, private unless made public; moderators can hide a public one (`hidden_at`) |
 | `tag_info` | Editor-written titles and descriptions for tag pages |
 | `*_stat_daily`, `visit_day`, `user_active_day`, `funnel_*_daily` | Cookie-free counters: views, try clicks, impressions, searches, sources and the discovery funnel, one row per day |
 

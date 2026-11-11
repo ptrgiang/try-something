@@ -4,27 +4,30 @@ import Base from "../../../../layouts/Base.astro";
 import ToolCard from "../../../../components/ToolCard.astro";
 import Avatar from "../../../../components/Avatar.astro";
 import Icon from "../../../../components/Icon.astro";
-import { getProfileByHandle, getPublicList, listItems } from "../../../../lib/db";
+import { getProfileByHandle, getPublicList, LIST_INDEX_MIN, listItems } from "../../../../lib/db";
 import { avatarUrl } from "../../../../lib/avatar";
+import { isModerator } from "../../../../lib/moderation";
 
 const profile = await getProfileByHandle(env.DB, Astro.params.handle ?? "");
 if (!profile) return Astro.rewrite("/404");
 if (Astro.params.handle !== profile.handle) return Astro.redirect(`/users/${profile.handle}/lists/${Astro.params.slug}`, 301);
-const list = await getPublicList(env.DB, profile.id, Astro.params.slug ?? "");
+const me = Astro.locals.user;
+const list = await getPublicList(env.DB, profile.id, Astro.params.slug ?? "", isModerator(me?.role));
 if (!list) return Astro.rewrite("/404");
 const tools = await listItems(env.DB, list.id);
-const me = Astro.locals.user;
 const path = `/users/${profile.handle}/lists/${list.slug}`;
 const description = list.description || `${list.title}: ${tools.length} ${tools.length === 1 ? "tool" : "tools"} to try in your browser, picked by ${profile.name}.`;
-// Kept out of search until moderators have tools for people's lists; until then only Feedback reports them.
 const updated = new Date(list.updated_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 ---
 <Base
   title={`${list.title} by ${profile.name}`}
   description={description}
   path={path}
-  noindex
+  noindex={tools.length < LIST_INDEX_MIN || Boolean(list.hidden_at)}
 >
+  {list.hidden_at && (
+    <p class="notice list-hidden-note" role="note">Hidden{list.hidden_reason && <>: “{list.hidden_reason}”</>}. Only moderators see this page; its owner sees the list in their own lists. <a href="/admin/lists?status=hidden">Hidden lists</a></p>
+  )}
   <header class="explore-head list-head">
     <div>
     <p class="eyebrow">A list by <a href={`/users/${profile.handle}`}>{profile.name}</a></p>
@@ -45,5 +48,8 @@ const updated = new Date(list.updated_at).toLocaleDateString("en-US", { month: "
   ) : (
     <p class="empty">This list is empty for now.</p>
   )}
-  <p class="muted small-note list-foot">Lists are made by people on Try Something, not by our editors. Something wrong here? <a href={`/feedback?from=${encodeURIComponent(path)}`} rel="nofollow">Tell us</a>.</p>
+  <p class="muted small-note list-foot">
+    Lists are made by people on Try Something, not by our editors.
+    {me?.id !== profile.id && <>{" "}Something wrong here? <button type="button" class="link-btn" data-report="list" data-target={list.id}><Icon name="flag" />Report this list</button></>}
+  </p>
 </Base>

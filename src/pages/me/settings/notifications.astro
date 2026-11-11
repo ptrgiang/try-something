@@ -1,0 +1,48 @@
+---
+import { env } from "cloudflare:workers";
+import Settings from "../../../layouts/Settings.astro";
+import { notificationMutes, setNotificationMutes } from "../../../lib/db";
+import { MUTABLE_KINDS } from "../../../lib/notifications";
+import { rateLimit } from "../../../lib/rate-limit";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/settings/notifications");
+
+let error = "";
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  // The form lists what stays on; everything unticked is muted.
+  const on = form.getAll("on").map(String);
+  if (!(await rateLimit(env.DB, `notif-prefs:${user.id}`, 30, 3600))) error = "Too many changes in a short time. Try again in a while.";
+  else {
+    await setNotificationMutes(env.DB, user.id, MUTABLE_KINDS.map((k) => k.kind).filter((k) => !on.includes(k)));
+    return Astro.redirect("/me/settings/notifications?saved", 303);
+  }
+  Astro.response.status = 429;
+}
+const muted = new Set(await notificationMutes(env.DB, user.id));
+const saved = Astro.url.searchParams.has("saved");
+---
+<Settings current="notifications" title="Notifications" lede="Choose what shows up under the bell. Nothing is sent by email.">
+  {saved && <p class="notice notice-success" role="status">Saved. Changes apply to new notifications.</p>}
+  {error && <p class="form-error" role="alert">{error}</p>}
+  <form class="form settings-card" method="post">
+    <fieldset class="notif-prefs">
+      <legend class="sr-only">Notify me about</legend>
+      <label class="check check-wrap">
+        <input type="checkbox" checked disabled />
+        <span>Your submissions: when a moderator publishes one, declines it or asks for changes <span class="muted">(always on)</span></span>
+      </label>
+      {MUTABLE_KINDS.map((k) => (
+        <label class="check check-wrap">
+          <input type="checkbox" name="on" value={k.kind} checked={!muted.has(k.kind)} />
+          <span>{k.label}</span>
+        </label>
+      ))}
+    </fieldset>
+    <div class="form-footer">
+      <button class="btn btn-dark" type="submit">Save</button>
+    </div>
+  </form>
+  <p class="settings-note"><a href="/me/notifications">See your notifications</a></p>
+</Settings>

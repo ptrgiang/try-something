@@ -47,7 +47,7 @@ const deleted = Astro.url.searchParams.get("deleted");
           <li>
             <a class="my-list" href={`/me/lists/${l.id}`}>
               <strong>{l.title}</strong>
-              <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`} · {l.public ? "Public" : "Private"}</span>
+              <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`} · {l.hidden_at ? "Hidden by a moderator" : l.public ? "Public" : "Private"}</span>
             </a>
           </li>
         ))}

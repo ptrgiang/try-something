@@ -19,6 +19,7 @@ const live = items.find((n) => n.unread && n.live)?.live;
   <div class="page app-page">
     <p class="eyebrow">Your account</p>
     <h1 class="page-title">Notifications</h1>
+    <p class="muted small-note notif-settings"><a href="/me/settings/notifications">Choose what you're notified about</a></p>
     {live && <LiveBanner {...live} />}
     {items.length ? (
       <>

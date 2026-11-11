@@ -64,10 +64,11 @@ Reasons for people to return, built on what M1 already stores. In order:
       comments on tools you listed. Stored in D1, read state per account, no email.
 - [x] **R1b Saved-tool updates**: people who saved a tool get a notification when the maker's update is approved (2026-11-11).
 - [x] **R2 Follow makers and finders**: follow a profile from it or from a tool page; `/me/following` with their new tools
-      and a notification when one is published (2026-11-11). Follower counts shown only once moderation and rate limits
-      cover it.
+      and a notification when one is published (2026-11-11). Profiles show a follower count; one account follows at most
+      500 people.
 - [x] **R3 Your own collections**: save tools into named lists, private by default; public lists get their own page,
-      kept out of search until moderators have tools for them (2026-11-11).
+      can be reported and hidden from `/admin/lists`, and are indexed from three tools (2026-11-11).
+- [x] **R1c Notification settings**: turn each kind off in Settings, except reviews of your own submissions (2026-11-11).
 - [ ] **R4 Email notifications and a weekly digest**: opt-in per type, one-click unsubscribe in every email. Needs
       maintainer approval to send through Cloudflare Email Service beyond sign-in codes.
 - [ ] **R5 Weekly challenge**: one prompt a week ("find a tool that makes music in 30 seconds"), with submissions
