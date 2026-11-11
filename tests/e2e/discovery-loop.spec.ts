@@ -110,18 +110,23 @@ test("makers see real numbers for their own listed tools; cards leave out zero c
     UPDATE tool SET submitted_by = 'e2e-insights', credit_type = 'made' WHERE id = 'seed-silk';
     INSERT INTO tool_stat_daily (tool_id, day, views, tries) VALUES ('seed-silk', date('now'), 7, 3)
       ON CONFLICT (tool_id, day) DO UPDATE SET views = views + 7, tries = tries + 3;
+    INSERT INTO surface_stat_daily (day, surface, tool_id, impressions, views, tries) VALUES (date('now'), 'discover', 'seed-silk', 5, 2, 2)
+      ON CONFLICT (day, surface, tool_id) DO UPDATE SET impressions = impressions + 5, views = views + 2, tries = tries + 2;
   `);
   try {
     const row = sqlJson<{ v: number; t: number }>(
-      `SELECT SUM(views) AS v, SUM(tries) AS t FROM tool_stat_daily WHERE tool_id = 'seed-silk' AND day >= date('now', '-30 days')`,
+      `SELECT SUM(views) AS v, SUM(tries) AS t FROM tool_stat_daily WHERE tool_id = 'seed-silk' AND day >= date('now', '-29 days')`,
     )[0];
     await page.context().addCookies([{ ...maker.cookie, httpOnly: true, sameSite: "Lax" }]);
     await page.goto("/me/submissions");
     const insights = page.getByRole("region", { name: "Your listed tools" });
-    const silk = insights.getByRole("row", { name: /Silk/ });
-    await expect(silk.locator("td").nth(2)).toHaveText(String(row.v));
-    await expect(silk.locator("td").nth(3)).toHaveText(String(row.t));
-    await expect(insights.getByRole("row")).toHaveCount(2);
+    const silk = insights.getByRole("article", { name: "Silk" });
+    await expect(insights.getByRole("article")).toHaveCount(1);
+    await expect(silk.locator(".stat-tile", { hasText: "Page views" }).locator(".stat-value")).toHaveText(String(row.v));
+    await expect(silk.locator(".stat-tile", { hasText: "Try clicks" }).locator(".stat-value")).toHaveText(String(row.t));
+    await expect(silk.getByRole("img", { name: /^Try clicks per day: / })).toBeVisible();
+    await expect(silk.getByRole("region", { name: "Where people found Silk" })).toContainText("Discovery sessions");
+    await expect(silk.getByRole("link", { name: "Verify you made it" })).toHaveAttribute("href", "/me/verify/silk");
 
     // A card with no saves shows no save count; the heart button stays.
     sql(`DELETE FROM bookmark WHERE tool_id = 'seed-jspaint'; DELETE FROM tool_like WHERE tool_id = 'seed-jspaint';`);

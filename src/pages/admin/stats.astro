@@ -18,7 +18,7 @@ import {
   topSearches,
   topTools,
 } from "../../lib/db";
-import { change, dateRange, funnelSteps, MIN_SAMPLE, rateOf, RANGES, withUnattributed, type RangeDays } from "../../lib/analytics";
+import { change, dateRange, funnelSteps, MIN_SAMPLE, rateOf, RANGES, SURFACE_LABELS as SURFACES, withUnattributed, type RangeDays } from "../../lib/analytics";
 import { isModerator } from "../../lib/moderation";
 
 const user = Astro.locals.user;
@@ -67,27 +67,6 @@ const steps = funnelSteps([
   { label: "Engaged", count: funnel.engaged },
   { label: "Clicked Try", count: funnel.tried },
 ]);
-const SURFACES: Record<string, string> = {
-  hero: "Home hero",
-  picks: "Home picks",
-  top: "Top today",
-  home: "Home list",
-  explore: "Explore",
-  category: "Category pages",
-  search: "Search results",
-  tag: "Tag pages",
-  collection: "Collections",
-  related: "Related on tool pages",
-  profile: "Profiles",
-  saved: "Saved tools",
-  tried: "Tried on this device",
-  palette: "Quick search",
-  surprise: "Surprise me",
-  discover: "Discovery sessions",
-  makers: "For makers page",
-  direct: "Tool page, arrived directly",
-  unattributed: "Unattributed",
-};
 const surfaces = withUnattributed(surfaceRows, { views: now.toolViews, tries: now.tries });
 const community = [
   tile("New accounts", "newUsers"),

@@ -1,0 +1,88 @@
+---
+// A maker's or finder's own numbers for one listed tool: the last 30 days against the 30 before, daily charts,
+// and where on this site people found it. Only ever shown to the person who listed the tool.
+import BarChart from "./BarChart.astro";
+import Icon from "./Icon.astro";
+import type { ToolInsight } from "../lib/db";
+import { change, rateOf, SURFACE_LABELS, withUnattributed } from "../lib/analytics";
+
+interface Props {
+  tool: ToolInsight;
+}
+const { tool: t } = Astro.props;
+const fmt = (n: number) => n.toLocaleString("en-US");
+const tryRate = rateOf(t.tries30, t.views30);
+const tiles = [
+  { label: "Cards seen", value: fmt(t.seen30), change: change(t.seen30, t.seenPrev), hint: "Your card on someone's screen" },
+  { label: "Page views", value: fmt(t.views30), change: change(t.views30, t.viewsPrev), hint: "Your tool page opened" },
+  { label: "Try clicks", value: fmt(t.tries30), change: change(t.tries30, t.triesPrev), hint: "Someone opened your site" },
+  {
+    label: "Try rate",
+    value: tryRate === null ? "–" : `${Math.round(tryRate * 100)}%`,
+    change: "",
+    hint: tryRate === null ? "Shown from 30 page views" : "Try clicks ÷ page views",
+  },
+];
+const sources = withUnattributed(t.surfaces, { views: t.views30, tries: t.tries30 })
+  .filter((s) => s.impressions || s.views || s.tries)
+  .slice(0, 6);
+const top = Math.max(1, ...sources.map((s) => s.tries));
+const label = (s: string) => (s === "unattributed" ? "Other or not recorded" : (SURFACE_LABELS[s] ?? s));
+const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for review", published: "Last update published", rejected: "Last update declined", withdrawn: "Last update withdrawn" };
+const made = t.credit_type === "made";
+---
+<article class="maker-tool" aria-labelledby={`mt-${t.slug}`}>
+  <header class="maker-tool-head">
+    <div>
+      <h3 id={`mt-${t.slug}`}><a href={`/tools/${t.slug}`}>{t.name}</a></h3>
+      <p class="muted small-note">
+        {made ? (t.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : <a href={`/me/verify/${t.slug}`}>Verify you made it</a>) : "You found it"}
+        {t.update_status && <> · {UPDATE_LABELS[t.update_status]}{t.update_status === "rejected" && t.update_note && `: ${t.update_note}`}</>}
+      </p>
+    </div>
+    {made && (
+      <div class="maker-tool-actions">
+        <a class="btn btn-sm" href={`/me/tools/${t.slug}/update`}><Icon name="spark" />{t.update_status === "pending" ? "View update" : "Post an update"}</a>
+        <a class="btn btn-sm" href={`/me/share/${t.slug}`}><Icon name="share" />Get a badge</a>
+      </div>
+    )}
+  </header>
+
+  <div class="stat-tiles">
+    {tiles.map((tile) => (
+      <div class="stat-tile">
+        <span class="stat-label">{tile.label}</span>
+        <strong class="stat-value">{tile.value}</strong>
+        {tile.change && <span class="stat-change">{tile.change} vs the 30 days before</span>}
+        <span class="stat-hint">{tile.hint}</span>
+      </div>
+    ))}
+  </div>
+
+  <div class="maker-tool-body">
+    <div class="stat-charts">
+      <BarChart title="Page views per day" unit="views" rows={t.daily.map((d) => ({ day: d.day, value: d.views }))} />
+      <BarChart title="Try clicks per day" unit="try clicks" rows={t.daily.map((d) => ({ day: d.day, value: d.tries }))} />
+    </div>
+    <section class="maker-sources" aria-label={`Where people found ${t.name}`}>
+      <h4>Where people found it</h4>
+      {sources.length ? (
+        <ol>
+          {sources.map((s) => (
+            <li>
+              <span class="maker-source-name">{label(s.surface)}</span>
+              <span class="maker-source-nums">{fmt(s.tries)} {s.tries === 1 ? "try" : "tries"} · {fmt(s.views)} {s.views === 1 ? "view" : "views"}{s.impressions > 0 && <> · {fmt(s.impressions)} seen</>}</span>
+              <meter class="maker-source-bar" min="0" max={top} value={s.tries} aria-hidden="true"></meter>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p class="muted small-note">Nothing in the last 30 days yet. Share your listing to get it in front of people.</p>
+      )}
+    </section>
+  </div>
+
+  <p class="maker-tool-all muted small-note">
+    All time: {fmt(t.views)} {t.views === 1 ? "view" : "views"} · {fmt(t.tries)} try {t.tries === 1 ? "click" : "clicks"} · {fmt(t.saves)} {t.saves === 1 ? "save" : "saves"} · {fmt(t.hearts)} {t.hearts === 1 ? "heart" : "hearts"} · {fmt(t.comments)} {t.comments === 1 ? "comment" : "comments"}
+  </p>
+</article>

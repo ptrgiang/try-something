@@ -558,41 +558,86 @@ export async function getSubmission(db: D1Database, id: string): Promise<Submiss
 }
 
 export interface ToolInsight {
+  id: string;
   slug: string;
   name: string;
   seen30: number;
   views30: number;
   tries30: number;
+  /** The 30 days before those, for the change shown next to each number. */
+  seenPrev: number;
+  viewsPrev: number;
+  triesPrev: number;
   views: number;
   tries: number;
   saves: number;
   hearts: number;
   comments: number;
   credit_type: string | null;
+  maker_verified_at: string | null;
   /** The newest product update, if any. */
   update_status: string | null;
   update_note: string | null;
+  daily: { day: string; views: number; tries: number }[];
+  /** Where cards were seen and views and tries came from in the range; collections are one surface. */
+  surfaces: { surface: string; impressions: number; views: number; tries: number }[];
 }
 
-/** Real counts for the published tools someone listed (made or found), for their own eyes only. */
-export async function myToolInsights(db: D1Database, userId: string): Promise<ToolInsight[]> {
-  const { results } = await db
-    .prepare(
-      `SELECT t.slug, t.name,
-         COALESCE((SELECT SUM(s.impressions) FROM surface_stat_daily s WHERE s.tool_id = t.id AND s.day >= date('now', '-30 days')), 0) AS seen30,
-         COALESCE((SELECT SUM(s.views) FROM tool_stat_daily s WHERE s.tool_id = t.id AND s.day >= date('now', '-30 days')), 0) AS views30,
-         COALESCE((SELECT SUM(s.tries) FROM tool_stat_daily s WHERE s.tool_id = t.id AND s.day >= date('now', '-30 days')), 0) AS tries30,
-         COALESCE((SELECT SUM(s.views) FROM tool_stat_daily s WHERE s.tool_id = t.id), 0) AS views,
-         COALESCE((SELECT SUM(s.tries) FROM tool_stat_daily s WHERE s.tool_id = t.id), 0) AS tries,
-         (SELECT COUNT(*) FROM bookmark b WHERE b.tool_id = t.id) AS saves,
-         (SELECT COUNT(*) FROM tool_like l WHERE l.tool_id = t.id) AS hearts,
-         (SELECT COUNT(*) FROM comment c WHERE c.tool_id = t.id AND c.status = 'visible') AS comments,
-         t.credit_type, u.status AS update_status, u.moderator_note AS update_note
-       FROM tool t LEFT JOIN tool_update u ON u.id = (SELECT id FROM tool_update WHERE tool_id = t.id ORDER BY created_at DESC LIMIT 1) WHERE t.submitted_by = ? AND t.status = 'published' ORDER BY t.published_at DESC`,
-    )
-    .bind(userId)
-    .all<ToolInsight>();
-  return results;
+/**
+ * Real counts for the published tools someone listed (made or found), for their own eyes only. `range` is
+ * a dateRange() from lib/analytics: its days fill the daily rows, its previous period the comparison.
+ */
+export async function myToolInsights(
+  db: D1Database,
+  userId: string,
+  range: { from: string; to: string; prevFrom: string; prevTo: string; days: string[] },
+): Promise<ToolInsight[]> {
+  const mine = `SELECT id FROM tool WHERE submitted_by = ?1 AND status = 'published'`;
+  const sum = (table: string, col: string, a: string, b: string) =>
+    `COALESCE((SELECT SUM(s.${col}) FROM ${table} s WHERE s.tool_id = t.id AND s.day BETWEEN ${a} AND ${b}), 0)`;
+  const [tools, daily, surfaces] = await db.batch([
+    db
+      .prepare(
+        `SELECT t.id, t.slug, t.name,
+           ${sum("surface_stat_daily", "impressions", "?2", "?3")} AS seen30,
+           ${sum("tool_stat_daily", "views", "?2", "?3")} AS views30,
+           ${sum("tool_stat_daily", "tries", "?2", "?3")} AS tries30,
+           ${sum("surface_stat_daily", "impressions", "?4", "?5")} AS seenPrev,
+           ${sum("tool_stat_daily", "views", "?4", "?5")} AS viewsPrev,
+           ${sum("tool_stat_daily", "tries", "?4", "?5")} AS triesPrev,
+           COALESCE((SELECT SUM(s.views) FROM tool_stat_daily s WHERE s.tool_id = t.id), 0) AS views,
+           COALESCE((SELECT SUM(s.tries) FROM tool_stat_daily s WHERE s.tool_id = t.id), 0) AS tries,
+           (SELECT COUNT(*) FROM bookmark b WHERE b.tool_id = t.id) AS saves,
+           (SELECT COUNT(*) FROM tool_like l WHERE l.tool_id = t.id) AS hearts,
+           (SELECT COUNT(*) FROM comment c WHERE c.tool_id = t.id AND c.status = 'visible') AS comments,
+           t.credit_type, t.maker_verified_at, u.status AS update_status, u.moderator_note AS update_note
+         FROM tool t LEFT JOIN tool_update u ON u.id = (SELECT id FROM tool_update WHERE tool_id = t.id ORDER BY created_at DESC LIMIT 1)
+         WHERE t.submitted_by = ?1 AND t.status = 'published' ORDER BY t.published_at DESC`,
+      )
+      .bind(userId, range.from, range.to, range.prevFrom, range.prevTo),
+    db
+      .prepare(`SELECT tool_id, day, views, tries FROM tool_stat_daily WHERE tool_id IN (${mine}) AND day BETWEEN ?2 AND ?3`)
+      .bind(userId, range.from, range.to),
+    db
+      .prepare(
+        `SELECT tool_id, CASE WHEN surface LIKE 'collection:%' THEN 'collection' ELSE surface END AS surface,
+           SUM(impressions) AS impressions, SUM(views) AS views, SUM(tries) AS tries
+         FROM surface_stat_daily WHERE tool_id IN (${mine}) AND day BETWEEN ?2 AND ?3
+         GROUP BY 1, 2 ORDER BY tries DESC, views DESC, impressions DESC`,
+      )
+      .bind(userId, range.from, range.to),
+  ]);
+  type DayRow = { tool_id: string; day: string; views: number; tries: number };
+  type SurfaceRow = { tool_id: string; surface: string; impressions: number; views: number; tries: number };
+  const byDay = new Map((daily.results as DayRow[]).map((r) => [`${r.tool_id}|${r.day}`, r]));
+  return (tools.results as Omit<ToolInsight, "daily" | "surfaces">[]).map((t) => ({
+    ...t,
+    daily: range.days.map((day) => {
+      const r = byDay.get(`${t.id}|${day}`);
+      return { day, views: r?.views ?? 0, tries: r?.tries ?? 0 };
+    }),
+    surfaces: (surfaces.results as SurfaceRow[]).filter((r) => r.tool_id === t.id).map(({ tool_id: _, ...r }) => r),
+  }));
 }
 
 export async function listMySubmissions(db: D1Database, userId: string): Promise<(Submission & { tool_slug: string | null; tool_verified_at: string | null; tool_made: boolean })[]> {

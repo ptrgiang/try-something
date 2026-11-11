@@ -87,7 +87,7 @@ describe("searchTerm", () => {
 
 describe("cleanSurface", () => {
   it("keeps known discovery surfaces and collection slugs", () => {
-    for (const s of ["hero", "picks", "home", "search", "tag", "related", "direct", "collection", "collection:make-some-noise"]) {
+    for (const s of ["hero", "picks", "home", "search", "tag", "related", "discover", "tried", "makers", "direct", "collection", "collection:make-some-noise"]) {
       expect(cleanSurface(s)).toBe(s);
     }
   });

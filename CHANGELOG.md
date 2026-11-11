@@ -8,6 +8,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 - A page for makers at `/makers`: what listing gives them (credit and a link back, the Verified maker mark, their own numbers, updates that resurface, the badge), how review works, recently verified makers and a short FAQ. Linked from the home hero, the footer and the mobile menu; signed out, `/submit` now says what you get before asking you to sign in.
 - **Submit** is always in the desktop header (an icon below 1240px). Between 901 and 1180px the header search becomes an icon that opens quick search, which also fixes a horizontal scroll at 901px.
+- Makers and finders get a card per listed tool in My submissions instead of one wide table: cards seen, page views, try clicks and try rate for the last 30 days with the change from the 30 days before, daily charts for views and try clicks, where on the site people found the tool, and all-time totals, with Verify, Post an update and Get a badge next to each.
 - **Tried** marks: opening a tool with Try it marks its card and tool page on this device. Surprise me and Discover skip tools you've already tried while others are left, and `/tried` lists them newest first with a way to clear the list. Nothing is stored on the server.
 
 - Editors can give a tag page a title at `/admin/tags` ("Online whiteboards" for #whiteboard). It becomes the page's heading and search title; without one the heading is built from the tag ("Drawing tools", "SVG tools") instead of showing the hashtag.
@@ -24,6 +25,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - The sitemap gives the home page and Explore a last-modified date.
 
 ### Fixed
+
+- Views, tries and cards seen on Discover were dropped as an unknown surface and showed up as unattributed; they now count as "Discovery sessions".
 
 - `robots.txt` blocked tool cover images: `Disallow: /me` also matched `/media/`. Directory rules now end in a slash.
 - Search results, filtered lists and later pages said `noindex, nofollow` while naming `/explore` as canonical. They are now `noindex, follow` with no canonical, so the tools they link to stay reachable.

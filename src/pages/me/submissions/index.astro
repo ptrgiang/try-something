@@ -4,18 +4,18 @@ import Base from "../../../layouts/Base.astro";
 import Icon from "../../../components/Icon.astro";
 import LiveBanner from "../../../components/LiveBanner.astro";
 import Sticker from "../../../components/Sticker.astro";
+import MakerInsights from "../../../components/MakerInsights.astro";
 import { listMySubmissions, myToolInsights } from "../../../lib/db";
 import { STATUS_LABELS } from "../../../lib/moderation";
+import { dateRange } from "../../../lib/analytics";
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect("/login?next=/me/submissions");
-const [subs, insights] = await Promise.all([listMySubmissions(env.DB, user.id), myToolInsights(env.DB, user.id)]);
-const fmt = (n: number) => n.toLocaleString("en-US");
+const [subs, insights] = await Promise.all([listMySubmissions(env.DB, user.id), myToolInsights(env.DB, user.id, dateRange(30))]);
 const justSubmitted = Astro.url.searchParams.get("submitted");
 // Approval stamps updated_at, so a published row touched this week is a tool that just went live.
 const fresh = subs.find((s) => s.status === "published" && s.tool_slug && Date.now() - Date.parse(s.updated_at) < 7 * 86_400_000);
 const updateNotice = { sent: "Update sent. An editor will review it before it shows on the tool page.", withdrawn: "Update withdrawn." }[Astro.url.searchParams.get("update") ?? ""];
-const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for review", published: "Last update published", rejected: "Last update declined", withdrawn: "Last update withdrawn" };
 ---
 <Base title="My submissions" noindex>
   <div class="page app-page">
@@ -32,34 +32,8 @@ const UPDATE_LABELS: Record<string, string> = { pending: "Update waiting for rev
     {insights.length > 0 && (
       <section class="insights submit-body" aria-labelledby="insights-title">
         <h2 id="insights-title" class="section-title">Your listed tools</h2>
-        <p class="muted small-note">Counted on this site only. Cards seen are times the tool's card was on someone's screen; a try click means they opened your site, not that they used it. Visitors are counted once per tool per day; saves are from signed-in accounts.</p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Tool</th><th class="num">Cards seen<br /><span class="muted">30 days</span></th><th class="num">Views<br /><span class="muted">30 days</span></th><th class="num">Try clicks<br /><span class="muted">30 days</span></th><th class="num">Views<br /><span class="muted">all time</span></th><th class="num">Try clicks<br /><span class="muted">all time</span></th><th class="num">Saves</th><th class="num">Hearts</th><th class="num">Comments</th><th>Maker tools</th></tr>
-            </thead>
-            <tbody>
-              {insights.map((t) => (
-                <tr>
-                  <td><a href={`/tools/${t.slug}`}><strong>{t.name}</strong></a></td>
-                  <td class="num">{fmt(t.seen30)}</td>
-                  <td class="num">{fmt(t.views30)}</td>
-                  <td class="num">{fmt(t.tries30)}</td>
-                  <td class="num">{fmt(t.views)}</td>
-                  <td class="num">{fmt(t.tries)}</td>
-                  <td class="num">{fmt(t.saves)}</td>
-                  <td class="num">{fmt(t.hearts)}</td>
-                  <td class="num">{fmt(t.comments)}</td>
-                  <td>
-                    {t.update_status && <span class="muted small-note">{UPDATE_LABELS[t.update_status]}{t.update_status === "rejected" && t.update_note && `: ${t.update_note}`}</span>}
-                    {t.credit_type === "made" && <a class="update-link" href={`/me/tools/${t.slug}/update`}>{t.update_status === "pending" ? "View update" : "Post an update"}</a>}
-                    {t.credit_type === "made" && <a class="update-link" href={`/me/share/${t.slug}`}>Get a badge</a>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <p class="muted small-note">Last 30 days (UTC), counted on this site only. A try click means someone opened your site, not that they used it. Visitors count once per tool per day; saves and hearts are from signed-in accounts.</p>
+        <div class="maker-tools">{insights.map((t) => <MakerInsights tool={t} />)}</div>
       </section>
     )}
     {subs.length ? (

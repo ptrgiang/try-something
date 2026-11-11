@@ -46,7 +46,30 @@ export function sourceOf(referrer: unknown, tag: unknown, siteHost: string): str
 }
 
 // Discovery surfaces a beacon may name; anything else is dropped rather than stored.
-const SURFACE = /^(hero|picks|home|top|explore|search|category|tag|collection(:[a-z0-9-]{1,80})?|related|profile|saved|tried|palette|surprise|makers|direct)$/;
+const SURFACE = /^(hero|picks|home|top|explore|search|category|tag|collection(:[a-z0-9-]{1,80})?|related|profile|saved|tried|palette|surprise|discover|makers|direct)$/;
+
+/** Names for surfaces in /admin/stats and makers' own numbers. */
+export const SURFACE_LABELS: Record<string, string> = {
+  hero: "Home hero",
+  picks: "Home picks",
+  top: "Top today",
+  home: "Home list",
+  explore: "Explore",
+  category: "Category pages",
+  search: "Search results",
+  tag: "Tag pages",
+  collection: "Collections",
+  related: "Related on tool pages",
+  profile: "Profiles",
+  saved: "Saved tools",
+  tried: "Tried on this device",
+  palette: "Quick search",
+  surprise: "Surprise me",
+  discover: "Discovery sessions",
+  makers: "For makers page",
+  direct: "Tool page, arrived directly",
+  unattributed: "Unattributed",
+};
 
 export function cleanSurface(raw: unknown): string | null {
   return typeof raw === "string" && SURFACE.test(raw) ? raw : null;
