@@ -11,6 +11,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Makers and finders get a card per listed tool in My submissions instead of one wide table: cards seen, page views, try clicks and try rate for the last 30 days with the change from the 30 days before, daily charts for views and try clicks, where on the site people found the tool, and all-time totals, with Verify, Post an update and Get a badge next to each.
 - Follow makers and finders from their profile or from the credits on a tool page. `/me/following` shows new tools from the people you follow, and you get a notification when one of them has a tool published. Who follows whom isn't shown to anyone else, and there are no public follower counts.
 - People who saved a tool get a notification when the maker's update to it is approved, linking to the update on the tool page (the maker who posted it isn't notified).
+- Your own lists: **Add to list** on any tool page (and in quick view) adds it to a named list or makes a new one. Lists are private by default and managed at `/me/lists`; a public list gets a page at `/users/<handle>/lists/<slug>` and shows under a new Lists tab on the profile. Public lists are indexable from three tools up and say they're made by people, not editors, with a link to report one.
 - **Tried** marks: opening a tool with Try it marks its card and tool page on this device. Surprise me and Discover skip tools you've already tried while others are left, and `/tried` lists them newest first with a way to clear the list. Nothing is stored on the server.
 
 - Editors can give a tag page a title at `/admin/tags` ("Online whiteboards" for #whiteboard). It becomes the page's heading and search title; without one the heading is built from the tag ("Drawing tools", "SVG tools") instead of showing the hashtag.
@@ -19,7 +20,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Changed
 
-- Migration `0020` rebuilds the `notification` table to allow the two new kinds (with `update_id` and `tool_id` columns) and adds the `follow` table. Existing notifications are copied over.
+- Migration `0021` adds `user_list` and `user_list_item`. Migration `0020` rebuilds the `notification` table to allow the two new kinds (with `update_id` and `tool_id` columns) and adds the `follow` table. Existing notifications are copied over.
 
 - "You might also like" on a tool page is now "Games like Patatap" / "Tools like Haikei" / "Sites like The Deep Sea", with up to eight tools. Only tools that share the category or a tag are listed, single-tag matches from other categories only fill a short list, and the heading names the category when every tool is in it; random top-ups are gone.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTags, plainText, slugify, validateSubmission } from "../../src/lib/validation";
+import { LIST_TITLE_MAX, parseList, parseTags, plainText, slugify, validateSubmission } from "../../src/lib/validation";
 
 const good = {
   origin: "found",
@@ -57,5 +57,19 @@ describe("helpers", () => {
     expect(slugify("Ray.so — Code Images!")).toBe("ray-so-code-images");
     expect(slugify("✨✨")).toBe("tool");
     expect(slugify("Café Déjà")).toBe("cafe-deja");
+  });
+});
+
+describe("parseList", () => {
+  it("needs a name, keeps text plain and on one line", () => {
+    expect(parseList({ title: "  ", description: "" })).toEqual({ ok: false, error: "Give the list a name." });
+    expect(parseList({ title: " Tools\n for   my band ", description: " For rehearsals. " })).toEqual({ ok: true, value: { title: "Tools for my band", description: "For rehearsals." } });
+    expect(parseList({ title: 42 })).toMatchObject({ ok: false });
+  });
+
+  it("rejects names and descriptions over the limits instead of cutting them", () => {
+    expect(parseList({ title: "x".repeat(LIST_TITLE_MAX) }).ok).toBe(true);
+    expect(parseList({ title: "x".repeat(LIST_TITLE_MAX + 1) }).ok).toBe(false);
+    expect(parseList({ title: "ok", description: "y".repeat(281) }).ok).toBe(false);
   });
 });

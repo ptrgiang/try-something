@@ -6264,3 +6264,192 @@ td.num {
 .following-avatar {
   flex: none;
 }
+
+/* ---------- People's lists ---------- */
+.hero-ctas .list-picker {
+  position: relative;
+}
+.list-pop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(320px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: var(--shadow), 0 18px 40px -18px rgba(23, 20, 31, 0.3);
+}
+.list-pop[hidden] {
+  display: none;
+}
+.list-pop-title {
+  margin: 0;
+  font-weight: 800;
+}
+.list-pop-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.list-pop-items label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  cursor: var(--cursor-pointer);
+}
+.list-pop-items label:hover {
+  background: var(--sheet);
+}
+.list-pop-items input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+.list-pop-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.list-pop-meta {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.list-pop-new {
+  display: flex;
+  gap: 8px;
+}
+.list-pop-new input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font-size: 14px;
+}
+.list-pop-msg {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.list-pop-msg:empty {
+  display: none;
+}
+.list-create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 640px;
+  margin: 8px 0 6px;
+}
+.list-create input {
+  flex: 1 1 260px;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 15px;
+}
+.my-lists,
+.profile-lists,
+.list-items {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.profile-lists {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+.my-list,
+.profile-list {
+  display: grid;
+  gap: 4px;
+  height: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  text-decoration: none;
+}
+.my-list:hover,
+.profile-list:hover {
+  border-color: var(--line-strong);
+}
+.my-list strong,
+.profile-list strong {
+  font-family: var(--font-display);
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+.profile-list-desc {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.list-items li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.list-items li > span {
+  display: grid;
+  min-width: 0;
+}
+.list-items form {
+  flex: none;
+}
+.danger-zone {
+  margin-top: 28px;
+}
+.list-head .hero-ctas {
+  margin-top: 16px;
+}
+.list-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+.list-byline a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.list-foot {
+  margin-top: 28px;
+}
+@media (max-width: 560px) {
+  .list-pop {
+    position: fixed;
+    top: auto;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+  }
+}

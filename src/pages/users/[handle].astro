@@ -6,7 +6,7 @@ import Icon from "../../components/Icon.astro";
 import Avatar from "../../components/Avatar.astro";
 import FollowButton from "../../components/FollowButton.astro";
 import { avatarUrl, isAvatarKey } from "../../lib/avatar";
-import { getProfileByHandle, isFollowing, listLikedTools, listSavedTools, profileTools, removeAvatarAsModerator } from "../../lib/db";
+import { getProfileByHandle, isFollowing, listLikedTools, listSavedTools, myLists, profileTools, publicLists, removeAvatarAsModerator } from "../../lib/db";
 import { isModerator } from "../../lib/moderation";
 import { displayHost } from "../../lib/url";
 import { profileLd } from "../../lib/seo";
@@ -27,17 +27,20 @@ if (Astro.request.method === "POST") {
 }
 const own = me?.id === profile.id;
 // Saved and Hearted are private (see Privacy): the tabs exist only for the profile's owner.
-const [tools, saved, liked, following] = await Promise.all([
+const [tools, saved, liked, following, lists] = await Promise.all([
   profileTools(env.DB, profile.id),
   own ? listSavedTools(env.DB, profile.id) : [],
   own ? listLikedTools(env.DB, profile.id) : [],
   me && !own ? isFollowing(env.DB, me.id, profile.id) : false,
+  // The owner sees their private lists too, marked as such.
+  own ? myLists(env.DB, profile.id) : publicLists(env.DB, profile.id),
 ]);
 const made = tools.filter((t) => t.credit_type === "made");
 const found = tools.filter((t) => t.credit_type === "found");
 const TABS = [
   { id: "made", label: "Made", tools: made, private: false },
   { id: "found", label: "Found", tools: found, private: false },
+  ...(lists.length ? [{ id: "lists", label: "Lists", tools: [], private: false }] : []),
   ...(own
     ? [
         { id: "saved", label: "Saved", tools: saved, private: true },
@@ -47,7 +50,7 @@ const TABS = [
 ];
 const requested = TABS.find((t) => t.id === Astro.url.searchParams.get("tab"));
 // Default to the first public tab with something in it, so a finder's profile doesn't open empty.
-const tab = requested ?? TABS.find((t) => !t.private && t.tools.length) ?? TABS[0];
+const tab = requested ?? TABS.find((t) => !t.private && t.tools.length) ?? TABS.find((t) => t.id === "lists") ?? TABS[0];
 // Counts on the tools listed here, so every number on the header can be checked against the tabs below.
 const hearts = tools.reduce((n, t) => n + t.like_count, 0);
 const saves = tools.reduce((n, t) => n + t.save_count, 0);
@@ -87,7 +90,7 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
   <nav class="profile-tabs" aria-label="Profile sections">
     {TABS.map((t) => (
       <a href={`/users/${profile.handle}${t.id === "made" ? "" : `?tab=${t.id}`}`} aria-current={t.id === tab.id ? "page" : undefined}>
-        {t.label}<span>{t.tools.length}</span>
+        {t.label}<span>{t.id === "lists" ? lists.length : t.tools.length}</span>
       </a>
     ))}
   </nav>
@@ -95,13 +98,25 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
     <h2 class="sr-only">{tab.label} by {profile.name}</h2>
     {tab.private && <p class="section-intro profile-intro"><Icon name="eye" />Only you can see this tab.</p>}
     {tab.id === "made" && made.length > 0 && <p class="section-intro profile-intro">Listed as the maker. Not verified by Try Something.</p>}
-    {tab.tools.length > 0 ? (
+    {tab.id === "lists" ? (
+      <ul class="profile-lists">
+        {lists.map((l) => (
+          <li>
+            <a class="profile-list" href={l.public ? `/users/${profile.handle}/lists/${l.slug}` : `/me/lists/${l.id}`}>
+              <strong>{l.title}</strong>
+              {l.description && <span class="profile-list-desc">{l.description}</span>}
+              <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`}{own && ` · ${l.public ? "Public" : "Private, only you can see it"}`}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : tab.tools.length > 0 ? (
       <div class="grid" data-surface="profile">{tab.tools.map((t) => <ToolCard tool={t} />)}</div>
     ) : (
       tools.length > 0 && <p class="profile-empty">{tab.id === "saved" ? "Nothing saved yet." : tab.id === "hearted" ? "No hearts yet." : `Nothing ${tab.label.toLowerCase()} yet.`}</p>
     )}
   </section>
-  {tools.length === 0 && (
+  {tools.length === 0 && tab.id !== "lists" && (
     <div class="profile-empty">
       <p>{own ? "Nothing published yet. Tools you submit show up here once they're approved." : `${profile.name} hasn't had a tool published yet.`}</p>
       {own && <a class="btn btn-dark" href="/submit"><Icon name="plus" />Submit a tool</a>}

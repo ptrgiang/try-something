@@ -199,3 +199,16 @@ export function parseToolUpdate(data: Record<string, unknown>): { ok: true; valu
   if (value.tryThis.length < 10) errors.tryThis = "Describe what someone can try in 30 seconds.";
   return Object.keys(errors).length ? { ok: false, errors, value } : { ok: true, value };
 }
+
+export const LIST_TITLE_MAX = 60;
+export const LIST_DESCRIPTION_MAX = 280;
+
+/** A person's own list: a title is required; the description is optional plain text. */
+export function parseList(data: { title?: unknown; description?: unknown }): { ok: true; value: { title: string; description: string } } | { ok: false; error: string } {
+  const title = plainText(data.title, LIST_TITLE_MAX + 1).replace(/\s+/g, " ");
+  const description = plainText(data.description, LIST_DESCRIPTION_MAX + 1);
+  if (!title) return { ok: false, error: "Give the list a name." };
+  if (title.length > LIST_TITLE_MAX) return { ok: false, error: `Keep the name under ${LIST_TITLE_MAX} characters.` };
+  if (description.length > LIST_DESCRIPTION_MAX) return { ok: false, error: `Keep the description under ${LIST_DESCRIPTION_MAX} characters.` };
+  return { ok: true, value: { title, description } };
+}

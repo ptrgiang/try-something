@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-10-30. Nothing here is a launch promise.
+Status as of 2026-11-11. Nothing here is a launch promise.
 
 The current interface is **design v1**, locked on 2026-10-22: editorial cream/coral/lavender/butter look,
 Gallery-style cards with hover actions and quick view, brand logo, cursor and scrollbar. Later changes build on it
@@ -62,11 +62,12 @@ Reasons for people to return, built on what M1 already stores. In order:
 
 - [x] **R1 Notifications in the site**: a bell for your submission's status changes, replies to your comments and new
       comments on tools you listed. Stored in D1, read state per account, no email.
-- [ ] **R1b Saved-tool updates**: tell people when a tool they saved changes, once published listings can be edited.
-- [ ] **R2 Follow makers and finders**: follow a profile from it or from a tool page; a "Following" tab on Explore with
-      their new tools. Follower counts shown only once moderation and rate limits cover it.
-- [ ] **R3 Your own collections**: save tools into named lists, private by default; public lists get their own page,
-      indexable once they hold a few tools.
+- [x] **R1b Saved-tool updates**: people who saved a tool get a notification when the maker's update is approved (2026-11-11).
+- [x] **R2 Follow makers and finders**: follow a profile from it or from a tool page; `/me/following` with their new tools
+      and a notification when one is published (2026-11-11). Follower counts shown only once moderation and rate limits
+      cover it.
+- [x] **R3 Your own collections**: save tools into named lists, private by default; public lists get their own page,
+      indexable from three tools (2026-11-11).
 - [ ] **R4 Email notifications and a weekly digest**: opt-in per type, one-click unsubscribe in every email. Needs
       maintainer approval to send through Cloudflare Email Service beyond sign-in codes.
 - [ ] **R5 Weekly challenge**: one prompt a week ("find a tool that makes music in 30 seconds"), with submissions
@@ -114,11 +115,13 @@ P1:
 - [x] Default "Picks" sort: featured in editors' order, then tools new or resurfaced in the last 14 days, then the rest
       with less-seen tools first and a daily reshuffle (`src/lib/picks.ts`, tune the constants once impressions data
       shows how it does)
-- [ ] Notify people who saved a tool when it gets an update (R1b; the notification kinds need a table rebuild)
+- [x] Notify people who saved a tool when it gets an update (R1b; migration 0020 rebuilt the notification table)
 - [x] Discovery sessions at `/discover` (2026-10-28): pick a mood, get three tools one at a time from its categories,
       no repeats within the session, less-seen tools first two times in three; state lives in the URL, no account
 - [x] Feedback page for bugs, broken tools and ideas without an account; Surprise me in the desktop header; About lists
       what gets listed (2026-10-28)
+- [x] A page for makers (`/makers`) and Submit always in the header; per-tool numbers for makers with trends, daily charts
+      and where people found the tool; Tried marks on this device that Surprise me and Discover skip (2026-11-11)
 - [x] Animated stickers in empty states, notices and celebrations; a "your tool is live" banner with Share and the
       badge (2026-10-29)
 

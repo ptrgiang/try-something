@@ -1,0 +1,64 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import Icon from "../../../components/Icon.astro";
+import Sticker from "../../../components/Sticker.astro";
+import { createList, myLists } from "../../../lib/db";
+import { rateLimit } from "../../../lib/rate-limit";
+import { LIST_TITLE_MAX, parseList } from "../../../lib/validation";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login?next=/me/lists");
+let error = "";
+let title = "";
+if (Astro.request.method === "POST") {
+  const form = Object.fromEntries(await Astro.request.formData());
+  title = String(form.title ?? "");
+  const input = parseList({ title: form.title, description: form.description });
+  if (!input.ok) error = input.error;
+  else if (!(await rateLimit(env.DB, `list-create:${user.id}`, 20, 3600))) error = "That's a lot of new lists. Try again later.";
+  else {
+    const list = await createList(env.DB, user.id, input.value);
+    if ("error" in list) error = list.error;
+    else return Astro.redirect(`/me/lists/${list.id}?created=1`, 303);
+  }
+  Astro.response.status = 400;
+}
+const lists = await myLists(env.DB, user.id);
+const deleted = Astro.url.searchParams.get("deleted");
+---
+<Base title="Your lists" noindex>
+  <div class="page app-page">
+    <p class="eyebrow">Your account</p>
+    <h1 class="page-title">Your lists</h1>
+    <p class="section-intro">Group tools your way: a kit for a project, things to show a friend, games for a slow afternoon. Lists are private until you make one public; a public list gets its own page on your profile{!user.handle && " once you choose a handle in Settings"}.</p>
+    {deleted && <p class="notice notice-success" role="status">List deleted.</p>}
+
+    <form class="list-create" method="post" novalidate>
+      <label class="sr-only" for="list-title">New list name</label>
+      <input id="list-title" name="title" type="text" maxlength={LIST_TITLE_MAX} placeholder="Name a new list, like “Tools for my band”" value={title} required aria-invalid={error ? "true" : undefined} aria-describedby={error ? "list-error" : undefined} />
+      <button class="btn btn-dark" type="submit"><Icon name="plus" />Create list</button>
+    </form>
+    {error && <p class="form-error" id="list-error" role="alert">{error}</p>}
+
+    {lists.length ? (
+      <ul class="my-lists">
+        {lists.map((l) => (
+          <li>
+            <a class="my-list" href={`/me/lists/${l.id}`}>
+              <strong>{l.title}</strong>
+              <span class="muted small-note">{l.count === 1 ? "1 tool" : `${l.count} tools`} · {l.public ? "Public" : "Private"}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class="gate">
+        <Sticker name="box" size="md" />
+        <h2>No lists yet</h2>
+        <p>Create one above, or use <strong>Add to list</strong> on any tool page.</p>
+        <div class="gate-actions"><a class="btn" href="/explore">Explore tools</a></div>
+      </div>
+    )}
+  </div>
+</Base>

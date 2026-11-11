@@ -1,0 +1,110 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import Icon from "../../../components/Icon.astro";
+import { deleteList, getMyList, listItems, setListItem, updateList } from "../../../lib/db";
+import { LIST_DESCRIPTION_MAX, LIST_TITLE_MAX, parseList } from "../../../lib/validation";
+import { displayHost } from "../../../lib/url";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
+let list = await getMyList(env.DB, user.id, Astro.params.id ?? "");
+// Same 404 for missing and not-yours.
+if (!list) return Astro.rewrite("/404");
+
+let error = "";
+let notice = Astro.url.searchParams.get("created") ? "List created. Add tools from any tool page with Add to list." : "";
+let values = { title: list.title, description: list.description, public: Boolean(list.public) };
+if (Astro.request.method === "POST") {
+  const form = Object.fromEntries(await Astro.request.formData());
+  if (form.action === "delete") {
+    await deleteList(env.DB, user.id, list.id);
+    return Astro.redirect("/me/lists?deleted=1", 303);
+  }
+  if (form.action === "remove" && typeof form.tool === "string") {
+    await setListItem(env.DB, user.id, list.id, form.tool, false);
+    return Astro.redirect(`/me/lists/${list.id}`, 303);
+  }
+  values = { title: String(form.title ?? ""), description: String(form.description ?? ""), public: form.public === "on" };
+  const input = parseList(values);
+  if (!input.ok) {
+    error = input.error;
+    Astro.response.status = 400;
+  } else {
+    await updateList(env.DB, user.id, list.id, { ...input.value, public: values.public && Boolean(user.handle) });
+    list = (await getMyList(env.DB, user.id, list.id))!;
+    values = { title: list.title, description: list.description, public: Boolean(list.public) };
+    notice = "Saved.";
+  }
+}
+const tools = await listItems(env.DB, list.id);
+const publicHref = user.handle && list.public ? `/users/${user.handle}/lists/${list.slug}` : null;
+---
+<Base title={list.title} noindex>
+  <div class="page app-page settings">
+    <header class="page-head">
+      <p class="eyebrow"><a href="/me/lists">Your lists</a></p>
+      <h1 class="page-title">{list.title}</h1>
+      {publicHref && <p class="lede">Public at <a href={publicHref}>{publicHref}</a></p>}
+    </header>
+    {notice && <p class="notice notice-success" role="status">{notice}</p>}
+    {error && <p class="form-error" role="alert">{error}</p>}
+
+    <form class="form settings-card" method="post" novalidate>
+      <div class="field">
+        <label for="title">Name</label>
+        <input id="title" name="title" type="text" maxlength={LIST_TITLE_MAX} required value={values.title} />
+      </div>
+      <div class="field">
+        <label for="description">Description <span class="muted">(optional)</span></label>
+        <textarea id="description" name="description" rows="2" maxlength={LIST_DESCRIPTION_MAX}>{values.description}</textarea>
+        <p class="hint">Up to {LIST_DESCRIPTION_MAX} characters, shown as plain text.</p>
+      </div>
+      <div class="field">
+        <label class="check check-wrap"><input type="checkbox" name="public" checked={values.public} disabled={!user.handle} /><span>Public: anyone with the link can see it, and it shows on your profile</span></label>
+        {!user.handle && <p class="hint">Choose a handle in <a href="/me/settings">Settings</a> to make lists public.</p>}
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-dark" type="submit">Save</button>
+      </div>
+    </form>
+
+    <section class="settings-card" aria-labelledby="items-title">
+      <h2 id="items-title" class="section-title">{tools.length === 1 ? "1 tool" : `${tools.length} tools`}</h2>
+      {tools.length ? (
+        <ul class="list-items">
+          {tools.map((t) => (
+            <li>
+              <span><a href={`/tools/${t.slug}`}><strong>{t.name}</strong></a><span class="muted small-note">{displayHost(t.url)}</span></span>
+              <form method="post">
+                <input type="hidden" name="action" value="remove" />
+                <input type="hidden" name="tool" value={t.id} />
+                <button class="btn btn-sm" type="submit" aria-label={`Remove ${t.name}`}><Icon name="close" />Remove</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="muted">Nothing here yet. Open any tool and use <strong>Add to list</strong>.</p>
+      )}
+    </section>
+
+    <form method="post" class="danger-zone" data-confirm-delete>
+      <input type="hidden" name="action" value="delete" />
+      <button class="btn btn-sm" type="submit"><Icon name="trash" />Delete this list</button>
+    </form>
+  </div>
+</Base>
+<script>
+  import { askConfirm } from "../../../scripts/client";
+
+  const form = document.querySelector<HTMLFormElement>("[data-confirm-delete]");
+  form?.addEventListener("submit", async (e) => {
+    if (form.dataset.confirmed) return;
+    e.preventDefault();
+    const ok = await askConfirm({ title: "Delete this list?", body: "The tools stay on Try Something; only the list goes. This can't be undone.", confirm: "Delete list", danger: true });
+    if (!ok) return;
+    form.dataset.confirmed = "1";
+    form.requestSubmit();
+  });
+</script>

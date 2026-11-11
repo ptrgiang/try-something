@@ -2255,6 +2255,122 @@ export async function makerValue(db: D1Database, from: string, to: string): Prom
   return row!;
 }
 
+// ---------- People's own lists ----------
+
+export const LISTS_MAX = 50;
+export const LIST_ITEMS_MAX = 200;
+/** A public list is indexable once it holds this many tools. */
+export const LIST_INDEX_MIN = 3;
+
+export interface UserList {
+  id: string;
+  user_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  public: number;
+  created_at: string;
+  updated_at: string;
+  count: number;
+  /** Set when listed for a tool: whether that tool is in the list. */
+  has?: number;
+}
+
+const LIST_SELECT = `SELECT l.*, (SELECT COUNT(*) FROM user_list_item i JOIN tool t ON t.id = i.tool_id WHERE i.list_id = l.id AND t.status = 'published') AS count FROM user_list l`;
+
+export async function myLists(db: D1Database, userId: string, toolId: string | null = null): Promise<UserList[]> {
+  const { results } = await db
+    .prepare(
+      `${LIST_SELECT.replace("FROM user_list l", ", EXISTS (SELECT 1 FROM user_list_item i WHERE i.list_id = l.id AND i.tool_id = ?2) AS has FROM user_list l")}
+       WHERE l.user_id = ?1 ORDER BY l.updated_at DESC`,
+    )
+    .bind(userId, toolId)
+    .all<UserList>();
+  return results;
+}
+
+export async function getMyList(db: D1Database, userId: string, id: string): Promise<UserList | null> {
+  return db.prepare(`${LIST_SELECT} WHERE l.id = ? AND l.user_id = ?`).bind(id, userId).first<UserList>();
+}
+
+/** Tools in a list, most recently added first; hidden tools drop out. */
+export async function listItems(db: D1Database, listId: string): Promise<ToolWithCredit[]> {
+  const { results } = await db
+    .prepare(`${TOOL_SELECT} JOIN user_list_item i ON i.tool_id = t.id WHERE i.list_id = ? AND t.status = 'published' ORDER BY i.created_at DESC LIMIT ?`)
+    .bind(listId, LIST_ITEMS_MAX)
+    .all<Row>();
+  return results.map(toTool);
+}
+
+export async function createList(db: D1Database, userId: string, input: { title: string; description: string }): Promise<UserList | { error: string }> {
+  const n = await db.prepare(`SELECT COUNT(*) AS n FROM user_list WHERE user_id = ?`).bind(userId).first<{ n: number }>();
+  if ((n?.n ?? 0) >= LISTS_MAX) return { error: `You can have up to ${LISTS_MAX} lists.` };
+  const base = slugify(input.title).replace(/^tool$/, "list");
+  const now = nowIso();
+  for (let i = 1; i <= 20; i++) {
+    const slug = i === 1 ? base : `${base}-${i}`;
+    const id = newId();
+    const res = await db
+      .prepare(`INSERT INTO user_list (id, user_id, slug, title, description, public, created_at, updated_at) VALUES (?,?,?,?,?,0,?,?) ON CONFLICT DO NOTHING`)
+      .bind(id, userId, slug, input.title, input.description, now, now)
+      .run();
+    if (res.meta.changes) return (await getMyList(db, userId, id))!;
+  }
+  return { error: "Try another name." };
+}
+
+export async function updateList(db: D1Database, userId: string, id: string, input: { title: string; description: string; public: boolean }): Promise<boolean> {
+  const res = await db
+    .prepare(`UPDATE user_list SET title = ?, description = ?, public = ?, updated_at = ? WHERE id = ? AND user_id = ?`)
+    .bind(input.title, input.description, input.public ? 1 : 0, nowIso(), id, userId)
+    .run();
+  return res.meta.changes > 0;
+}
+
+export async function deleteList(db: D1Database, userId: string, id: string): Promise<boolean> {
+  const res = await db.prepare(`DELETE FROM user_list WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  return res.meta.changes > 0;
+}
+
+/** Adds or removes a published tool; only the list's owner can, and a full list takes no more. */
+export async function setListItem(db: D1Database, userId: string, listId: string, toolId: string, on: boolean): Promise<"ok" | "full" | "missing"> {
+  const list = await db.prepare(`SELECT id FROM user_list WHERE id = ? AND user_id = ?`).bind(listId, userId).first();
+  if (!list) return "missing";
+  const now = nowIso();
+  if (!on) {
+    await db.batch([
+      db.prepare(`DELETE FROM user_list_item WHERE list_id = ? AND tool_id = ?`).bind(listId, toolId),
+      db.prepare(`UPDATE user_list SET updated_at = ? WHERE id = ?`).bind(now, listId),
+    ]);
+    return "ok";
+  }
+  const [res] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO user_list_item (list_id, tool_id, created_at) SELECT ?, id, ? FROM tool
+         WHERE id = ? AND status = 'published' AND (SELECT COUNT(*) FROM user_list_item WHERE list_id = ?) < ?
+         ON CONFLICT DO NOTHING`,
+      )
+      .bind(listId, now, toolId, listId, LIST_ITEMS_MAX),
+    db.prepare(`UPDATE user_list SET updated_at = ? WHERE id = ? AND changes() > 0`).bind(now, listId),
+  ]);
+  if (res.meta.changes) return "ok";
+  const has = await db.prepare(`SELECT 1 FROM user_list_item WHERE list_id = ? AND tool_id = ?`).bind(listId, toolId).first();
+  if (has) return "ok";
+  const tool = await db.prepare(`SELECT 1 FROM tool WHERE id = ? AND status = 'published'`).bind(toolId).first();
+  return tool ? "full" : "missing";
+}
+
+/** Public lists on a profile, with a few covers each for the preview. */
+export async function publicLists(db: D1Database, userId: string): Promise<UserList[]> {
+  const { results } = await db.prepare(`${LIST_SELECT} WHERE l.user_id = ? AND l.public = 1 ORDER BY l.updated_at DESC`).bind(userId).all<UserList>();
+  return results;
+}
+
+export async function getPublicList(db: D1Database, userId: string, slug: string): Promise<UserList | null> {
+  return db.prepare(`${LIST_SELECT} WHERE l.user_id = ? AND l.slug = ? AND l.public = 1`).bind(userId, slug).first<UserList>();
+}
+
 // ---------- Follows ----------
 
 /** Only people with a public profile (a handle) can be followed. Returns false when there's no such person. */

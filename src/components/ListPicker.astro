@@ -1,0 +1,30 @@
+---
+// "Add to list" on a tool page (and in quick view, which shows the same markup). The lists load when it opens;
+// the logic lives in scripts/lists.ts so one copy serves the page and quick view.
+import Icon from "./Icon.astro";
+
+interface Props {
+  toolId: string;
+  toolName: string;
+  slug: string;
+}
+const { toolId, toolName, slug } = Astro.props;
+const me = Astro.locals.user;
+---
+{me ? (
+  <div class="list-picker" data-list-picker data-tool={toolId}>
+    <button type="button" class="btn btn-lg" data-list-toggle aria-expanded="false"><Icon name="plus" /><span>Add to list</span></button>
+    <div class="list-pop" role="group" aria-label={`Add ${toolName} to a list`} data-list-pop hidden>
+      <p class="list-pop-title">Add to a list</p>
+      <ul class="list-pop-items" data-list-items><li class="muted small-note">Loading your lists…</li></ul>
+      <form class="list-pop-new" data-list-new>
+        <input type="text" name="title" maxlength="60" placeholder="New list name" aria-label="New list name" autocomplete="off" />
+        <button type="submit" class="btn btn-sm btn-dark">Create</button>
+      </form>
+      <p class="list-pop-msg" role="status" data-list-msg></p>
+      <a class="small-note" href="/me/lists">Manage your lists</a>
+    </div>
+  </div>
+) : (
+  <a class="btn btn-lg" href={`/login?next=${encodeURIComponent(`/tools/${slug}`)}`} rel="nofollow"><Icon name="plus" />Add to list</a>
+)}
