@@ -53,7 +53,7 @@ test("home: picks come from the newest collection and nothing repeats between he
 
   await page.goto("/");
   await page.getByRole("link", { name: "Share it with credit" }).click();
-  await expect(page).toHaveURL(/\/submit$|\/login/);
+  await expect(page).toHaveURL(/\/makers$/);
 });
 
 test("impressions, views and tries are counted with the place the tool was found", async ({ page, context }) => {
@@ -122,8 +122,8 @@ test("makers see real numbers for their own listed tools; cards leave out zero c
     const insights = page.getByRole("region", { name: "Your listed tools" });
     const silk = insights.getByRole("article", { name: "Silk" });
     await expect(insights.getByRole("article")).toHaveCount(1);
-    await expect(silk.locator(".stat-tile", { hasText: "Page views" }).locator(".stat-value")).toHaveText(String(row.v));
-    await expect(silk.locator(".stat-tile", { hasText: "Try clicks" }).locator(".stat-value")).toHaveText(String(row.t));
+    await expect(silk.locator('.stat-tile:has(.stat-label:text-is("Page views")) .stat-value')).toHaveText(String(row.v));
+    await expect(silk.locator('.stat-tile:has(.stat-label:text-is("Try clicks")) .stat-value')).toHaveText(String(row.t));
     await expect(silk.getByRole("img", { name: /^Try clicks per day: / })).toBeVisible();
     await expect(silk.getByRole("region", { name: "Where people found Silk" })).toContainText("Discovery sessions");
     await expect(silk.getByRole("link", { name: "Verify you made it" })).toHaveAttribute("href", "/me/verify/silk");

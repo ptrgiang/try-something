@@ -3717,7 +3717,8 @@ tr:last-child td {
   box-shadow: 0 0 0 8px var(--butter-soft);
 }
 .comment-avatar,
-.profile-avatar {
+.profile-avatar,
+.list-avatar {
   display: grid;
   place-items: center;
   width: 36px;
@@ -6433,6 +6434,11 @@ td.num {
   margin: 14px 0 0;
   font-size: 14px;
 }
+.list-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
 .list-byline a {
   display: inline-flex;
   align-items: center;
@@ -6441,7 +6447,8 @@ td.num {
   text-decoration: none;
 }
 .list-foot {
-  margin-top: 28px;
+  margin: 0;
+  padding: 0 var(--gutter) 32px;
 }
 @media (max-width: 560px) {
   .list-pop {
@@ -6451,5 +6458,16 @@ td.num {
     right: 16px;
     bottom: 16px;
     width: auto;
+  }
+}
+.maker-tool .stat-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+}
+@media (max-width: 560px) {
+  .maker-tool .stat-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .maker-tool .stat-value {
+    font-size: 26px;
   }
 }

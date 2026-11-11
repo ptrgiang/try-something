@@ -53,7 +53,7 @@ const made = t.credit_type === "made";
       <div class="stat-tile">
         <span class="stat-label">{tile.label}</span>
         <strong class="stat-value">{tile.value}</strong>
-        {tile.change && <span class="stat-change">{tile.change} vs the 30 days before</span>}
+        {tile.change && <span class="stat-change">{tile.change === "new" ? "None in the 30 days before" : `${tile.change} vs the 30 days before`}</span>}
         <span class="stat-hint">{tile.hint}</span>
       </div>
     ))}
@@ -61,8 +61,8 @@ const made = t.credit_type === "made";
 
   <div class="maker-tool-body">
     <div class="stat-charts">
-      <BarChart title="Page views per day" unit="views" rows={t.daily.map((d) => ({ day: d.day, value: d.views }))} />
-      <BarChart title="Try clicks per day" unit="try clicks" rows={t.daily.map((d) => ({ day: d.day, value: d.tries }))} />
+      <BarChart title="Page views per day" unit="views" unitOne="view" rows={t.daily.map((d) => ({ day: d.day, value: d.views }))} />
+      <BarChart title="Try clicks per day" unit="try clicks" unitOne="try click" rows={t.daily.map((d) => ({ day: d.day, value: d.tries }))} />
     </div>
     <section class="maker-sources" aria-label={`Where people found ${t.name}`}>
       <h4>Where people found it</h4>

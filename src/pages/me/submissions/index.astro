@@ -61,7 +61,7 @@ const updateNotice = { sent: "Update sent. An editor will review it before it sh
           </tbody>
         </table>
       </div>
-    ) : (
+    ) : insights.length === 0 && (
       <div class="empty submit-body"><p>You haven't submitted anything yet.</p><a class="btn btn-dark" href="/submit">Submit a tool</a></div>
     )}
   </div>

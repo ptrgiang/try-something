@@ -3,9 +3,11 @@
 interface Props {
   title: string;
   unit: string;
+  /** Singular of `unit`, for a total of exactly one. */
+  unitOne?: string;
   rows: { day: string; value: number }[];
 }
-const { title, unit, rows } = Astro.props;
+const { title, unit, unitOne, rows } = Astro.props;
 const max = Math.max(1, ...rows.map((r) => r.value));
 const total = rows.reduce((n, r) => n + r.value, 0);
 const W = 10;
@@ -16,7 +18,7 @@ const label = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString("
 <figure class="chart">
   <figcaption class="chart-head">
     <span class="chart-title">{title}</span>
-    <span class="chart-total">{total.toLocaleString("en-US")} {unit}</span>
+    <span class="chart-total">{total.toLocaleString("en-US")} {total === 1 && unitOne ? unitOne : unit}</span>
   </figcaption>
   <div class="chart-plot">
     <span class="chart-max" aria-hidden="true">{max.toLocaleString("en-US")}</span>

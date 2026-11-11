@@ -26,7 +26,8 @@ const updated = new Date(list.updated_at).toLocaleDateString("en-US", { month: "
   noindex={tools.length < LIST_INDEX_MIN}
   jsonLd={collectionLd({ path, name: list.title, description: list.description || null, tools })}
 >
-  <header class="page-head list-head">
+  <header class="explore-head list-head">
+    <div>
     <p class="eyebrow">A list by <a href={`/users/${profile.handle}`}>{profile.name}</a></p>
     <h1 class="page-title">{list.title}</h1>
     {list.description && <p class="lede">{list.description}</p>}
@@ -37,6 +38,7 @@ const updated = new Date(list.updated_at).toLocaleDateString("en-US", { month: "
     <div class="hero-ctas">
       <button type="button" class="btn" data-share={path} data-share-title={list.title}><Icon name="share" /><span>Share</span></button>
       {me?.id === profile.id && <a class="btn" href={`/me/lists/${list.id}`}>Edit list</a>}
+    </div>
     </div>
   </header>
   {tools.length ? (

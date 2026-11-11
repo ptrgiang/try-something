@@ -20,6 +20,8 @@ async function call(picker: HTMLElement, init?: { body: unknown }): Promise<List
 
 function render(picker: HTMLElement, lists: ListView[]) {
   const ul = picker.querySelector<HTMLElement>("[data-list-items]")!;
+  // Rebuilding the rows would drop focus to the page; put it back on the same list's checkbox.
+  const focused = (document.activeElement as HTMLElement | null)?.dataset?.listId;
   ul.replaceChildren();
   if (!lists.length) {
     const li = document.createElement("li");
@@ -44,6 +46,7 @@ function render(picker: HTMLElement, lists: ListView[]) {
     li.appendChild(label);
     ul.appendChild(li);
   }
+  if (focused) ul.querySelector<HTMLInputElement>(`input[data-list-id="${CSS.escape(focused)}"]`)?.focus();
   const added = lists.filter((l) => l.has).length;
   const label = picker.querySelector<HTMLElement>("[data-list-toggle] span");
   if (label) label.textContent = added ? `In ${added} ${added === 1 ? "list" : "lists"}` : "Add to list";
@@ -76,14 +79,18 @@ document.addEventListener("click", (e) => {
   });
 });
 
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  const picker = (e.target as Element).closest?.<HTMLElement>("[data-list-picker]");
-  if (!picker || picker.querySelector<HTMLElement>("[data-list-pop]")!.hidden) return;
-  e.stopPropagation(); // keeps quick view open
-  setOpen(picker, false);
-  picker.querySelector<HTMLButtonElement>("[data-list-toggle]")!.focus();
-}, true);
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key !== "Escape") return;
+    const picker = [...document.querySelectorAll<HTMLElement>("[data-list-picker]")].find((p) => !p.querySelector<HTMLElement>("[data-list-pop]")!.hidden);
+    if (!picker) return;
+    e.stopPropagation(); // keeps quick view open
+    setOpen(picker, false);
+    picker.querySelector<HTMLButtonElement>("[data-list-toggle]")!.focus();
+  },
+  true,
+);
 
 document.addEventListener("change", async (e) => {
   const box = e.target as HTMLInputElement;
