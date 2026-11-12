@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIST_TITLE_MAX, parseList, parseTags, plainText, slugify, validateSubmission } from "../../src/lib/validation";
+import { LIST_TITLE_MAX, parseList, parseTags, parseToolUpdate, plainText, slugify, TEXT_LIMITS, validateSubmission } from "../../src/lib/validation";
 
 const good = {
   origin: "found",
@@ -46,6 +46,32 @@ describe("validateSubmission", () => {
 
   it("caps lengths", () => {
     expect(plainText("a".repeat(500), 60)).toHaveLength(60);
+  });
+
+  it("refuses over-long listing text instead of cutting it mid-sentence", () => {
+    const long = "Look for Octopus Boy near his little cave on the sand, he crawls around and chases the food. ".repeat(3);
+    const r = validateSubmission({ ...good, tryThis: long, tagline: "x".repeat(TEXT_LIMITS.tagline + 1), makerName: "m".repeat(81) });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.tryThis).toBe(`Keep this to ${TEXT_LIMITS.tryThis} characters or fewer (it's ${long.trim().length} now).`);
+    expect(r.errors.tagline).toContain(`${TEXT_LIMITS.tagline} characters or fewer`);
+    expect(r.errors.makerName).toBeTruthy();
+  });
+
+  it("accepts text exactly at the limit, counting it after whitespace is tidied", () => {
+    const r = validateSubmission({ ...good, tagline: "y".repeat(TEXT_LIMITS.tagline), why: `  ${"w".repeat(TEXT_LIMITS.why)}  ` });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.tagline).toHaveLength(TEXT_LIMITS.tagline);
+  });
+
+  it("refuses an over-long product update and hands the full text back", () => {
+    const why = "z".repeat(TEXT_LIMITS.why + 5);
+    const r = parseToolUpdate({ note: "Now exports PNG files.", tagline: "Generate SVG backgrounds", tryThis: "Click randomize and export", why });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.why).toContain("(it's 405 now)");
+    expect(r.value.why).toBe(why);
   });
 });
 

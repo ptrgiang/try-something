@@ -276,3 +276,45 @@ test("admin can approve their own submission", async ({ page }) => {
   );
   expect(row).toEqual({ status: "published", by: "e2e-admin" });
 });
+
+test("over-long text stays whole, is flagged, and blocks the post instead of being cut", async ({ page }) => {
+  await signIn(page, submitter);
+  await page.goto("/submit");
+  const tryThis = page.getByLabel(/try in 30 seconds/);
+  const long = "Open it and let the reef settle, then tap the water to drop some food. ".repeat(4).trim();
+  await tryThis.fill(long);
+  await expect(tryThis).toHaveValue(long);
+  await expect(page.locator("#tryThis + .char-count")).toHaveText(`${long.length} / 200 · ${long.length - 200} over`);
+  await expect(tryThis).toHaveAttribute("aria-invalid", "true");
+
+  const before = sqlJson<{ n: number }>("SELECT COUNT(*) AS n FROM submission")[0].n;
+  await page.getByRole("button", { name: "Submit for review" }).click();
+  await expect(tryThis).toBeFocused();
+  await expect(page).toHaveURL(/\/submit$/);
+  expect(sqlJson<{ n: number }>("SELECT COUNT(*) AS n FROM submission")[0].n).toBe(before);
+
+  await tryThis.fill("Tap the water to drop some food.");
+  await expect(page.locator("#tryThis + .char-count")).toHaveText("32 / 200");
+  await expect(tryThis).not.toHaveAttribute("aria-invalid", "true");
+});
+
+test("a person with three open submissions is told before filling in the form", async ({ page }) => {
+  const busy = await createUser("e2e-busy", "Bea Busy", "user");
+  const now = new Date().toISOString();
+  sql(
+    ["pending", "in_review", "needs_changes"]
+      .map(
+        (status, i) => `INSERT INTO submission (id, user_id, origin, url, canonical_key, name, tagline, try_this, category, status, created_at, updated_at)
+          VALUES ('e2e-busy-${i}', '${busy.id}', 'made', 'https://example.com/busy-${i}', 'example.com/busy-${i}', 'E2E Busy ${i}', 'One of several open ones.', 'Click the thing.', 'play', '${status}', '${now}', '${now}');`,
+      )
+      .join(" "),
+  );
+  await signIn(page, busy);
+  await page.goto("/submit");
+  await expect(page.locator(".submit-limit .notice")).toContainText("You have 3 submissions waiting");
+  await expect(page.getByRole("button", { name: "Submit for review" })).toHaveCount(0);
+
+  sql(`UPDATE submission SET status = 'rejected' WHERE id = 'e2e-busy-0'`);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Submit for review" })).toBeVisible();
+});

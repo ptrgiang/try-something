@@ -43,6 +43,20 @@ export function plainText(value: unknown, max: number): string {
     .slice(0, max);
 }
 
+/** Character limits for listing text, shared by the forms' counters and the server. */
+export const TEXT_LIMITS = { name: 60, tagline: 120, tryThis: 200, why: 400, makerName: 80, note: 300 } as const;
+
+/**
+ * Cleaned text that is refused, not cut, when it runs past the limit: a sentence chopped
+ * mid-word was being published as-is. The full text comes back so the form can show it.
+ */
+function limitedText(value: unknown, field: keyof typeof TEXT_LIMITS, errors: Record<string, string>): string {
+  const text = plainText(value, Infinity);
+  const max = TEXT_LIMITS[field];
+  if (text.length > max) errors[field] = `Keep this to ${max} characters or fewer (it's ${text.length} now).`;
+  return text;
+}
+
 export function parseTags(value: unknown): string[] {
   const raw = Array.isArray(value) ? value.join(",") : typeof value === "string" ? value : "";
   const tags = raw
@@ -69,18 +83,18 @@ export function validateSubmission(
     errors.url = e instanceof UnsafeUrlError ? e.message : "Enter a valid https:// URL.";
   }
 
-  const name = plainText(data.name, 60);
+  const name = limitedText(data.name, "name", errors);
   if (name.length < 2) errors.name = "Add the product name.";
-  const tagline = plainText(data.tagline, 120);
+  const tagline = limitedText(data.tagline, "tagline", errors);
   if (tagline.length < 8) errors.tagline = "Add a one-line description (8+ characters).";
-  const tryThis = plainText(data.tryThis, 200);
+  const tryThis = limitedText(data.tryThis, "tryThis", errors);
   if (tryThis.length < 10) errors.tryThis = "Describe what someone can try in 30 seconds.";
-  const why = plainText(data.why, 400);
+  const why = limitedText(data.why, "why", errors);
   const category = CATEGORY_IDS.includes(String(data.category)) ? (String(data.category) as Category) : null;
   if (!category) errors.category = "Pick a category.";
   const tags = parseTags(data.tags);
 
-  const makerName = plainText(data.makerName, 80) || null;
+  const makerName = limitedText(data.makerName, "makerName", errors) || null;
   let makerUrl: string | null = null;
   if (typeof data.makerUrl === "string" && data.makerUrl.trim()) {
     try {
@@ -187,13 +201,13 @@ export interface ToolUpdateInput {
 
 /** A maker's product update: what changed, plus the listing text as it should read afterwards. */
 export function parseToolUpdate(data: Record<string, unknown>): { ok: true; value: ToolUpdateInput } | { ok: false; errors: Record<string, string>; value: ToolUpdateInput } {
-  const value = {
-    note: plainText(data.note, 300),
-    tagline: plainText(data.tagline, 120),
-    tryThis: plainText(data.tryThis, 200),
-    why: plainText(data.why, 400),
-  };
   const errors: Record<string, string> = {};
+  const value = {
+    note: limitedText(data.note, "note", errors),
+    tagline: limitedText(data.tagline, "tagline", errors),
+    tryThis: limitedText(data.tryThis, "tryThis", errors),
+    why: limitedText(data.why, "why", errors),
+  };
   if (value.note.length < 10) errors.note = "Say what changed (10+ characters).";
   if (value.tagline.length < 8) errors.tagline = "Add a one-line description (8+ characters).";
   if (value.tryThis.length < 10) errors.tryThis = "Describe what someone can try in 30 seconds.";

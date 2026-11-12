@@ -499,6 +499,15 @@ export async function findDuplicate(
 
 // ---------- Submissions ----------
 
+/** This person's submissions still waiting on an editor or on their own changes. */
+export async function openSubmissionCount(db: D1Database, userId: string): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS n FROM submission WHERE user_id = ? AND status IN ('pending','in_review','needs_changes')`)
+    .bind(userId)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
 export async function createSubmission(
   db: D1Database,
   userId: string,

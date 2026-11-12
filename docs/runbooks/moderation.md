@@ -22,6 +22,8 @@ Queue: `/admin/submissions`. Moderators cannot act on their own submissions; adm
 - **Needs changes**: fixable; write a specific note the submitter can act on.
 - **Reject**: out of scope or unsafe; the note is visible to the submitter, keep it factual.
 
+Submitters can have at most three submissions open (pending, in review or needs changes) at once; editors aren't limited. Listing text over its length limit is refused with a character count rather than cut off.
+
 Every action is recorded in the moderation history. Never edit statuses directly in D1 except to recover from a bug, and note it in the audit trail.
 
 ## Reports and comments
@@ -45,7 +47,7 @@ Every action is recorded in the moderation history. Never edit statuses directly
 - **Collections** (`/admin/collections`): create a draft, add tools by slug or tool URL, reorder, then publish. A weekly pick is just a collection, e.g. "Weekend toys, week 43".
 - **Featured** (`/admin/tools`): a number 1, 2, 3… puts a tool in the home slideshow in that order; 0 takes it out. Up to five show; the slideshow opens on a different one each UTC day (the same for everyone all day).
 - **Home picks**: the home page shows the newest published collection that still has at least three live tools once the hero's featured tools are left out, with its title, description and publish date ("Worth trying this week" for the first seven days, "Editors' picks" after). To refresh it, publish a new collection; nothing else to change. If no collection qualifies, the section simply isn't shown.
-- **Picks order** (the default sort on Explore, categories, tags and the home list): featured tools first, then tools published or resurfaced in the last 14 days (newest first), then everything else with the tools seen least in the last 30 days first and a shuffle that changes once a day. Search keeps name matches on top. The numbers live in `src/lib/picks.ts`.
+- **Picks order** (the default sort on Explore, categories, tags and the home list): featured tools first, then the six newest tools published or resurfaced in the last 14 days (one per submitter, so a busy review day or one person's batch doesn't fill the top), then everything else with the tools seen least in the last 30 days first and a shuffle that changes once a day. Search keeps name matches on top. The numbers live in `src/lib/picks.ts`.
 - Featured and pick tools are left out of the unfiltered home list so the first rows aren't repeats; they stay everywhere else (Explore, categories, search, tags).
 
 ## Product updates

@@ -118,6 +118,15 @@ export function roleChangeCheck(actor: { id: string; role: string }, target: { i
   return { ok: true };
 }
 
+/** Submissions one person may have open (waiting for review, or for their own changes) at once. */
+export const OPEN_SUBMISSION_LIMIT = 3;
+
+/** Why a new submission is refused for having too many open ones; editors aren't limited. */
+export function openSubmissionsBlock(openCount: number, role: Role): string | null {
+  if (role !== "user" || openCount < OPEN_SUBMISSION_LIMIT) return null;
+  return `You have ${openCount} submissions waiting for review or for your changes. Once one of them is reviewed, you can send another.`;
+}
+
 // ---------- Product updates ----------
 
 /** Updates a maker can send per tool in UPDATE_WINDOW_DAYS, so editing can't become a way to stay on top. */

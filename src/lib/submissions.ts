@@ -1,8 +1,8 @@
 // Shared handling for creating and editing submissions from form posts.
 
 import type { SessionUser } from "./auth";
-import { createSubmission, findDuplicate, updateSubmissionContent, type Submission } from "./db";
-import { ownerCanEdit, ownerTransition } from "./moderation";
+import { createSubmission, findDuplicate, openSubmissionCount, updateSubmissionContent, type Submission } from "./db";
+import { openSubmissionsBlock, ownerCanEdit, ownerTransition } from "./moderation";
 import { rateLimit } from "./rate-limit";
 import { verifyTurnstile } from "./turnstile";
 import { plainText, validateSubmission, type FieldErrors } from "./validation";
@@ -69,6 +69,8 @@ async function guard(env: CloudflareEnv, request: Request, user: SessionUser, fo
 export async function handleCreate(env: CloudflareEnv, request: Request, user: SessionUser): Promise<FormOutcome> {
   const form = await request.formData();
   const values = formValues(form);
+  const tooMany = openSubmissionsBlock(await openSubmissionCount(env.DB, user.id), user.role);
+  if (tooMany) return { ok: false, errors: { form: tooMany }, values };
   const blocked = await guard(env, request, user, form);
   if (blocked) return { ok: false, errors: { form: blocked }, values };
   const result = validateSubmission(values);

@@ -1718,6 +1718,10 @@ fieldset.field {
   color: var(--coral-ink);
   font-weight: 700;
 }
+.char-count.is-over {
+  color: #b42318;
+  font-weight: 700;
+}
 .meta-status {
   margin: 8px 0 0;
 }
@@ -2078,6 +2082,15 @@ tr:last-child td {
 }
 .submit-body {
   margin-top: 28px;
+}
+.submit-limit {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  max-width: 640px;
+}
+.submit-limit .notice {
+  margin: 0;
 }
 .admin-tabs {
   margin: 20px 0 14px;

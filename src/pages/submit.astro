@@ -3,6 +3,8 @@ import { env } from "cloudflare:workers";
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import SubmissionForm from "../components/SubmissionForm.astro";
+import { openSubmissionCount } from "../lib/db";
+import { openSubmissionsBlock } from "../lib/moderation";
 import { handleCreate } from "../lib/submissions";
 import type { FieldErrors } from "../lib/validation";
 
@@ -17,6 +19,8 @@ if (Astro.request.method === "POST") {
   values = outcome.values;
   Astro.response.status = 400;
 }
+// Say so before the form is filled in, not after; handleCreate enforces the same limit.
+const openBlock = user ? openSubmissionsBlock(await openSubmissionCount(env.DB, user.id), user.role) : null;
 ---
 <Base title="Submit a tool" noindex>
   <div class="page app-page">
@@ -25,7 +29,12 @@ if (Astro.request.method === "POST") {
       <h1 class="page-title">Share something worth trying</h1>
       <p class="lede">Made it or found it? Paste the link, say what to try first, and an editor will check it before it goes live.</p>
     </header>
-    {user ? (
+    {user && openBlock ? (
+      <div class="panel submit-body submit-limit">
+        <p class="notice">{openBlock}</p>
+        <a class="btn btn-dark" href="/me/submissions">See my submissions <Icon name="arrow" /></a>
+      </div>
+    ) : user ? (
       <div class="split">
         <div class="split-main"><SubmissionForm values={values} errors={errors} submitLabel="Submit for review" /></div>
         <aside class="split-side" aria-label="How review works">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dailyShuffle, FRESH_DAYS, freshLabel, LABEL_DAYS, picksOrder, type PicksInput } from "../../src/lib/picks";
-import { canResurface, RESURFACE_COOLDOWN_DAYS, updateCheck, UPDATE_LIMIT } from "../../src/lib/moderation";
+import { dailyShuffle, FRESH_DAYS, FRESH_SLOTS, freshLabel, LABEL_DAYS, picksOrder, type PicksInput } from "../../src/lib/picks";
+import { canResurface, OPEN_SUBMISSION_LIMIT, openSubmissionsBlock, RESURFACE_COOLDOWN_DAYS, updateCheck, UPDATE_LIMIT } from "../../src/lib/moderation";
 import { parseToolUpdate } from "../../src/lib/validation";
 
 const NOW = Date.parse("2026-10-23T12:00:00Z");
@@ -34,6 +34,25 @@ describe("picksOrder", () => {
     expect(ids(picksOrder(stale, NOW))[0]).toBe("plain");
   });
 
+  it("lifts only the newest FRESH_SLOTS fresh tools, so a busy review day doesn't take over the top", () => {
+    const fresh = Array.from({ length: FRESH_SLOTS + 4 }, (_, i) => tool(`new-${i}`, { published_at: daysAgo(i * 0.1), submitted_by: `u${i}` }));
+    const seasoned = tool("seasoned", { impressions30: 0 });
+    const order = ids(picksOrder([seasoned, ...fresh], NOW));
+    expect(order.slice(0, FRESH_SLOTS)).toEqual(fresh.slice(0, FRESH_SLOTS).map((t) => t.id));
+    // The overflow ranks with everyone else instead of sitting above them.
+    expect(order.indexOf("seasoned")).toBeGreaterThanOrEqual(FRESH_SLOTS);
+  });
+
+  it("gives one person's batch a single fresh slot", () => {
+    const batch = ["a", "b", "c", "d"].map((x, i) => tool(`batch-${x}`, { published_at: daysAgo(i * 0.01), submitted_by: "same-person" }));
+    const other = tool("other", { published_at: daysAgo(1), submitted_by: "someone-else" });
+    const order = ids(picksOrder([...batch, other, tool("old", { impressions30: 10_000 })], NOW));
+    expect(order.slice(0, 2)).toEqual(["batch-a", "other"]);
+    // Editorial tools without a submitter don't share a slot with each other.
+    const editorial = [tool("ed-1", { published_at: daysAgo(1) }), tool("ed-2", { published_at: daysAgo(2) })];
+    expect(ids(picksOrder([...editorial, tool("old", { impressions30: 10_000 })], NOW))).toEqual(["ed-1", "ed-2", "old"]);
+  });
+
   it("lifts tools seen far less than others", () => {
     const list = [tool("seen", { impressions30: 5000 }), tool("unseen", { impressions30: 0 })];
     expect(ids(picksOrder(list, NOW))).toEqual(["unseen", "seen"]);
@@ -56,6 +75,15 @@ describe("picksOrder", () => {
       expect(v).toBeGreaterThanOrEqual(0);
       expect(v).toBeLessThan(1);
     }
+  });
+});
+
+describe("open submission limit", () => {
+  it("stops a person at OPEN_SUBMISSION_LIMIT open submissions, but not editors", () => {
+    expect(openSubmissionsBlock(OPEN_SUBMISSION_LIMIT - 1, "user")).toBeNull();
+    expect(openSubmissionsBlock(OPEN_SUBMISSION_LIMIT, "user")).toContain(`${OPEN_SUBMISSION_LIMIT} submissions waiting`);
+    expect(openSubmissionsBlock(OPEN_SUBMISSION_LIMIT + 5, "moderator")).toBeNull();
+    expect(openSubmissionsBlock(OPEN_SUBMISSION_LIMIT + 5, "admin")).toBeNull();
   });
 });
 

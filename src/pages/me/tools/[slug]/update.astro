@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import Base from "../../../../layouts/Base.astro";
 import { createToolUpdate, getPublishedTool, updateContext, withdrawToolUpdate } from "../../../../lib/db";
 import { updateCheck, UPDATE_LIMIT, UPDATE_WINDOW_DAYS } from "../../../../lib/moderation";
-import { parseToolUpdate } from "../../../../lib/validation";
+import { parseToolUpdate, TEXT_LIMITS } from "../../../../lib/validation";
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
@@ -62,25 +62,29 @@ const blocked = updateCheck(user.id, tool, ctx.recent, Boolean(ctx.pending));
         <div class="field">
           <label for="note">What changed</label>
           <p class="hint" id="note-hint">One or two sentences visitors will see on the tool page, e.g. "Now exports to PNG and works offline."</p>
-          <textarea id="note" name="note" required minlength="10" maxlength="300" aria-invalid={errors.note ? "true" : undefined} aria-describedby={errors.note ? "note-hint note-error" : "note-hint"}>{values.note}</textarea>
+          <textarea id="note" name="note" required minlength="10" data-max={TEXT_LIMITS.note} aria-invalid={errors.note ? "true" : undefined} aria-describedby={errors.note ? "note-hint note-error" : "note-hint"}>{values.note}</textarea>
           {errors.note && <p class="error" id="note-error">{errors.note}</p>}
         </div>
         <div class="field">
           <label for="tagline">Description</label>
-          <input id="tagline" name="tagline" type="text" required maxlength="120" value={values.tagline} aria-invalid={errors.tagline ? "true" : undefined} aria-describedby={errors.tagline ? "tagline-error" : undefined} />
+          <input id="tagline" name="tagline" type="text" required data-max={TEXT_LIMITS.tagline} value={values.tagline} aria-invalid={errors.tagline ? "true" : undefined} aria-describedby={errors.tagline ? "tagline-error" : undefined} />
           {errors.tagline && <p class="error" id="tagline-error">{errors.tagline}</p>}
         </div>
         <div class="field">
           <label for="tryThis">What to try in 30 seconds</label>
-          <textarea id="tryThis" name="tryThis" required maxlength="200" aria-invalid={errors.tryThis ? "true" : undefined} aria-describedby={errors.tryThis ? "tryThis-error" : undefined}>{values.tryThis}</textarea>
+          <textarea id="tryThis" name="tryThis" required data-max={TEXT_LIMITS.tryThis} aria-invalid={errors.tryThis ? "true" : undefined} aria-describedby={errors.tryThis ? "tryThis-error" : undefined}>{values.tryThis}</textarea>
           {errors.tryThis && <p class="error" id="tryThis-error">{errors.tryThis}</p>}
         </div>
         <div class="field">
           <label for="why">Why it's worth trying <span class="muted">(optional)</span></label>
-          <textarea id="why" name="why" maxlength="400">{values.why}</textarea>
+          <textarea id="why" name="why" data-max={TEXT_LIMITS.why} aria-invalid={errors.why ? "true" : undefined} aria-describedby={errors.why ? "why-error" : undefined}>{values.why}</textarea>
+          {errors.why && <p class="error" id="why-error">{errors.why}</p>}
         </div>
         <button class="btn btn-dark" type="submit">Send for review</button>
       </form>
     )}
   </div>
 </Base>
+<script>
+  import "../../../../scripts/char-count";
+</script>
