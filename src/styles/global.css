@@ -6006,6 +6006,16 @@ td.num {
   letter-spacing: -0.02em;
   color: var(--ink);
 }
+/* .page already has the gutter; the grid and section head would add a second one. */
+[data-surface="makers"] > .section-head,
+[data-surface="makers"] > .grid {
+  padding-inline: 0;
+}
+/* The badge drops under the heading on phones instead of pushing the page sideways. */
+.section-head:has(> .maker-badge-sample) {
+  flex-wrap: wrap;
+  align-items: center;
+}
 .maker-badge-sample {
   flex: none;
 }

@@ -7,7 +7,8 @@ interface Props {
   path: string;
 }
 const { path } = Astro.props;
-const hidden = ["/submit", "/login", "/admin", "/me"].some((p) => path === p || path.startsWith(`${p}/`));
+// /makers is one long submit pitch already.
+const hidden = ["/submit", "/makers", "/login", "/admin", "/me"].some((p) => path === p || path.startsWith(`${p}/`));
 ---
 {!hidden && (
   <aside class="nudge" aria-label="Submit a tool" data-nudge hidden>

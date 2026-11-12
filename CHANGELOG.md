@@ -34,6 +34,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Fixed
 
+- `/makers` scrolled sideways at 375px (the Verified maker badge sample now drops under its heading), and its recently verified makers sat one gutter in from the rest of the page. The "Know a cool tool?" prompt no longer shows there.
+- CI installs Chromium without apt, so an Ubuntu mirror outage no longer fails the end-to-end job before it runs.
 - The search box on the admin Roles page had no styling.
 - Signed in on a phone, the header no longer wraps to two rows at 375px: the GitHub badge gives way to the bell and avatar below 480px (it stays in the footer).
 
