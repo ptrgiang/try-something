@@ -20,7 +20,7 @@ const badge = (c: CommentRow) =>
 ---
 <section class="comments" id="comments" data-comments data-tool={tool.id} data-slug={tool.slug} data-me={me?.id ?? ""}>
   <div class="section-head">
-    <h2>Comments <span class="comments-count">{count}</span></h2>
+    <h2>Comments <span class="comments-count" hidden={count === 0}>{count}</span></h2>
   </div>
 
   {me ? (

@@ -9,7 +9,9 @@ import Icon from "../components/Icon.astro";
 import Sticker from "../components/Sticker.astro";
 import CategoryArt from "../components/CategoryArt.astro";
 import ToolCover from "../components/ToolCover.astro";
-import { categoryCounts, featuredTools, homePicks, listTools, parsePeriod, parseSort, popularTags, topToday, TOP_TODAY_MIN_TOOLS } from "../lib/db";
+import PersonCard from "../components/PersonCard.astro";
+import ListCard from "../components/ListCard.astro";
+import { categoryCounts, communityShowcase, featuredTools, homePicks, listTools, parsePeriod, parseSort, popularTags, topToday, TOP_TODAY_MIN_TOOLS } from "../lib/db";
 import { toolImageSrc } from "../lib/tool-image";
 import { displayHost, outboundUrl } from "../lib/url";
 import { CATEGORIES, CATEGORY_IDS } from "../lib/validation";
@@ -30,12 +32,16 @@ const exploreHref = (() => {
   return s ? `/explore?${s}` : "/explore";
 })();
 
-const [featured, tags, today, counts] = await Promise.all([
+const [featured, tags, today, counts, community] = await Promise.all([
   featuredTools(env.DB),
   popularTags(env.DB, 7),
   topToday(env.DB, 3),
   categoryCounts(env.DB),
+  communityShowcase(env.DB, { people: 4, lists: 3 }),
 ]);
+// One person isn't a community yet; a list needs to be big enough to be indexed (LIST_INDEX_MIN).
+const showPeople = community.people.length >= 2;
+const showLists = community.lists.length > 0;
 // The hero opens on a different featured pick each UTC day, the same one for everyone all day.
 const turn = featured.length ? Math.floor(Date.now() / 86400000) % featured.length : 0;
 const hero = [...featured.slice(turn), ...featured.slice(0, turn)];
@@ -145,6 +151,25 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
       <p class="wrap"><a class="btn" href={exploreHref}>See all tools <Icon name="arrow" /></a></p>
     )}
   </div>
+
+  {(showPeople || showLists) && (
+    <section class="showcase" aria-labelledby="community-title" data-surface="community">
+      <div class="section-head">
+        <div>
+          <h2 id="community-title">Made and found by people</h2>
+          <p class="section-intro muted">Makers and finders who listed tools here. Open a profile to follow them and hear when they list the next one.</p>
+        </div>
+        <a class="section-link" href="/makers">List yours <Icon name="arrow" /></a>
+      </div>
+      {showPeople && <ul class="showcase-grid">{community.people.map((p) => <li><PersonCard person={p} /></li>)}</ul>}
+      {showLists && (
+        <>
+          <h3 class="showcase-sub">Lists by people</h3>
+          <ul class="showcase-grid">{community.lists.map((l) => <li><ListCard list={l} /></li>)}</ul>
+        </>
+      )}
+    </section>
+  )}
 
   {browse.length > 1 && (
     <section class="browse" aria-labelledby="browse-title">

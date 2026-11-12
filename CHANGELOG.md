@@ -15,6 +15,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - List moderation: reported lists join the Reports queue, and three reports from different people hide a list until a moderator decides. `/admin/lists` shows public and hidden lists with search, Hide (with a reason the owner sees) and Restore, all in the audit log. A hidden list disappears from its owner's profile and link for everyone else; its owner still sees it, with the reason, and moderators can still open it.
 - Notification settings at `/me/settings/notifications`: turn off replies, comments on tools you listed, updates to tools you saved or new tools from people you follow. Reviews of your own submissions always arrive.
 - **Tried** marks: opening a tool with Try it marks its card and tool page on this device. Surprise me and Discover skip tools you've already tried while others are left, and `/tried` lists them newest first with a way to clear the list. Nothing is stored on the server.
+- The home page has a **Made and found by people** section: cards for the people who listed tools (their newest covers, name, handle, tool count, followers and the Verified maker mark, linking to their profile) and public lists with at least three tools. It stays hidden until at least two people have listed tools or a list is big enough.
+- `/makers` shows recently verified makers as people (avatar, name, their tools) instead of tool cards, and adds **What your numbers look like**: the stats card from My submissions filled with made-up numbers, clearly tagged as an example and not clickable.
 
 - Editors can give a tag page a title at `/admin/tags` ("Online whiteboards" for #whiteboard). It becomes the page's heading and search title; without one the heading is built from the tag ("Drawing tools", "SVG tools") instead of showing the hashtag.
 - Collections can carry an intro (a few paragraphs under the description) and the editor's note for each tool now shows on its card, so a collection can explain why each pick is there. Notes can be edited in place at `/admin/collections`. Collection pages also show when they were last updated and link to the other collections.
@@ -22,6 +24,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Changed
 
+- Phones get two cards a row on the home page and Explore, so twelve tools take about half the scrolling. On a tool page, Try it takes the full width and Save, Add to list, Share and Another one share one row.
+- Zero counts are left out on tool pages as they already were on cards (hearts, views, saves, the comment count), and the comment link says “Comment” until there is one. The GitHub badge shows the star count from 50 stars; until then it says GitHub.
 - Migration `0022` rebuilds the `report` table so lists can be reported (rows copied over), adds `hidden_at` and `hidden_reason` to `user_list`, `list_id` to `moderation_event`, and the `notification_mute` table.
 - Migration `0021` adds `user_list` and `user_list_item`. Migration `0020` rebuilds the `notification` table to allow the two new kinds (with `update_id` and `tool_id` columns) and adds the `follow` table. Existing notifications are copied over.
 

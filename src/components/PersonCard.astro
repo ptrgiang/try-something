@@ -1,0 +1,30 @@
+---
+// A maker or finder on the home page and /makers: their newest tools as a cover strip, linking to their profile.
+import type { ShowcasePerson } from "../lib/db";
+import { avatarUrl } from "../lib/avatar";
+import { toolImageSrc } from "../lib/tool-image";
+import Avatar from "./Avatar.astro";
+import Icon from "./Icon.astro";
+import ToolCover from "./ToolCover.astro";
+
+interface Props {
+  person: ShowcasePerson;
+}
+const { person: p } = Astro.props;
+---
+<a class="showcase-card" href={`/users/${p.handle}`}>
+  <div class="showcase-covers" data-n={p.previews.length} aria-hidden="true">
+    {p.previews.map((t) => <ToolCover name={t.name} art={t.art} url={t.url} imageSrc={toolImageSrc(t)} />)}
+  </div>
+  <div class="showcase-who">
+    <Avatar class="showcase-avatar" name={p.name} url={avatarUrl(p.avatar, p.image)} seed={p.handle} size={40} />
+    <span class="showcase-text">
+      <strong>{p.name}</strong>
+      <span class="muted">@{p.handle}</span>
+    </span>
+  </div>
+  <p class="showcase-meta">
+    {p.verified ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : null}
+    <span>{p.tools === 1 ? "1 tool" : `${p.tools} tools`}{p.followers > 0 && ` · ${p.followers === 1 ? "1 follower" : `${p.followers} followers`}`}</span>
+  </p>
+</a>

@@ -2,12 +2,16 @@
 import { env } from "cloudflare:workers";
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
-import ToolCard from "../components/ToolCard.astro";
-import { makerShowcase } from "../lib/db";
+import PersonCard from "../components/PersonCard.astro";
+import MakerPreview from "../components/MakerPreview.astro";
+import { communityShowcase, makerShowcase } from "../lib/db";
 
 const user = Astro.locals.user;
 const submitHref = user ? "/submit" : "/login?next=/submit";
-const { tools, tries30, examples } = await makerShowcase(env.DB);
+const [{ tools, tries30, examples }, { people: verifiedMakers }] = await Promise.all([
+  makerShowcase(env.DB, 1),
+  communityShowcase(env.DB, { people: 4, lists: 0, verifiedOnly: true }),
+]);
 const fmt = (n: number) => n.toLocaleString("en-US");
 const badgeTool = examples[0];
 ---
@@ -66,6 +70,12 @@ const badgeTool = examples[0];
       </div>
     </section>
 
+    <section class="about-section" aria-labelledby="numbers">
+      <h2 class="section-heading" id="numbers">What your numbers look like</h2>
+      <p class="lede maker-preview-lede">Every tool you list gets a card like this in My submissions.</p>
+      <MakerPreview />
+    </section>
+
     <section class="about-section" aria-labelledby="how">
       <h2 class="section-heading" id="how">How it works</h2>
       <ol class="steps steps-row">
@@ -75,7 +85,7 @@ const badgeTool = examples[0];
       </ol>
     </section>
 
-    {examples.length > 0 && (
+    {verifiedMakers.length > 0 && (
       <section class="about-section" aria-labelledby="examples" data-surface="makers">
         <div class="section-head">
           <h2 class="section-heading" id="examples">Recently verified makers</h2>
@@ -85,7 +95,7 @@ const badgeTool = examples[0];
             </a>
           )}
         </div>
-        <div class="grid">{examples.map((t) => <ToolCard tool={t} />)}</div>
+        <ul class="showcase-grid">{verifiedMakers.map((p) => <li><PersonCard person={p} /></li>)}</ul>
       </section>
     )}
 

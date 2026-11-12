@@ -2797,11 +2797,11 @@ tr:last-child td {
   cursor: var(--cursor-pointer);
   transition: color 0.15s ease, background-color 0.15s ease;
 }
-/* Cards don't advertise zeros: an empty view or save count is left out and the heart shows no number.
-   data-n is kept current when someone hearts or saves, so a first one appears straight away. */
-.card .stat:not(.stat-like):has([data-n="0"]),
-.card .stat-like [data-n="0"],
-.card .stat-like [data-n="0"] + .sr-only {
+/* Cards and tool pages don't advertise zeros: an empty view or save count is left out and the heart shows
+   no number. data-n is kept current when someone hearts or saves, so a first one appears straight away. */
+:is(.card, .stats-lg) .stat:not(.stat-like):has([data-n="0"]),
+:is(.card, .stats-lg) .stat-like [data-n="0"],
+:is(.card, .stats-lg) .stat-like [data-n="0"] + .sr-only {
   display: none;
 }
 .stat-like:hover {
@@ -3612,6 +3612,9 @@ tr:last-child td {
 }
 .comments > :not(.section-head) {
   max-width: 760px;
+}
+.comments-count[hidden] {
+  display: none;
 }
 .comments-count {
   display: inline-grid;
@@ -6006,9 +6009,8 @@ td.num {
   letter-spacing: -0.02em;
   color: var(--ink);
 }
-/* .page already has the gutter; the grid and section head would add a second one. */
-[data-surface="makers"] > .section-head,
-[data-surface="makers"] > .grid {
+/* .page already has the gutter; the section head would add a second one. */
+[data-surface="makers"] > .section-head {
   padding-inline: 0;
 }
 /* The badge drops under the heading on phones instead of pushing the page sideways. */
@@ -6521,4 +6523,249 @@ td.num {
 .list-foot .link-btn {
   display: inline-flex;
   vertical-align: baseline;
+}
+
+/* ---------- Tool page actions on phones ---------- */
+/* Try it gets the full row; the four secondary actions share one row as icon-over-label buttons. */
+@media (max-width: 640px) {
+  .tool-actions {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .tool-actions > [data-try] {
+    grid-column: 1 / -1;
+  }
+  .tool-actions > .btn:not([data-try]),
+  .tool-actions .list-picker > .btn {
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    min-height: 62px;
+    padding: 8px 4px;
+    font-size: 12.5px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+    border-radius: 12px;
+  }
+  /* The list popover anchors to the whole row, not the narrow button, so it stays on screen. */
+  .tool-actions .list-picker {
+    position: static;
+  }
+}
+
+/* ---------- Community showcase (home, /makers) ---------- */
+.showcase {
+  padding: 0 var(--gutter) 48px;
+}
+.showcase .section-head {
+  padding-inline: 0;
+}
+.showcase-sub {
+  margin: 28px 0 14px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.showcase-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  height: 100%;
+  padding: 10px 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.showcase-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 4px rgba(23, 20, 31, 0.05), 0 20px 40px -24px rgba(23, 20, 31, 0.45);
+}
+/* Covers keep the share-image ratio so nothing is cropped: the newest tool full width, the next two
+   side by side under it (two tools sit side by side on their own). */
+.showcase-covers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3efe8;
+}
+.showcase-covers > .cover {
+  aspect-ratio: 1200 / 630;
+  overflow: hidden;
+}
+.showcase-covers:is([data-n="1"], [data-n="3"]) > .cover:first-child {
+  grid-column: span 2;
+}
+.showcase-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 6px;
+}
+.showcase-avatar,
+.showcase-avatar-sm {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+.showcase-avatar-sm {
+  width: 22px;
+  height: 22px;
+  font-size: 9px;
+}
+.showcase-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+.showcase-text strong,
+.showcase-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.showcase-text span {
+  font-size: 13.5px;
+}
+.showcase-title {
+  margin: 0;
+  padding: 0 6px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.showcase-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 0 6px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.showcase-meta .verified-chip {
+  margin-left: 0;
+}
+
+/* ---------- Two-up browsing on phones ---------- */
+/* Home and Explore are for scanning, so phones get two cards a row: a cover, a name and a line each is
+   enough to pick from, and twelve tools fit in half the scrolling. */
+@media (max-width: 640px) {
+  :is(.home-list > .grid, .grid[data-results]) {
+    --grid-row-gap: 26px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card :is(h2, h3) {
+    font-size: 16.5px;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card .tagline {
+    margin: 2px 0 8px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card-body {
+    padding-top: 10px;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card-meta .stats {
+    gap: 8px;
+  }
+  /* A long host name ellipsizes instead of widening the card past its column. */
+  :is(.home-list > .grid, .grid[data-results]) > .card,
+  :is(.home-list > .grid, .grid[data-results]) .card-body {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card-host {
+    min-width: 0;
+  }
+  /* Below the text even with a mouse: on a half-width cover the hover bar would cover most of it, so a
+     click on the cover would open the site instead of the tool page. */
+  :is(.home-list > .grid, .grid[data-results]) .card-actions {
+    position: relative;
+    grid-area: auto;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px;
+    padding-top: 10px;
+    opacity: 1;
+    transform: none;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card-actions .btn {
+    min-height: 40px;
+    padding: 0 11px;
+    font-size: 13.5px;
+  }
+  /* The button keeps its aria-label; the icon alone fits beside Try it. */
+  :is(.home-list > .grid, .grid[data-results]) .card-actions .save-btn span {
+    display: none;
+  }
+  :is(.home-list > .grid, .grid[data-results]) .fresh-chip {
+    top: 8px;
+    left: 8px;
+  }
+}
+
+/* ---------- Makers page: example stats card ---------- */
+.maker-preview-lede {
+  margin: 4px 0 18px;
+}
+.maker-preview {
+  position: relative;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+/* A dashed frame and a corner tag keep the sample from reading as a real tool's numbers. */
+.maker-preview .maker-tool {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: repeating-linear-gradient(135deg, var(--paper) 0 18px, #fbf8f3 18px 36px);
+}
+.maker-preview-tag {
+  position: absolute;
+  z-index: 1;
+  top: -11px;
+  right: 18px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.maker-preview .chart-table {
+  display: none;
+}
+@media (max-width: 640px) {
+  .maker-preview .stat-hint,
+  .maker-preview .chart + .chart {
+    display: none;
+  }
 }

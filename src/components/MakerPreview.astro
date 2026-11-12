@@ -1,0 +1,74 @@
+---
+// The maker stats card from My submissions, filled with made-up numbers so /makers can show what it looks like.
+// Labelled as an example on the page and inert, so nobody mistakes it for a real tool or tries to click it.
+import BarChart from "./BarChart.astro";
+import Icon from "./Icon.astro";
+
+const VIEWS = 312;
+const TRIES = 148;
+// Fixed dates: the sample shouldn't look like it describes this month.
+const days = Array.from({ length: 30 }, (_, i) => new Date(Date.UTC(2026, 2, 1 + i)).toISOString().slice(0, 10));
+/** Integers that follow `weights` and add up to exactly `total`. */
+const spread = (weights: number[], total: number) => {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const out = weights.map((w) => Math.floor((w / sum) * total));
+  for (let i = 0, left = total - out.reduce((a, b) => a + b, 0); left > 0; i++, left--) out[(i * 7) % out.length]++;
+  return out;
+};
+const weights = days.map((_, i) => 7 + 4 * Math.sin(i / 2.6) + i * 0.22 + (i % 7 >= 5 ? 3 : 0));
+const views = spread(weights, VIEWS);
+const tries = spread(views, TRIES);
+const tiles = [
+  { label: "Cards seen", value: "1,240", change: "+18%", hint: "Your card on someone's screen" },
+  { label: "Page views", value: String(VIEWS), change: "+24%", hint: "Your tool page opened" },
+  { label: "Try clicks", value: String(TRIES), change: "+31%", hint: "Someone opened your site" },
+  { label: "Try rate", value: `${Math.round((TRIES / VIEWS) * 100)}%`, change: "", hint: "Try clicks ÷ page views" },
+];
+const sources = [
+  { name: "Home list", tries: 58, views: 121, seen: 640 },
+  { name: "Explore", tries: 41, views: 90, seen: 380 },
+  { name: "Search results", tries: 22, views: 46, seen: 0 },
+  { name: "Collections", tries: 17, views: 38, seen: 220 },
+  { name: "Related on tool pages", tries: 10, views: 17, seen: 0 },
+];
+---
+<figure class="maker-preview">
+  <span class="maker-preview-tag">Example · made-up numbers</span>
+  <div class="maker-tool" inert>
+    <header class="maker-tool-head">
+      <div>
+        <h3>Your tool</h3>
+        <p class="muted small-note"><span class="verified-chip"><Icon name="check" />Verified maker</span></p>
+      </div>
+    </header>
+    <div class="stat-tiles">
+      {tiles.map((t) => (
+        <div class="stat-tile">
+          <span class="stat-label">{t.label}</span>
+          <strong class="stat-value">{t.value}</strong>
+          {t.change && <span class="stat-change">{t.change} vs the 30 days before</span>}
+          <span class="stat-hint">{t.hint}</span>
+        </div>
+      ))}
+    </div>
+    <div class="maker-tool-body">
+      <div class="stat-charts">
+        <BarChart title="Page views per day" unit="views" unitOne="view" rows={days.map((day, i) => ({ day, value: views[i] }))} />
+        <BarChart title="Try clicks per day" unit="try clicks" unitOne="try click" rows={days.map((day, i) => ({ day, value: tries[i] }))} />
+      </div>
+      <section class="maker-sources" aria-label="Where people found it, example">
+        <h4>Where people found it</h4>
+        <ol>
+          {sources.map((s) => (
+            <li>
+              <span class="maker-source-name">{s.name}</span>
+              <span class="maker-source-nums">{s.tries} tries · {s.views} views{s.seen > 0 && <> · {s.seen.toLocaleString("en-US")} seen</>}</span>
+              <meter class="maker-source-bar" min="0" max={sources[0].tries} value={s.tries} aria-hidden="true"></meter>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  </div>
+  <figcaption class="muted small-note">An example with made-up numbers, not a real tool. Yours shows your own tools' real numbers, by day and by where people found them, and only you see them.</figcaption>
+</figure>

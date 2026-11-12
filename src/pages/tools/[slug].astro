@@ -89,7 +89,7 @@ jsonLd.push(
         <h2>Try this in 30 seconds</h2>
         <p>{tool.try_this}</p>
       </div>
-      <div class="hero-ctas">
+      <div class="hero-ctas tool-actions">
         <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} data-slug={tool.slug}>Try it on {host} <Icon name="external" /></a>
         <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
         <ListPicker toolId={tool.id} toolName={tool.name} slug={tool.slug} />
@@ -126,7 +126,7 @@ jsonLd.push(
         <p class="in-collections">In {collections.length === 1 ? "the collection" : "collections"}: {collections.map((c, i) => <>{i > 0 && " · "}<a href={`/collections/${c.slug}`}>{c.title}</a></>)}</p>
       )}
       <div class="detail-foot">
-        {commentsOn && <a class="detail-comments" href={`/tools/${tool.slug}#comments`}><Icon name="chat" />{commentCount === 1 ? "1 comment" : `${commentCount} comments`}</a>}
+        {commentsOn && <a class="detail-comments" href={`/tools/${tool.slug}#comments`}><Icon name="chat" />{commentCount === 0 ? "Comment" : commentCount === 1 ? "1 comment" : `${commentCount} comments`}</a>}
         <button type="button" class="link-btn" data-report="tool" data-target={tool.id}><Icon name="flag" />Report listing</button>
       </div>
     </article>

@@ -2567,6 +2567,101 @@ export async function toolsBySlugs(db: D1Database, slugs: string[]): Promise<Too
   return slugs.flatMap((s) => bySlug.get(s) ?? []);
 }
 
+// ---------- Community showcase (home and /makers) ----------
+
+export interface ShowcasePerson {
+  id: string;
+  name: string;
+  handle: string;
+  image: string | null;
+  avatar: string | null;
+  tools: number;
+  /** 1 when at least one of their published tools is a verified "I made this" listing. */
+  verified: number;
+  followers: number;
+  previews: ToolWithCredit[];
+}
+
+export interface ShowcaseList {
+  id: string;
+  slug: string;
+  title: string;
+  owner_name: string;
+  owner_handle: string;
+  image: string | null;
+  avatar: string | null;
+  count: number;
+  previews: ToolWithCredit[];
+}
+
+/**
+ * People who listed published tools (newest activity first, or newest verification with `verifiedOnly`)
+ * and public lists big enough to be indexed. Each comes with up to three tools for its cover strip.
+ */
+export async function communityShowcase(
+  db: D1Database,
+  opts: { people: number; lists: number; verifiedOnly?: boolean },
+): Promise<{ people: ShowcasePerson[]; lists: ShowcaseList[] }> {
+  const [peopleRes, listRes] = await db.batch([
+    db
+      .prepare(
+        `SELECT u.id, u.name, u.handle, u.image, u.avatar, COUNT(*) AS tools,
+           MAX(t.credit_type = 'made' AND t.maker_verified_at IS NOT NULL) AS verified,
+           MAX(CASE WHEN t.credit_type = 'made' THEN t.maker_verified_at END) AS verified_at,
+           MAX(COALESCE(t.refreshed_at, t.published_at)) AS last_at,
+           (SELECT COUNT(*) FROM follow f WHERE f.followee_id = u.id) AS followers
+         FROM tool t JOIN "user" u ON u.id = t.submitted_by
+         WHERE t.status = 'published' AND u.handle IS NOT NULL
+         GROUP BY u.id HAVING ?2 = 0 OR verified = 1
+         ORDER BY CASE WHEN ?2 = 1 THEN verified_at ELSE last_at END DESC LIMIT ?1`,
+      )
+      .bind(opts.people, opts.verifiedOnly ? 1 : 0),
+    db
+      .prepare(
+        `SELECT * FROM (
+           SELECT l.id, l.slug, l.title, l.updated_at, u.name AS owner_name, u.handle AS owner_handle, u.image, u.avatar,
+             (SELECT COUNT(*) FROM user_list_item i JOIN tool t ON t.id = i.tool_id WHERE i.list_id = l.id AND t.status = 'published') AS count
+           FROM user_list l JOIN "user" u ON u.id = l.user_id
+           WHERE l.public = 1 AND l.hidden_at IS NULL AND u.handle IS NOT NULL
+         ) WHERE count >= ? ORDER BY updated_at DESC LIMIT ?`,
+      )
+      .bind(LIST_INDEX_MIN, opts.lists),
+  ]);
+  const people = (peopleRes.results as Omit<ShowcasePerson, "previews">[]).map((p) => ({ ...p, previews: [] as ToolWithCredit[] }));
+  const lists = (listRes.results as Omit<ShowcaseList, "previews">[]).map((l) => ({ ...l, previews: [] as ToolWithCredit[] }));
+  if (!people.length && !lists.length) return { people, lists };
+
+  const [personTools, listTools] = await db.batch([
+    db
+      .prepare(
+        `SELECT * FROM (
+           SELECT t.*, u.name AS submitter_name, u.handle AS submitter_handle,
+             ROW_NUMBER() OVER (PARTITION BY t.submitted_by ORDER BY COALESCE(t.refreshed_at, t.published_at) DESC) AS preview_rank
+           FROM tool t LEFT JOIN "user" u ON u.id = t.submitted_by
+           WHERE t.status = 'published' AND t.submitted_by IN (SELECT value FROM json_each(?))
+         ) WHERE preview_rank <= 3`,
+      )
+      .bind(JSON.stringify(people.map((p) => p.id))),
+    db
+      .prepare(
+        `SELECT * FROM (
+           SELECT t.*, u.name AS submitter_name, u.handle AS submitter_handle, i.list_id AS preview_list,
+             ROW_NUMBER() OVER (PARTITION BY i.list_id ORDER BY i.created_at DESC) AS preview_rank
+           FROM user_list_item i JOIN tool t ON t.id = i.tool_id LEFT JOIN "user" u ON u.id = t.submitted_by
+           WHERE t.status = 'published' AND i.list_id IN (SELECT value FROM json_each(?))
+         ) WHERE preview_rank <= 3`,
+      )
+      .bind(JSON.stringify(lists.map((l) => l.id))),
+  ]);
+  const byPerson = new Map(people.map((p) => [p.id, p]));
+  for (const row of personTools.results as Row[]) byPerson.get(row.submitted_by as string)?.previews.push(toTool(row));
+  const byList = new Map(lists.map((l) => [l.id, l]));
+  for (const row of listTools.results as Row[]) byList.get(row.preview_list as string)?.previews.push(toTool(row));
+  // Window order isn't kept by the outer query.
+  for (const x of [...people, ...lists]) x.previews.sort((a, b) => Number((a as unknown as Row).preview_rank) - Number((b as unknown as Row).preview_rank));
+  return { people, lists };
+}
+
 /** Real numbers and examples for the public makers page; examples are verified "I made this" listings only. */
 export async function makerShowcase(db: D1Database, examples = 4): Promise<{ tools: number; tries30: number; examples: ToolWithCredit[] }> {
   const [counts, list] = await db.batch([

@@ -1,0 +1,23 @@
+---
+// A person's public list on the home page: its newest tools as a cover strip, the title and who made it.
+import type { ShowcaseList } from "../lib/db";
+import { avatarUrl } from "../lib/avatar";
+import { toolImageSrc } from "../lib/tool-image";
+import Avatar from "./Avatar.astro";
+import ToolCover from "./ToolCover.astro";
+
+interface Props {
+  list: ShowcaseList;
+}
+const { list: l } = Astro.props;
+---
+<a class="showcase-card" href={`/users/${l.owner_handle}/lists/${l.slug}`}>
+  <div class="showcase-covers" data-n={l.previews.length} aria-hidden="true">
+    {l.previews.map((t) => <ToolCover name={t.name} art={t.art} url={t.url} imageSrc={toolImageSrc(t)} />)}
+  </div>
+  <h3 class="showcase-title">{l.title}</h3>
+  <p class="showcase-meta">
+    <Avatar class="showcase-avatar-sm" name={l.owner_name} url={avatarUrl(l.avatar, l.image)} seed={l.owner_handle} size={22} />
+    <span>{l.owner_name} · {l.count} tools</span>
+  </p>
+</a>

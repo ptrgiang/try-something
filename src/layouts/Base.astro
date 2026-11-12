@@ -54,6 +54,9 @@ const trackPath =
   Astro.routePattern === "/404" ? "/404" : Astro.routePattern === "/403" || /^\/(admin|me|api)(\/|$)/.test(Astro.url.pathname) ? null : Astro.url.pathname;
 const repo = env.PUBLIC_GITHUB_REPO;
 const stars = repo ? await getStars(repo, env.CACHE, { token: env.GITHUB_TOKEN }) : null;
+// A handful of stars reads as "nobody's here"; the badge says GitHub until the count says more.
+const STARS_SHOWN_FROM = 50;
+const shownStars = stars && stars.count >= STARS_SHOWN_FROM ? stars : null;
 const user = Astro.locals.user;
 // A failed count shouldn't take the page down with it.
 const unread = user ? await unreadNotifications(env.DB, user.id).catch(() => 0) : 0;
@@ -112,10 +115,10 @@ const q = Astro.url.searchParams.get("q") ?? "";
         {headerSearch && <a class="header-search-icon" href="/explore" data-palette-open aria-label="Search tools"><Icon name="search" /></a>}
         <div class="header-actions">
           {repo && (
-            <a class="gh-badge" href={`https://github.com/${repo}`} target="_blank" rel="noopener" aria-label={stars ? `Open source on GitHub — ${stars.count} stars` : "Open source on GitHub"}>
+            <a class="gh-badge" href={`https://github.com/${repo}`} target="_blank" rel="noopener" aria-label={shownStars ? `Open source on GitHub — ${shownStars.count} stars` : "Open source on GitHub"}>
               <Icon name="github" />
-              {stars ? <span>{formatCount(stars.count)}</span> : <span class="gh-label">GitHub</span>}
-              {stars && <Icon name="star" class="gh-star" />}
+              {shownStars ? <span>{formatCount(shownStars.count)}</span> : <span class="gh-label">GitHub</span>}
+              {shownStars && <Icon name="star" class="gh-star" />}
             </a>
           )}
           <a class="btn header-submit hide-mobile" href="/submit" aria-label="Submit a tool"><Icon name="plus" /><span class="header-submit-label">Submit</span></a>
@@ -175,7 +178,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           {repo && (
             <div class="star-cta">
               <a class="btn btn-sm" href={`https://github.com/${repo}`} target="_blank" rel="noopener"><Icon name="github" /> Star on GitHub</a>
-              {stars && <span>★ {stars.count.toLocaleString("en-US")} {stars.count === 1 ? "star" : "stars"}</span>}
+              {shownStars && <span>★ {shownStars.count.toLocaleString("en-US")} stars</span>}
             </div>
           )}
         </div>
