@@ -32,6 +32,8 @@ const FIELD_LABELS: Partial<Record<FieldKey, string>> = {
 const fieldErrors = (Object.keys(FIELD_LABELS) as FieldKey[]).filter((k) => errors[k]);
 const invalid = (k: FieldKey) => (errors[k] ? "true" : undefined);
 const describedBy = (...ids: (string | false | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
+// Shown until a category is picked; then the picked category's blurb replaces it.
+const CATEGORY_HINT = "Pick what it is. Build is for developer tools; games go in Play.";
 let step = 0;
 const nextStep = () => ++step;
 ---
@@ -119,10 +121,11 @@ const nextStep = () => ++step;
     <div class="field-row">
       <div class="field">
         <label for="category">Category</label>
-        <select id="category" name="category" required aria-invalid={invalid("category")} aria-describedby={describedBy(errors.category && "category-error")}>
+        <select id="category" name="category" required aria-invalid={invalid("category")} aria-describedby={describedBy("category-hint", errors.category && "category-error")}>
           <option value="">Choose one…</option>
-          {CATEGORIES.map((c) => <option value={c.id} selected={v("category") === c.id}>{c.label}</option>)}
+          {CATEGORIES.map((c) => <option value={c.id} selected={v("category") === c.id} data-blurb={c.blurb}>{c.label}</option>)}
         </select>
+        <p class="hint" id="category-hint" data-category-hint={CATEGORY_HINT}>{CATEGORIES.find((c) => c.id === v("category"))?.blurb ?? CATEGORY_HINT}</p>
         {errors.category && <p class="error" id="category-error">{errors.category}</p>}
       </div>
       <div class="field">
@@ -135,7 +138,7 @@ const nextStep = () => ++step;
   {uploads && (
     <section class="form-section cover-field" aria-labelledby="step-cover">
       <h2 class="form-step" id="step-cover"><span>{nextStep()}</span>Cover image <span class="optional">Optional</span></h2>
-      <p class="hint" id="cover-hint">A screenshot of the tool in action works best. It's shown instead of the site's share image.</p>
+      <p class="hint" id="cover-hint">A clean screenshot of the tool in action works best, with no black bars or watermark. It's shown instead of the site's share image.</p>
       {currentCover && (
         <figure class="share-preview">
           <img alt="Cover uploaded with this submission" src={currentCover} />
@@ -196,6 +199,14 @@ const nextStep = () => ++step;
   const btn = form?.querySelector<HTMLButtonElement>("[data-fetch-meta]");
   const status = form?.querySelector<HTMLElement>("[data-meta-status]");
   const field = (name: string) => form?.elements.namedItem(name) as HTMLInputElement | null;
+
+  // Wrong categories were a common fix request, so say what the picked one is for.
+  const categorySelect = form?.elements.namedItem("category") as HTMLSelectElement | null;
+  const categoryHint = form?.querySelector<HTMLElement>("[data-category-hint]");
+  const defaultCategoryHint = categoryHint?.dataset.categoryHint ?? "";
+  categorySelect?.addEventListener("change", () => {
+    if (categoryHint) categoryHint.textContent = categorySelect.selectedOptions[0]?.dataset.blurb || defaultCategoryHint;
+  });
 
   // Covers are resized and re-encoded in the browser (smaller upload, no EXIF/GPS) before the form posts.
   const coverInput = form?.querySelector<HTMLInputElement>("[data-cover-input]");

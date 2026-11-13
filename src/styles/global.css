@@ -3078,6 +3078,16 @@ tr:last-child td {
   .split-side {
     position: static;
   }
+  /* On one column the checklist is only useful before the form, so lift it out of the aside. */
+  .submit-split .split-side {
+    display: contents;
+  }
+  .submit-split .submit-checklist {
+    order: -1;
+  }
+}
+.submit-checklist strong {
+  color: var(--ink);
 }
 .submission-form {
   gap: 24px;

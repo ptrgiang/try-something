@@ -35,9 +35,21 @@ const openBlock = user ? openSubmissionsBlock(await openSubmissionCount(env.DB, 
         <a class="btn btn-dark" href="/me/submissions">See my submissions <Icon name="arrow" /></a>
       </div>
     ) : user ? (
-      <div class="split">
+      <div class="split submit-split">
         <div class="split-main"><SubmissionForm values={values} errors={errors} submitLabel="Submit for review" /></div>
         <aside class="split-side" aria-label="How review works">
+          {/* The fixes editors ask for most often. On phones this card moves above the form. */}
+          <div class="side-card submit-checklist">
+            <h2 id="before-you-send">Before you send</h2>
+            <ul class="checklist" aria-labelledby="before-you-send">
+              <li><Icon name="check" /><span>It works in the browser right away: <strong>no account, credits or payment</strong> for the first try.</span></li>
+              <li><Icon name="check" /><span>The link is the product's <strong>official site</strong>, not an article or a store page.</span></li>
+              <li><Icon name="check" /><span>"What to try" is <strong>one full sentence</strong> about something to do in 30 seconds.</span></li>
+              <li><Icon name="check" /><span>The cover is a <strong>clean screenshot</strong> of the tool in use, with no black bars or watermark. Or leave it out and we use the site's share image.</span></li>
+              <li><Icon name="check" /><span>The category says <strong>what it is</strong> (Build is for developer tools), plus a few tags.</span></li>
+            </ul>
+            <p class="muted small-note"><a href="/about#criteria">Everything editors check</a></p>
+          </div>
           <div class="side-card">
             <h2>What happens next</h2>
             <ol class="steps">
@@ -46,14 +58,6 @@ const openBlock = user ? openSubmissionsBlock(await openSubmissionCount(env.DB, 
               <li><strong>It goes live</strong> with credit to you and the maker.</li>
             </ol>
             <p class="muted small-note">Follow the status under <a href="/me/submissions">My submissions</a>.</p>
-          </div>
-          <div class="side-card">
-            <h2>What gets picked</h2>
-            <ul class="checklist">
-              <li><Icon name="check" />Works in the browser, no install</li>
-              <li><Icon name="check" />Something to do in about 30 seconds</li>
-              <li><Icon name="check" />The official site, not a review or repost</li>
-            </ul>
           </div>
         </aside>
       </div>

@@ -298,6 +298,27 @@ test("over-long text stays whole, is flagged, and blocks the post instead of bei
   await expect(tryThis).not.toHaveAttribute("aria-invalid", "true");
 });
 
+test("the submit page lists the common fixes and says what the picked category is for", async ({ page }) => {
+  await signIn(page, submitter);
+  await page.goto("/submit");
+  const checklist = page.getByRole("list", { name: "Before you send" });
+  await expect(checklist).toContainText("no account, credits or payment");
+  await expect(checklist).toContainText("Build is for developer tools");
+
+  const hint = page.locator("#category-hint");
+  await expect(hint).toHaveText("Pick what it is. Build is for developer tools; games go in Play.");
+  await page.getByLabel("Category").selectOption("build");
+  await expect(hint).toContainText("Developer tools");
+  await page.getByLabel("Category").selectOption("");
+  await expect(hint).toHaveText("Pick what it is. Build is for developer tools; games go in Play.");
+
+  // On a phone the checklist comes before the form, where it can still help.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const listTop = (await checklist.boundingBox())!.y;
+  const formTop = (await page.locator("[data-submission-form]").boundingBox())!.y;
+  expect(listTop).toBeLessThan(formTop);
+});
+
 test("a person with three open submissions is told before filling in the form", async ({ page }) => {
   const busy = await createUser("e2e-busy", "Bea Busy", "user");
   const now = new Date().toISOString();
