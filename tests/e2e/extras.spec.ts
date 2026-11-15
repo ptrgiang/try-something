@@ -50,7 +50,8 @@ test("profile tabs: Saved and Hearted exist only for the owner", async ({ page }
     await page.goto("/users/e2e-tabs");
     const tabs = page.getByRole("navigation", { name: "Profile sections" });
     await expect(tabs.getByRole("link")).toHaveText(["Made0", "Found1"]);
-    await expect(page.getByRole("list", { name: "Stats" }).getByRole("listitem").first()).toHaveText("0 made");
+    // Zero counts stay off the header; the tabs still show them.
+    await expect(page.getByRole("list", { name: "Stats" })).not.toContainText("made");
     await expect(page.getByRole("list", { name: "Stats" })).toContainText("1 found");
     // Opens on the first public tab that has tools.
     await expect(tabs.locator("[aria-current=page]")).toHaveText("Found1");

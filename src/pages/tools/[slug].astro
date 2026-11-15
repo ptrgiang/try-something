@@ -33,6 +33,13 @@ const dayLabel = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("e
 const person = (name: string, handle: string | null) => ({ name, href: handle ? `/users/${handle}` : null });
 const submitter = tool.submitter_name ? person(tool.submitter_name, tool.submitter_handle) : null;
 const category = CATEGORIES.find((c) => c.id === tool.category);
+// Credit up by the title, where people look for who's behind a tool; the full credits stay further down.
+const byline =
+  tool.credit_type === "made" && (tool.maker_name || submitter)
+    ? { label: "Made by", name: tool.maker_name ?? submitter!.name, href: tool.maker_name ? null : submitter!.href, verified: Boolean(tool.maker_verified_at) }
+    : tool.credit_type === "found" && submitter
+      ? { label: "Found by", name: submitter.name, href: submitter.href, verified: false }
+      : null;
 const host = displayHost(tool.url);
 const cover = toolImageSrc(tool);
 const jsonLd: LdNode[] = [
@@ -70,6 +77,12 @@ jsonLd.push(
         <p class="eyebrow"><a href={`/explore/${tool.category}`}>{category?.label ?? tool.category}</a></p>
         <h1 class="page-title">{tool.name}</h1>
         <p class="lede">{tool.tagline}</p>
+        {byline && (
+          <p class="byline">
+            {byline.label} {byline.href ? <a href={byline.href}>{byline.name}</a> : <strong>{byline.name}</strong>}
+            {byline.verified && <span class="verified-chip"><Icon name="check" />Verified maker</span>}
+          </p>
+        )}
         <ToolStats tool={tool} class="stats-lg" />
         {wins.length > 0 && (
           <p class="top-badge"><Sticker name="trophy" size="xs" />Top tool of the day · {dayLabel(wins[0])}{wins.length > 1 && <span> and {wins.length - 1} more {wins.length === 2 ? "day" : "days"} in the last 90</span>}</p>
@@ -116,7 +129,7 @@ jsonLd.push(
         )}
         {tool.credit_type === "found" && submitter && <li>Discovered by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{submitter.href && <FollowButton person={{ id: tool.submitted_by!, name: submitter.name }} following={followsSubmitter} class="credit-follow" />}</li>}
         {tool.credit_type === "made" && submitter && (
-          <li>Submitted by <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{!tool.maker_name && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (says they made it — not verified)")}{submitter.href && <FollowButton person={{ id: tool.submitted_by!, name: submitter.name }} following={followsSubmitter} class="credit-follow" />}</li>
+          <li>{tool.maker_name ? "Submitted by" : "Made by"} <strong>{submitter.href ? <a href={submitter.href}>{submitter.name}</a> : submitter.name}</strong>{!tool.maker_name && (tool.maker_verified_at ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : " (says they made it — not verified)")}{submitter.href && <FollowButton person={{ id: tool.submitted_by!, name: submitter.name }} following={followsSubmitter} class="credit-follow" />}</li>
         )}
         {tool.credit_type === "editorial" && <li>Picked by the Try Something editors{!tool.submitted_by && <> · <a class="claim-link" href={`/me/verify/${tool.slug}`} rel="nofollow">Made it? Claim this listing</a></>}</li>}
         <li class="muted">Official site: {host}</li>

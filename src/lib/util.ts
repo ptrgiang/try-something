@@ -41,3 +41,22 @@ export function timeAgo(iso: string, now = Date.now()): string {
 
 export const initials = (name: string | null | undefined): string =>
   (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+
+/**
+ * Up to `n` items per group, taken in `order`, skipping items an earlier group already shows so that
+ * neighbouring mosaics don't repeat the same pictures; repeats come back only to fill a short group.
+ * Each group keeps its own candidate order.
+ */
+export function distinctPicks<T extends { id: string }>(order: string[], candidates: Map<string, T[]>, n: number): Map<string, T[]> {
+  const used = new Set<string>();
+  const out = new Map<string, T[]>();
+  for (const key of order) {
+    const pool = candidates.get(key) ?? [];
+    const fresh = pool.filter((t) => !used.has(t.id));
+    const picked = new Set([...fresh, ...pool].slice(0, n));
+    const ordered = pool.filter((t) => picked.has(t));
+    for (const t of ordered) used.add(t.id);
+    out.set(key, ordered);
+  }
+  return out;
+}

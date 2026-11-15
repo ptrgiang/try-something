@@ -11,6 +11,7 @@ import CategoryArt from "../components/CategoryArt.astro";
 import ToolCover from "../components/ToolCover.astro";
 import PersonCard from "../components/PersonCard.astro";
 import ListCard from "../components/ListCard.astro";
+import InviteCard from "../components/InviteCard.astro";
 import { categoryCounts, communityShowcase, featuredTools, homePicks, listTools, parsePeriod, parseSort, popularTags, topToday, TOP_TODAY_MIN_TOOLS } from "../lib/db";
 import { toolImageSrc } from "../lib/tool-image";
 import { displayHost, outboundUrl } from "../lib/url";
@@ -161,7 +162,14 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
         </div>
         <a class="section-link" href="/makers">List yours <Icon name="arrow" /></a>
       </div>
-      {showPeople && <ul class="showcase-grid">{community.people.map((p) => <li><PersonCard person={p} /></li>)}</ul>}
+      {showPeople && (
+        <ul class="showcase-grid">
+          {community.people.map((p) => <li><PersonCard person={p} /></li>)}
+          {community.people.length < 4 && (
+            <li><InviteCard href="/submit" title="Made or found something good?" text="Submit it, and your card shows up here once an editor publishes it." cta="Submit a tool" /></li>
+          )}
+        </ul>
+      )}
       {showLists && (
         <>
           <h3 class="showcase-sub">Lists by people</h3>

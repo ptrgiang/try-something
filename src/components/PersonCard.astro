@@ -11,6 +11,12 @@ interface Props {
   person: ShowcasePerson;
 }
 const { person: p } = Astro.props;
+// "Made" and "found" apart: a verified chip over a plain tool count reads as if they made all of it.
+const counts = [
+  p.made > 0 && `${p.made} made`,
+  p.found > 0 && `${p.found} found`,
+  p.made + p.found === 0 && (p.tools === 1 ? "1 tool" : `${p.tools} tools`),
+  p.followers > 0 && (p.followers === 1 ? "1 follower" : `${p.followers} followers`)].filter(Boolean);
 ---
 <a class="showcase-card" href={`/users/${p.handle}`}>
   <div class="showcase-covers" data-n={p.previews.length} aria-hidden="true">
@@ -25,6 +31,6 @@ const { person: p } = Astro.props;
   </div>
   <p class="showcase-meta">
     {p.verified ? <span class="verified-chip"><Icon name="check" />Verified maker</span> : null}
-    <span>{p.tools === 1 ? "1 tool" : `${p.tools} tools`}{p.followers > 0 && ` · ${p.followers === 1 ? "1 follower" : `${p.followers} followers`}`}</span>
+    <span>{counts.join(" · ")}</span>
   </p>
 </a>

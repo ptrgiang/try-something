@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import PersonCard from "../components/PersonCard.astro";
+import InviteCard from "../components/InviteCard.astro";
 import MakerPreview from "../components/MakerPreview.astro";
 import { communityShowcase, makerShowcase } from "../lib/db";
 
@@ -95,7 +96,12 @@ const badgeTool = examples[0];
             </a>
           )}
         </div>
-        <ul class="showcase-grid">{verifiedMakers.map((p) => <li><PersonCard person={p} /></li>)}</ul>
+        <ul class="showcase-grid">
+          {verifiedMakers.map((p) => <li><PersonCard person={p} /></li>)}
+          {verifiedMakers.length < 4 && (
+            <li><InviteCard href={submitHref} nofollow={!user} title="Your tool could be next" text="Submit it as yours, verify that you made it, and you show up here." cta="Submit your tool" /></li>
+          )}
+        </ul>
       </section>
     )}
 

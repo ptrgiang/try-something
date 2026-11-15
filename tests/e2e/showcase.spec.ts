@@ -17,6 +17,7 @@ test("home and /makers show the people behind tools, their lists and an example 
   await createUser("e2e-show-finder", "Showcase Finder", "user");
   sql(`DELETE FROM tool WHERE id LIKE 'e2e-show-%';
     UPDATE "user" SET handle = id WHERE id IN ('e2e-show-maker', 'e2e-show-finder');
+    ${tool(0, "e2e-show-maker", "found", false)}
     ${tool(1, "e2e-show-maker", "made", true)}
     ${tool(2, "e2e-show-maker", "made", false)}
     ${tool(3, "e2e-show-finder", "found", false)}
@@ -31,14 +32,16 @@ test("home and /makers show the people behind tools, their lists and an example 
   const maker = people.locator(".showcase-card", { hasText: "Showcase Maker" });
   await expect(maker).toHaveAttribute("href", "/users/e2e-show-maker");
   await expect(maker).toContainText("Verified maker");
-  await expect(maker).toContainText("2 tools");
-  await expect(maker.locator(".showcase-covers .cover")).toHaveCount(2);
+  // Made and found are counted apart, and the cover strip leads with what they made, newest found or not.
+  await expect(maker).toContainText("2 made · 1 found");
+  await expect(maker.locator(".showcase-covers .cover")).toHaveCount(3);
+  await expect(maker.locator(".showcase-covers .cover").first()).toContainText("E2E Show 1");
   const list = people.locator(".showcase-card", { hasText: "Showcase picks" });
   await expect(list).toHaveAttribute("href", "/users/e2e-show-finder/lists/showcase-picks");
-  await expect(list).toContainText("Showcase Finder · 4 tools");
+  await expect(list).toContainText("Showcase Finder · 5 tools");
 
   // A list below the indexing size stays off the home page.
-  sql(`DELETE FROM user_list_item WHERE list_id = 'e2e-show-list' AND tool_id IN ('e2e-show-1', 'e2e-show-2');`);
+  sql(`DELETE FROM user_list_item WHERE list_id = 'e2e-show-list' AND tool_id IN ('e2e-show-0', 'e2e-show-1', 'e2e-show-2');`);
   await page.reload();
   await expect(people.locator(".showcase-card", { hasText: "Showcase picks" })).toHaveCount(0);
 
@@ -47,8 +50,28 @@ test("home and /makers show the people behind tools, their lists and an example 
   const verified = page.locator("[data-surface=makers] .showcase-card");
   await expect(verified.filter({ hasText: "Showcase Maker" })).toHaveCount(1);
   await expect(verified.filter({ hasText: "Showcase Finder" })).toHaveCount(0);
+  // A maker's card here shows only what they made.
+  await expect(verified.filter({ hasText: "Showcase Maker" }).locator(".showcase-covers .cover")).toHaveCount(2);
+  await expect(verified.filter({ hasText: "Showcase Maker" }).locator(".showcase-covers")).not.toContainText("E2E Show 0");
+  if ((await page.locator("[data-surface=makers] .showcase-card:not(.showcase-invite)").count()) < 4) {
+    await expect(page.locator("[data-surface=makers] .showcase-invite")).toContainText("Your tool could be next");
+  }
   await expect(page.locator(".maker-preview-tag")).toHaveText("Example · made-up numbers");
   await expect(page.locator(".maker-preview .maker-tool")).toHaveAttribute("inert", "");
+});
+
+test("credit sits by the title, and a profile says which made tools were verified", async ({ page }) => {
+  await page.goto("/tools/e2e-show-1");
+  await expect(page.locator(".detail-head .byline")).toContainText("Made by Showcase Maker");
+  await expect(page.locator(".detail-head .byline .verified-chip")).toBeVisible();
+  await expect(page.locator(".detail-head .byline a")).toHaveAttribute("href", "/users/e2e-show-maker");
+  await page.goto("/tools/e2e-show-0");
+  await expect(page.locator(".detail-head .byline")).toHaveText(/Found by\s+Showcase Maker/);
+
+  await page.goto("/users/e2e-show-maker");
+  await expect(page.locator(".profile-handle .verified-chip")).toBeVisible();
+  await expect(page.locator(".profile-intro")).toHaveText("Try Something checked 1 of these; the rest are listed as theirs but not verified.");
+  await expect(page.locator(".profile-stats")).not.toContainText("hearts");
 });
 
 test("a tool page leaves out zero counts", async ({ page }) => {

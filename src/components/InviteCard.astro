@@ -1,0 +1,19 @@
+---
+// Fills a short showcase row with an open seat, so two cards read as "room for you" rather than "empty".
+import Icon from "./Icon.astro";
+
+interface Props {
+  href: string;
+  title: string;
+  text: string;
+  cta: string;
+  nofollow?: boolean;
+}
+const { href, title, text, cta, nofollow } = Astro.props;
+---
+<a class="showcase-card showcase-invite" href={href} rel={nofollow ? "nofollow" : undefined}>
+  <span class="showcase-invite-icon" aria-hidden="true"><Icon name="plus" /></span>
+  <strong>{title}</strong>
+  <span class="muted">{text}</span>
+  <span class="btn btn-sm">{cta}</span>
+</a>

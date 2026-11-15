@@ -5,8 +5,10 @@ import Base from "../../layouts/Base.astro";
 import ToolCover from "../../components/ToolCover.astro";
 import { collectionPreviews, listCollections } from "../../lib/db";
 import { collectionIndexLd, crumbsLd } from "../../lib/seo";
+import { distinctPicks } from "../../lib/util";
 
-const [collections, previews] = await Promise.all([listCollections(env.DB), collectionPreviews(env.DB)]);
+const [collections, candidates] = await Promise.all([listCollections(env.DB), collectionPreviews(env.DB, 8)]);
+const previews = distinctPicks(collections.map((c) => c.id), candidates, 3);
 const description = "Small, editor-curated sets of web tools worth trying together, each one tried by a person.";
 const jsonLd = [
   collectionIndexLd({ path: "/collections", name: "Collections", description, items: collections.map((c) => ({ path: `/collections/${c.slug}`, name: c.title })) }),

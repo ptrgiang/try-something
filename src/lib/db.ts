@@ -2585,6 +2585,8 @@ export interface ShowcasePerson {
   image: string | null;
   avatar: string | null;
   tools: number;
+  made: number;
+  found: number;
   /** 1 when at least one of their published tools is a verified "I made this" listing. */
   verified: number;
   followers: number;
@@ -2606,6 +2608,8 @@ export interface ShowcaseList {
 /**
  * People who listed published tools (newest activity first, or newest verification with `verifiedOnly`)
  * and public lists big enough to be indexed. Each comes with up to three tools for its cover strip.
+ * A person's strip leads with what they made, so a maker's card never fronts someone else's work;
+ * with `verifiedOnly` it shows nothing else.
  */
 export async function communityShowcase(
   db: D1Database,
@@ -2615,6 +2619,7 @@ export async function communityShowcase(
     db
       .prepare(
         `SELECT u.id, u.name, u.handle, u.image, u.avatar, COUNT(*) AS tools,
+           SUM(t.credit_type = 'made') AS made, SUM(t.credit_type = 'found') AS found,
            MAX(t.credit_type = 'made' AND t.maker_verified_at IS NOT NULL) AS verified,
            MAX(CASE WHEN t.credit_type = 'made' THEN t.maker_verified_at END) AS verified_at,
            MAX(COALESCE(t.refreshed_at, t.published_at)) AS last_at,
@@ -2645,12 +2650,15 @@ export async function communityShowcase(
       .prepare(
         `SELECT * FROM (
            SELECT t.*, u.name AS submitter_name, u.handle AS submitter_handle,
-             ROW_NUMBER() OVER (PARTITION BY t.submitted_by ORDER BY COALESCE(t.refreshed_at, t.published_at) DESC) AS preview_rank
+             ROW_NUMBER() OVER (
+               PARTITION BY t.submitted_by
+               ORDER BY t.credit_type = 'made' DESC, t.maker_verified_at IS NOT NULL DESC, COALESCE(t.refreshed_at, t.published_at) DESC
+             ) AS preview_rank
            FROM tool t LEFT JOIN "user" u ON u.id = t.submitted_by
-           WHERE t.status = 'published' AND t.submitted_by IN (SELECT value FROM json_each(?))
+           WHERE t.status = 'published' AND t.submitted_by IN (SELECT value FROM json_each(?1)) AND (?2 = 0 OR t.credit_type = 'made')
          ) WHERE preview_rank <= 3`,
       )
-      .bind(JSON.stringify(people.map((p) => p.id))),
+      .bind(JSON.stringify(people.map((p) => p.id)), opts.verifiedOnly ? 1 : 0),
     db
       .prepare(
         `SELECT * FROM (

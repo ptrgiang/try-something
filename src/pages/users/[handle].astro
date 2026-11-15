@@ -38,6 +38,13 @@ const [tools, saved, liked, following, lists, followers] = await Promise.all([
 ]);
 const made = tools.filter((t) => t.credit_type === "made");
 const found = tools.filter((t) => t.credit_type === "found");
+const verified = made.filter((t) => t.maker_verified_at).length;
+const madeNote =
+  verified === made.length
+    ? "Try Something checked that they made these."
+    : verified === 0
+      ? "Listed as the maker. Not verified by Try Something."
+      : `Try Something checked ${verified} of these; the rest are listed as theirs but not verified.`;
 const TABS = [
   { id: "made", label: "Made", tools: made, private: false },
   { id: "found", label: "Found", tools: found, private: false },
@@ -64,7 +71,7 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
     <div class="profile-band" aria-hidden="true"></div>
     <Avatar class="profile-avatar" name={profile.name} url={photo} seed={profile.handle} size={128} />
     <h1 class="profile-name">{profile.name}</h1>
-    <p class="profile-handle">@{profile.handle}{profile.role !== "user" && <span class="comment-badge">{profile.role === "admin" ? "Admin" : "Moderator"}</span>}</p>
+    <p class="profile-handle">@{profile.handle}{verified > 0 && <span class="verified-chip"><Icon name="check" />Verified maker</span>}{profile.role !== "user" && <span class="comment-badge">{profile.role === "admin" ? "Admin" : "Moderator"}</span>}</p>
     {profile.bio && <p class="profile-bio">{profile.bio}</p>}
     <ul class="profile-facts">
       {profile.website && (
@@ -73,10 +80,11 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
       <li><Icon name="user" />Joined {joined}</li>
     </ul>
     <ul class="profile-stats" aria-label="Stats">
-      <li><strong>{made.length}</strong> made</li>
-      <li><strong>{found.length}</strong> found</li>
-      {tools.length > 0 && <li><strong>{hearts}</strong> {plural(hearts, "heart")}</li>}
-      {tools.length > 0 && <li><strong>{saves}</strong> {plural(saves, "save")}</li>}
+      {/* Zeros stay off, as on cards: a row of them reads as an empty site, and the tabs below already say "0". */}
+      {made.length > 0 && <li><strong>{made.length}</strong> made</li>}
+      {found.length > 0 && <li><strong>{found.length}</strong> found</li>}
+      {hearts > 0 && <li><strong>{hearts}</strong> {plural(hearts, "heart")}</li>}
+      {saves > 0 && <li><strong>{saves}</strong> {plural(saves, "save")}</li>}
       <li data-followers={profile.id} data-count={followers} hidden={followers === 0}><strong>{followers}</strong> <span>{plural(followers, "follower")}</span></li>
     </ul>
     <div class="profile-actions">
@@ -99,7 +107,7 @@ const description = profile.bio ?? `${profile.name} on Try Something: ${made.len
   <section class="profile-tab">
     <h2 class="sr-only">{tab.label} by {profile.name}</h2>
     {tab.private && <p class="section-intro profile-intro"><Icon name="eye" />Only you can see this tab.</p>}
-    {tab.id === "made" && made.length > 0 && <p class="section-intro profile-intro">Listed as the maker. Not verified by Try Something.</p>}
+    {tab.id === "made" && made.length > 0 && <p class="section-intro profile-intro">{madeNote}</p>}
     {tab.id === "lists" ? (
       <ul class="profile-lists">
         {lists.map((l) => (
