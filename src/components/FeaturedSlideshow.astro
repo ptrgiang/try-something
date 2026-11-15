@@ -22,6 +22,8 @@ const { tools } = Astro.props;
             <div>
               <h2><a href={`/tools/${tool.slug}`}>{tool.name}</a></h2>
               <p>{tool.tagline}</p>
+              {/* Editors pick these slides, so a pick of their own work says so. */}
+              {tool.staff_made && <p class="team-tag">Made by the Try Something team</p>}
             </div>
             <a class="btn btn-dark" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} data-slug={tool.slug}>Try it <Icon name="external" /><span class="sr-only">(opens in a new tab)</span></a>
           </div>

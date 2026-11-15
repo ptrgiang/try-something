@@ -81,6 +81,7 @@ jsonLd.push(
           <p class="byline">
             {byline.label} {byline.href ? <a href={byline.href}>{byline.name}</a> : <strong>{byline.name}</strong>}
             {byline.verified && <span class="verified-chip"><Icon name="check" />Verified maker</span>}
+            {tool.staff_made && <span class="team-tag">Try Something team</span>}
           </p>
         )}
         <ToolStats tool={tool} class="stats-lg" />
@@ -105,6 +106,7 @@ jsonLd.push(
       <div class="hero-ctas tool-actions">
         <a class="btn btn-dark btn-lg" href={outboundUrl(tool.url)} target="_blank" rel="noopener noreferrer" data-try={tool.id} data-slug={tool.slug}>Try it on {host} <Icon name="external" /></a>
         <button type="button" class="btn btn-lg save-btn" data-save={tool.id} aria-pressed="false"><Icon name="bookmark" /><span>Save</span></button>
+        <span class="tool-actions-break" aria-hidden="true"></span>
         <ListPicker toolId={tool.id} toolName={tool.name} slug={tool.slug} />
         <button type="button" class="btn btn-lg" data-share={`/tools/${tool.slug}`} data-share-title={tool.name}><Icon name="share" /><span>Share</span></button>
         <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`} rel="nofollow"><Icon name="shuffle" />Another one</a>

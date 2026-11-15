@@ -9,7 +9,7 @@ const tool = (n: number, by: string, credit: "made" | "found", verified: boolean
 };
 
 test.afterAll(() => {
-  sql(`DELETE FROM tool WHERE id LIKE 'e2e-show-%'; DELETE FROM "user" WHERE id IN ('e2e-show-maker', 'e2e-show-finder');`);
+  sql(`DELETE FROM tool WHERE id LIKE 'e2e-show-%'; DELETE FROM "user" WHERE id IN ('e2e-show-maker', 'e2e-show-finder', 'e2e-show-staff');`);
 });
 
 test("home and /makers show the people behind tools, their lists and an example stats card", async ({ page }) => {
@@ -72,6 +72,31 @@ test("credit sits by the title, and a profile says which made tools were verifie
   await expect(page.locator(".profile-handle .verified-chip")).toBeVisible();
   await expect(page.locator(".profile-intro")).toHaveText("Try Something checked 1 of these; the rest are listed as theirs but not verified.");
   await expect(page.locator(".profile-stats")).not.toContainText("hearts");
+});
+
+test("a tool made by someone who runs the site says so; actions keep Try it and Save on their own row", async ({ page }) => {
+  await createUser("e2e-show-staff", "Showcase Staff", "moderator");
+  sql(`UPDATE "user" SET handle = id WHERE id = 'e2e-show-staff'; DELETE FROM tool WHERE id = 'e2e-show-7'; ${tool(7, "e2e-show-staff", "made", true)}`);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/tools/e2e-show-7");
+  await expect(page.locator(".detail-head .byline .team-tag")).toHaveText("Try Something team");
+  const top = async (name: RegExp) => (await page.locator(".tool-actions").getByRole("link", { name }).or(page.locator(".tool-actions").getByRole("button", { name })).first().boundingBox())!.y;
+  expect(await top(/^Save$/)).toBe(await top(/^Try it on/));
+  const second = await top(/^Add to list$/);
+  expect(second).toBeGreaterThan(await top(/^Try it on/));
+  expect(await top(/^Share$/)).toBe(second);
+  expect(await top(/^Another one$/)).toBe(second);
+  // First in the editors' hero (0.5 sorts ahead of the seeded 1, 2, …), it carries the tag there too.
+  sql(`UPDATE tool SET featured = 0.5 WHERE id = 'e2e-show-7';`);
+  try {
+    await page.goto("/");
+    await expect(page.locator(".featured .slide.is-active .team-tag")).toHaveText("Made by the Try Something team");
+  } finally {
+    sql(`UPDATE tool SET featured = 0 WHERE id = 'e2e-show-7';`);
+  }
+  // A listing by an ordinary maker carries no team tag.
+  await page.goto("/tools/e2e-show-1");
+  await expect(page.locator(".team-tag")).toHaveCount(0);
 });
 
 test("a tool page leaves out zero counts", async ({ page }) => {

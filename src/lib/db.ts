@@ -47,6 +47,8 @@ export interface Tool {
 export interface ToolWithCredit extends Tool {
   submitter_name: string | null;
   submitter_handle: string | null;
+  /** Made by someone who runs the site (admin or moderator); shown wherever the site promotes it. */
+  staff_made: boolean;
   /** All-time totals shown on cards: de-duplicated page views, hearts and account saves. */
   view_count: number;
   like_count: number;
@@ -100,6 +102,7 @@ export function toTool(row: Row): ToolWithCredit {
     art: parseJson<ToolArt>(row.art, {}),
     submitter_name: (row.submitter_name as string) ?? null,
     submitter_handle: (row.submitter_handle as string) ?? null,
+    staff_made: Boolean(row.staff_made),
     view_count: Number(row.view_count ?? 0),
     like_count: Number(row.like_count ?? 0),
     save_count: Number(row.save_count ?? 0),
@@ -115,6 +118,7 @@ export function toSubmission(row: Row): Submission {
 }
 
 const TOOL_SELECT = `SELECT t.*, u.name AS submitter_name, u.handle AS submitter_handle,
+    (t.credit_type = 'made' AND u.role IN ('admin', 'moderator')) AS staff_made,
     COALESCE((SELECT SUM(d.views) FROM tool_stat_daily d WHERE d.tool_id = t.id), 0) AS view_count,
     (SELECT COUNT(*) FROM tool_like l WHERE l.tool_id = t.id) AS like_count,
     (SELECT COUNT(*) FROM bookmark b WHERE b.tool_id = t.id) AS save_count

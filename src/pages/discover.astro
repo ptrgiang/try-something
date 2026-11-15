@@ -73,6 +73,8 @@ const moodSticker = { anything: "dice", make: "pen", play: "gamepad", learn: "bo
               <div class="deck-card deck-back deck-face">
                 <Sticker name="compass" size="lg" />
                 <p>Pick a mood and the first card is dealt.</p>
+                {/* One tap for anyone who'd rather not choose; it goes through the same deal as a mood chip. */}
+                <a class="btn btn-coral" href={discoverUrl("anything", 1, [])} data-deal="mood" data-deal-any><Icon name="compass" />Just deal me one</a>
               </div>
             )}
           </div>

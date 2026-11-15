@@ -19,6 +19,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - `/makers` shows recently verified makers as people (avatar, name, their tools) instead of tool cards, and adds **What your numbers look like**: the stats card from My submissions filled with made-up numbers, clearly tagged as an example and not clickable.
 - A tool page names who's behind it right under the tagline: "Made by …" with the Verified maker mark, or "Found by …", linking to their profile. When the person who listed a tool says they made it, the credits now say "Made by" instead of "Submitted by".
 - When the people or verified makers sections have room left, the last card invites you to submit a tool and be shown there.
+- `/discover` has a **Just deal me one** button on the empty deck, which deals an Anything round without picking a mood first.
+- A tool made by someone who runs Try Something (an admin or moderator) says so: "Made by the Try Something team" on its slide in the home hero, and a "Try Something team" tag next to the maker on its page.
 
 - Editors can give a tag page a title at `/admin/tags` ("Online whiteboards" for #whiteboard). It becomes the page's heading and search title; without one the heading is built from the tag ("Drawing tools", "SVG tools") instead of showing the hashtag.
 - Collections can carry an intro (a few paragraphs under the description) and the editor's note for each tool now shows on its card, so a collection can explain why each pick is there. Notes can be edited in place at `/admin/collections`. Collection pages also show when they were last updated and link to the other collections.
@@ -28,6 +30,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 - People cards count what someone made and what they found apart ("1 made · 5 found") and lead their covers with what they made, so a maker's card never fronts someone else's tool. On `/makers` they show only tools the person made.
 - A profile says which of its made tools Try Something verified instead of always "Not verified", shows the Verified maker mark by the handle, and leaves zero counts out.
+- On a tool page on wider screens, Try it and Save share the first row and Add to list, Share and Another one sit on a smaller second row, instead of one button wrapping alone.
+- In the two-up phone grid, Try it is an outlined button instead of solid black, so the covers lead.
 - `/collections` avoids showing the same tool on the cover of more than one collection when a collection has others to show.
 - Phones get two cards a row on the home page and Explore, so twelve tools take about half the scrolling. On a tool page, Try it takes the full width and Save, Add to list, Share and Another one share one row.
 - Zero counts are left out on tool pages as they already were on cards (hearts, views, saves, the comment count), and the comment link says “Comment” until there is one. The GitHub badge shows the star count from 50 stars; until then it says GitHub.
@@ -43,6 +47,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ### Fixed
 
+- In the two-up grid in a narrow desktop window, the Save and Try it row sat 12px right of its card.
 - Buttons and other styled elements marked `hidden` still showed, such as **Clear this list** on an empty `/tried`. The `hidden` attribute now always wins.
 - `/makers` scrolled sideways at 375px (the Verified maker badge sample now drops under its heading), and its recently verified makers sat one gutter in from the rest of the page. The "Know a cool tool?" prompt no longer shows there.
 - CI installs Chromium without apt, so an Ubuntu mirror outage no longer fails the end-to-end job before it runs.

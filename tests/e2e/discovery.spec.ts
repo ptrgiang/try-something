@@ -152,3 +152,11 @@ test("a discovery session shows three different tools for the mood, then offers 
   await expect(page).toHaveURL(/mood=play&step=1$/);
   await expect(page.getByRole("link", { name: "Play something" })).toHaveAttribute("aria-current", "true");
 });
+
+test("an empty deck deals a card in one tap without picking a mood", async ({ page }) => {
+  await page.goto("/discover");
+  await page.getByRole("link", { name: "Just deal me one" }).click();
+  await expect(page.locator(".discover-card")).toBeVisible();
+  await expect(page).toHaveURL(/mood=anything&step=1/);
+  await expect(page.getByRole("link", { name: "Anything" })).toHaveAttribute("aria-current", "true");
+});

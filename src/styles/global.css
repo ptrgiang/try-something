@@ -618,6 +618,21 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.team-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--lavender-soft);
+  /* Darker than --lavender, which is under 4.5:1 on the soft tint at this size. */
+  color: #5233d6;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.slide p.team-tag {
+  margin-top: 8px;
+  color: #5233d6;
+}
 /* Arrows float over the image corner and appear on hover (always shown on touch screens). */
 .slide-controls {
   position: absolute;
@@ -6575,6 +6590,25 @@ td.num {
   vertical-align: baseline;
 }
 
+/* ---------- Tool page actions ---------- */
+/* Try it and Save lead; the other three sit on a smaller second row on purpose, rather than one of them
+   wrapping alone whenever the host name is long or the comments column is open. */
+@media (min-width: 641px) {
+  .tool-actions {
+    gap: 10px;
+  }
+  .tool-actions-break {
+    flex-basis: 100%;
+    height: 0;
+  }
+  .tool-actions > .btn:not([data-try], .save-btn),
+  .tool-actions .list-picker > .btn {
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 14.5px;
+  }
+}
+
 /* ---------- Tool page actions on phones ---------- */
 /* Try it gets the full row; the four secondary actions share one row as icon-over-label buttons. */
 @media (max-width: 640px) {
@@ -6586,6 +6620,9 @@ td.num {
   }
   .tool-actions > [data-try] {
     grid-column: 1 / -1;
+  }
+  .tool-actions-break {
+    display: none;
   }
   .tool-actions > .btn:not([data-try]),
   .tool-actions .list-picker > .btn {
@@ -6791,6 +6828,7 @@ td.num {
      click on the cover would open the site instead of the tool page. */
   :is(.home-list > .grid, .grid[data-results]) .card-actions {
     position: relative;
+    inset: auto;
     grid-area: auto;
     display: grid;
     grid-template-columns: auto 1fr;
@@ -6800,9 +6838,19 @@ td.num {
     transform: none;
   }
   :is(.home-list > .grid, .grid[data-results]) .card-actions .btn {
+    box-shadow: none;
     min-height: 40px;
     padding: 0 11px;
     font-size: 13.5px;
+  }
+  /* Twelve solid black buttons on one screen outweigh the covers; outlined, the covers lead. */
+  :is(.home-list > .grid, .grid[data-results]) .card-actions .save-btn:not([aria-pressed="true"]) {
+    border-color: var(--line-strong);
+  }
+  :is(.home-list > .grid, .grid[data-results]) .card-actions .btn-dark:not(:hover, :active) {
+    border-color: var(--line-strong);
+    background: var(--paper);
+    color: var(--ink);
   }
   /* The button keeps its aria-label; the icon alone fits beside Try it. */
   :is(.home-list > .grid, .grid[data-results]) .card-actions .save-btn span {
