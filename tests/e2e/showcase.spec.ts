@@ -86,11 +86,11 @@ test("a tool made by someone who runs the site says so; actions keep Try it and 
   expect(second).toBeGreaterThan(await top(/^Try it on/));
   expect(await top(/^Share$/)).toBe(second);
   expect(await top(/^Another one$/)).toBe(second);
-  // First in the editors' hero (0.5 sorts ahead of the seeded 1, 2, …), it carries the tag there too.
+  // In the editors' hero it carries the tag there too. The hero opens on a different slide each day, so find its slide.
   sql(`UPDATE tool SET featured = 0.5 WHERE id = 'e2e-show-7';`);
   try {
     await page.goto("/");
-    await expect(page.locator(".featured .slide.is-active .team-tag")).toHaveText("Made by the Try Something team");
+    await expect(page.locator(".featured .slide[data-impression='e2e-show-7'] .team-tag")).toHaveText("Made by the Try Something team");
   } finally {
     sql(`UPDATE tool SET featured = 0 WHERE id = 'e2e-show-7';`);
   }

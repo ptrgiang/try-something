@@ -82,7 +82,7 @@ const browse = CATEGORIES.filter((c) => counts[c.id]);
     <form class="big-search" action="/explore" method="get" role="search">
       <label class="sr-only" for="home-search">Search tools</label>
       <Icon name="search" />
-      <input id="home-search" type="search" name="q" placeholder="What do you want to try today?" maxlength="80" />
+      <input id="home-search" type="search" name="q" placeholder="Find a tool to try" maxlength="80" />
       <button class="btn btn-coral" type="submit">Search</button>
     </form>
     {tags.length > 0 && (

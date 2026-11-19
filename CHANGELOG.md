@@ -32,6 +32,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - A profile says which of its made tools Try Something verified instead of always "Not verified", shows the Verified maker mark by the handle, and leaves zero counts out.
 - On a tool page on wider screens, Try it and Save share the first row and Add to list, Share and Another one sit on a smaller second row, instead of one button wrapping alone.
 - In the two-up phone grid, Try it is an outlined button instead of solid black, so the covers lead.
+- People, list and collection cards use one cover frame whatever the number of tools, so names and counts line up across a row. One or two tools fill the frame without being cropped.
+- Shorter search placeholders, so they aren't cut off in the header or on phones. On phones, a section's link sits under its intro instead of beside it.
 - `/collections` avoids showing the same tool on the cover of more than one collection when a collection has others to show.
 - Phones get two cards a row on the home page and Explore, so twelve tools take about half the scrolling. On a tool page, Try it takes the full width and Save, Add to list, Share and Another one share one row.
 - Zero counts are left out on tool pages as they already were on cards (hearts, views, saves, the comment count), and the comment link says “Comment” until there is one. The GitHub badge shows the star count from 50 stars; until then it says GitHub.
@@ -48,6 +50,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Fixed
 
 - In the two-up grid in a narrow desktop window, the Save and Try it row sat 12px right of its card.
+- The **New** chip covered the start of the name drawn on generated cover art.
+- On phones, Browse by category snapped its first tile to the screen edge, losing the side margin.
 - Buttons and other styled elements marked `hidden` still showed, such as **Clear this list** on an empty `/tried`. The `hidden` attribute now always wins.
 - `/makers` scrolled sideways at 375px (the Verified maker badge sample now drops under its heading), and its recently verified makers sat one gutter in from the rest of the page. The "Know a cool tool?" prompt no longer shows there.
 - CI installs Chromium without apt, so an Ubuntu mirror outage no longer fails the end-to-end job before it runs.

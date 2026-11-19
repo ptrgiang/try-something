@@ -108,7 +108,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
           <form class="header-search" action="/explore" method="get" role="search">
             <label class="sr-only" for="site-search">Search tools</label>
             <Icon name="search" />
-            <input id="site-search" type="search" name="q" value={q} placeholder="Search tools and ideas…" maxlength="80" />
+            <input id="site-search" type="search" name="q" value={q} placeholder="Search tools…" maxlength="80" />
             <button type="button" class="header-kbd" data-palette-open><span class="sr-only">Quick search, </span><kbd>Ctrl K</kbd></button>
           </form>
         ) : <div class="header-spacer"></div>}
