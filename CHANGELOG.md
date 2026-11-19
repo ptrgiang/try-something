@@ -4,6 +4,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-19
+
 ### Added
 
 - A page for makers at `/makers`: what listing gives them (credit and a link back, the Verified maker mark, their own numbers, updates that resurface, the badge), how review works, recently verified makers and a short FAQ. Linked from the home hero, the footer and the mobile menu; signed out, `/submit` now says what you get before asking you to sign in.
@@ -253,6 +255,7 @@ The interface is design v1 (see ROADMAP.md).
 - Unit tests and Playwright end-to-end flow tests.
 - 13 editorial seed tools (links checked live; manual try QA pending).
 
-[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ptrgiang/try-something/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ptrgiang/try-something/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ptrgiang/try-something/releases/tag/v0.1.0

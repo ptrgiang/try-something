@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-11-11. Nothing here is a launch promise.
+Status as of 2026-11-19. Nothing here is a launch promise.
 
 The current interface is **design v1**, locked on 2026-10-22: editorial cream/coral/lavender/butter look,
 Gallery-style cards with hover actions and quick view, brand logo, cursor and scrollbar. Later changes build on it
@@ -125,6 +125,9 @@ P1:
       and where people found the tool; Tried marks on this device that Surprise me and Discover skip (2026-11-11)
 - [x] Animated stickers in empty states, notices and celebrations; a "your tool is live" banner with Share and the
       badge (2026-10-29)
+- [x] The people behind tools: maker and finder cards on the home page and `/makers`, made and found counted apart,
+      "Made by" / "Found by" under a tool's title, invite cards while those sections are short; Just deal me one on
+      Discover (2026-11-19)
 
 ## M2 — Growth (only with a real audience)
 
