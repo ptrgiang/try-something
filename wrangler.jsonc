@@ -3,7 +3,7 @@
   // Top level = production (trysometh.ing). Local development overrides vars in .dev.vars.
   // Resource IDs are not secrets: using them still requires Cloudflare account access.
   "name": "try-something",
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  "main": "./src/worker.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "binding": "ASSETS", "directory": "./dist/client" },

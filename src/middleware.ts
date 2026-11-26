@@ -2,14 +2,13 @@ import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSessionUser } from "./lib/auth";
 
-const PRIVATE_PREFIXES = ["/feedback", "/admin", "/me", "/submit", "/login", "/api", "/ingest"];
+const PRIVATE_PREFIXES = ["/feedback", "/admin", "/me", "/submit", "/login", "/api"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url, locals } = context;
   if (url.hostname === "www.trysometh.ing") return Response.redirect(`https://trysometh.ing${url.pathname}${url.search}`, 301);
   locals.user = null;
-  // The PostHog proxy needs no session, and it is hit on every page.
-  if (!url.pathname.startsWith("/api/auth") && !url.pathname.startsWith("/ingest/")) {
+  if (!url.pathname.startsWith("/api/auth")) {
     try {
       locals.user = await getSessionUser(env, request.headers);
     } catch (err) {
