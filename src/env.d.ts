@@ -25,6 +25,10 @@ declare namespace Cloudflare {
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     GITHUB_TOKEN?: string;
+    /** PostHog project API key (public). Unset = PostHog off: no script, /ingest answers 404. */
+    POSTHOG_PROJECT_KEY?: string;
+    /** PostHog ingestion host, e.g. https://us.i.posthog.com. */
+    POSTHOG_HOST?: string;
   }
 }
 

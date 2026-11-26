@@ -5,6 +5,11 @@
   "type": "module",
   "description": "An open-source home for things worth trying.",
   "license": "MIT",
+  "repository": "github:ptrgiang/try-something",
+  "ship": {
+    "branch": "main",
+    "productionBranch": "release"
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -16,7 +21,10 @@
     "e2e": "playwright test",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:seed:local": "wrangler d1 execute DB --local --file=./db/seed.sql",
-    "deploy": "astro build && wrangler deploy"
+    "deploy": "astro build && wrangler deploy",
+    "ship": "node scripts/ship.mjs",
+    "ship:release": "node scripts/ship-release.mjs",
+    "ship:check": "node scripts/ship-check.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.1",

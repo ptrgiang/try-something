@@ -4,7 +4,18 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+
+- Releases follow the Ship Standard: each version in this changelog starts with a one-line summary that becomes the GitHub Release title (`v0.3.1: Edit published listings`). `npm run ship -- minor "Summary"` cuts a version on `main`, the production deploy publishes its release with `scripts/ship-release.mjs`, and `npm run ship:check` checks the repository against the standard.
+- Visitor numbers for Ship Something through PostHog in privacy mode, off until `POSTHOG_PROJECT_KEY` is set. It loads through `/ingest` on our own domain (the CSP stays `'self'`), stores nothing in the browser, never forwards the visitor's IP or cookies, keeps only `utm_*` and `ref` in page addresses, and counts a visitor once a day with a salted hash of the IP. Staff, automated browsers and GPC / Do Not Track are left out. It sends `$pageview` (including in-page navigation), `try_clicked` with the tool ID, `signup_completed` and `tool_submitted`. The privacy page says so.
+
+### Changed
+
+- HTML pages without their own caching rule are sent `private, no-cache`, since they can carry the visitor's analytics ID.
+
 ## [0.3.1] - 2026-11-26
+
+Edit published listings
 
 ### Added
 
@@ -12,6 +23,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 - Unhiding a tool in `/admin/tools` takes an optional note for the history.
 
 ## [0.3.0] - 2026-11-19
+
+The people behind the tools
 
 ### Added
 
@@ -76,6 +89,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [0.2.0] - 2026-10-30
 
+Discover by mood
+
 ### Added
 
 - Cards show a "New" or "Updated" chip for a week after a tool is published or resurfaced, so it's clear why it sits near the top of Picks.
@@ -108,7 +123,9 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [0.1.0] - 2026-10-27
 
-First public release; the site runs at https://trysometh.ing.
+First public release
+
+The first public release; the site runs at https://trysometh.ing.
 
 ### Browsing and profiles
 

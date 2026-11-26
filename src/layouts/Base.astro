@@ -11,6 +11,8 @@ import SubmitNudge from "../components/SubmitNudge.astro";
 import ReportDialog from "../components/ReportDialog.astro";
 import ConfirmDialog from "../components/ConfirmDialog.astro";
 import PageView from "../components/PageView.astro";
+import ShipAnalytics from "../components/ShipAnalytics.astro";
+import { PRODUCT_ID, PRODUCT_VERSION, posthogAllowed, uiHost, visitorId } from "../lib/posthog";
 import { getStars, formatCount } from "../lib/github";
 import { unreadNotifications } from "../lib/db";
 import { isModerator } from "../lib/moderation";
@@ -61,6 +63,15 @@ const user = Astro.locals.user;
 // A failed count shouldn't take the page down with it.
 const unread = user ? await unreadNotifications(env.DB, user.id).catch(() => 0) : 0;
 const q = Astro.url.searchParams.get("q") ?? "";
+const shipAnalytics = posthogAllowed(env, Astro.request.headers, user)
+  ? {
+      productId: PRODUCT_ID,
+      productVersion: PRODUCT_VERSION,
+      posthogKey: env.POSTHOG_PROJECT_KEY!,
+      uiHost: uiHost(env),
+      distinctId: await visitorId(env.BETTER_AUTH_SECRET, Astro.request.headers.get("cf-connecting-ip")),
+    }
+  : null;
 ---
 <!doctype html>
 <html lang="en">
@@ -205,6 +216,7 @@ const q = Astro.url.searchParams.get("q") ?? "";
     <ReportDialog />
     <ConfirmDialog />
     <PageView path={trackPath} />
+    <ShipAnalytics config={shipAnalytics} />
     <script>
       const openMenus = () => document.querySelectorAll<HTMLDetailsElement>("details[data-menu][open]");
       document.addEventListener("click", (e) => {

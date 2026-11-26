@@ -2,13 +2,14 @@ import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSessionUser } from "./lib/auth";
 
-const PRIVATE_PREFIXES = ["/feedback", "/admin", "/me", "/submit", "/login", "/api"];
+const PRIVATE_PREFIXES = ["/feedback", "/admin", "/me", "/submit", "/login", "/api", "/ingest"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url, locals } = context;
   if (url.hostname === "www.trysometh.ing") return Response.redirect(`https://trysometh.ing${url.pathname}${url.search}`, 301);
   locals.user = null;
-  if (!url.pathname.startsWith("/api/auth")) {
+  // The PostHog proxy needs no session, and it is hit on every page.
+  if (!url.pathname.startsWith("/api/auth") && !url.pathname.startsWith("/ingest/")) {
     try {
       locals.user = await getSessionUser(env, request.headers);
     } catch (err) {
@@ -35,5 +36,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (!headers.has("cache-control")) headers.set("cache-control", "private, no-store");
   }
   if (locals.user && !headers.has("cache-control")) headers.set("cache-control", "private, no-store");
+  // Pages carry a per-visitor analytics id (Base.astro), so no shared cache may keep one.
+  if (!headers.has("cache-control") && headers.get("content-type")?.startsWith("text/html")) headers.set("cache-control", "private, no-cache");
   return response;
 });

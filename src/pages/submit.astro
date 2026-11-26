@@ -1,11 +1,12 @@
 ---
-import { env } from "cloudflare:workers";
+import { env, waitUntil } from "cloudflare:workers";
 import Base from "../layouts/Base.astro";
 import Icon from "../components/Icon.astro";
 import SubmissionForm from "../components/SubmissionForm.astro";
 import { openSubmissionCount } from "../lib/db";
 import { openSubmissionsBlock } from "../lib/moderation";
 import { handleCreate } from "../lib/submissions";
+import { captureServer } from "../lib/posthog";
 import type { FieldErrors } from "../lib/validation";
 
 const user = Astro.locals.user;
@@ -14,7 +15,10 @@ let values: Record<string, string> = {};
 if (Astro.request.method === "POST") {
   if (!user) return Astro.redirect("/login?next=/submit", 303);
   const outcome = await handleCreate(env, Astro.request, user);
-  if (outcome.ok) return Astro.redirect(`/me/submissions?submitted=${outcome.id}`, 303);
+  if (outcome.ok) {
+    waitUntil(captureServer(env, Astro.request.headers, user, "tool_submitted"));
+    return Astro.redirect(`/me/submissions?submitted=${outcome.id}`, 303);
+  }
   errors = outcome.errors;
   values = outcome.values;
   Astro.response.status = 400;

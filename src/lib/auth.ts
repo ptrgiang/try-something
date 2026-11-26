@@ -81,7 +81,19 @@ function createAuth(env: CloudflareEnv) {
       // allowDifferentEmails only applies to connecting from /me/settings/sign-in while signed in, which proves both sides.
       accountLinking: { enabled: true, trustedProviders: [], requireLocalEmailVerified: true, allowDifferentEmails: true },
     },
-    databaseHooks,
+    databaseHooks: {
+      user: {
+        create: {
+          ...databaseHooks.user.create,
+          // Imported here, not at the top: the unit tests load this module outside the Workers runtime.
+          after: async (_user: unknown, ctx?: { headers?: Headers } | null) => {
+            if (!ctx?.headers) return;
+            const [{ waitUntil }, { captureServer }] = await Promise.all([import("cloudflare:workers"), import("./posthog")]);
+            waitUntil(captureServer(env, ctx.headers, null, "signup_completed"));
+          },
+        },
+      },
+    },
     socialProviders: {
       ...(providers.github && {
         github: { clientId: env.GITHUB_CLIENT_ID!, clientSecret: env.GITHUB_CLIENT_SECRET!, scope: ["read:user", "user:email"] },
