@@ -35,7 +35,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (!headers.has("cache-control")) headers.set("cache-control", "private, no-store");
   }
   if (locals.user && !headers.has("cache-control")) headers.set("cache-control", "private, no-store");
-  // Pages carry a per-visitor analytics id (Base.astro), so no shared cache may keep one.
-  if (!headers.has("cache-control") && headers.get("content-type")?.startsWith("text/html")) headers.set("cache-control", "private, no-cache");
   return response;
 });

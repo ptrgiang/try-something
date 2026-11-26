@@ -7,7 +7,7 @@ const signedIn = Boolean(Astro.locals.user);
 <div id="save-config" data-signed-in={signedIn ? "1" : "0"} hidden></div>
 <script>
   import { surfaceOf, trackingAllowed } from "../scripts/discovery";
-  import { track } from "../scripts/ship-analytics";
+  import { shipTrack } from "../scripts/ship-track";
   import "../scripts/tried";
   import "../scripts/lists";
 
@@ -103,7 +103,7 @@ const signedIn = Boolean(Astro.locals.user);
     if (!link || !trackingAllowed) return;
     const body = { toolId: link.dataset.try, surface: surfaceOf(link) };
     navigator.sendBeacon("/api/try", new Blob([JSON.stringify(body)], { type: "application/json" }));
-    if (link.dataset.try) track("try_clicked", { tool_id: link.dataset.try });
+    shipTrack("try_clicked");
   };
   document.addEventListener("click", countTry);
   document.addEventListener("auxclick", countTry);

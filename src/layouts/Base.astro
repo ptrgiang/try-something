@@ -11,8 +11,6 @@ import SubmitNudge from "../components/SubmitNudge.astro";
 import ReportDialog from "../components/ReportDialog.astro";
 import ConfirmDialog from "../components/ConfirmDialog.astro";
 import PageView from "../components/PageView.astro";
-import ShipAnalytics from "../components/ShipAnalytics.astro";
-import { PRODUCT_ID, PRODUCT_VERSION, posthogAllowed, uiHost, visitorId } from "../lib/posthog";
 import { getStars, formatCount } from "../lib/github";
 import { unreadNotifications } from "../lib/db";
 import { isModerator } from "../lib/moderation";
@@ -63,15 +61,8 @@ const user = Astro.locals.user;
 // A failed count shouldn't take the page down with it.
 const unread = user ? await unreadNotifications(env.DB, user.id).catch(() => 0) : 0;
 const q = Astro.url.searchParams.get("q") ?? "";
-const shipAnalytics = posthogAllowed(env, Astro.request.headers, user)
-  ? {
-      productId: PRODUCT_ID,
-      productVersion: PRODUCT_VERSION,
-      posthogKey: env.POSTHOG_PROJECT_KEY!,
-      uiHost: uiHost(env),
-      distinctId: await visitorId(env.BETTER_AUTH_SECRET, Astro.request.headers.get("cf-connecting-ip")),
-    }
-  : null;
+// Ship Track counts visits for the Ship Something dashboard; staff browsing stays out, as in our own counts.
+const shipTrack = !isModerator(user?.role);
 ---
 <!doctype html>
 <html lang="en">
@@ -100,6 +91,7 @@ const shipAnalytics = posthogAllowed(env, Astro.request.headers, user)
     <meta property="og:image:alt" content={ogImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     {!noindex && <script type="application/ld+json" set:html={ldJson(siteGraph(jsonLd ? [jsonLd].flat() : []))} />}
+    {shipTrack && <script is:inline defer src="https://ship.trysometh.ing/t.js" data-product="try-something"></script>}
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -216,7 +208,26 @@ const shipAnalytics = posthogAllowed(env, Astro.request.headers, user)
     <ReportDialog />
     <ConfirmDialog />
     <PageView path={trackPath} />
-    <ShipAnalytics config={shipAnalytics} />
+    <script>
+      // One-time Ship Track events marked by the page that follows them. The marking parameter is
+      // dropped from the address, so a reload doesn't count the event again.
+      import { SIGNUP_PARAM, shipTrack } from "../scripts/ship-track";
+      const url = new URL(location.href);
+      const done: string[] = [];
+      if (url.searchParams.has(SIGNUP_PARAM)) {
+        shipTrack("signup");
+        done.push(SIGNUP_PARAM);
+      }
+      const marked = document.querySelector<HTMLElement>("[data-ship-event='tool_submitted']");
+      if (marked) {
+        shipTrack("tool_submitted");
+        if (marked.dataset.shipParam) done.push(marked.dataset.shipParam);
+      }
+      if (done.length) {
+        done.forEach((p) => url.searchParams.delete(p));
+        history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+      }
+    </script>
     <script>
       const openMenus = () => document.querySelectorAll<HTMLDetailsElement>("details[data-menu][open]");
       document.addEventListener("click", (e) => {

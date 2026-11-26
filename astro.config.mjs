@@ -18,13 +18,14 @@ export default defineConfig({
         "default-src 'self'",
         "img-src 'self' data: https:",
         "font-src 'self'",
-        "connect-src 'self'",
+        // Ship Track (visit counts for ship.trysometh.ing): its script and the beacon it sends.
+        "connect-src 'self' https://ship.trysometh.ing",
         "frame-src https://challenges.cloudflare.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
       ],
-      scriptDirective: { resources: ["'self'", "https://challenges.cloudflare.com"] },
+      scriptDirective: { resources: ["'self'", "https://challenges.cloudflare.com", "https://ship.trysometh.ing"] },
     },
   },
 });

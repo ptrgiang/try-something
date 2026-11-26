@@ -99,6 +99,8 @@ const covers = (await featuredTools(env.DB, 4)).filter((t) => t.image_key || t.i
 </Base>
 {providers.email && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 <script>
+  import { withSignupMark } from "../scripts/ship-track";
+
   declare global {
     interface Window {
       turnstile?: { reset: (el?: Element | string) => void };
@@ -155,7 +157,7 @@ const covers = (await featuredTools(env.DB, 4)).filter((t) => t.image_key || t.i
       clearError();
       const restore = busy(btn, `Opening ${btn.dataset.label}…`);
       try {
-        const res = await post("/sign-in/social", { provider: btn.dataset.provider, callbackURL: next, errorCallbackURL: "/login" });
+        const res = await post("/sign-in/social", { provider: btn.dataset.provider, callbackURL: next, newUserCallbackURL: withSignupMark(next), errorCallbackURL: "/login" });
         const data = (await res.json()) as { url?: string; message?: string };
         if (data.url) {
           remember(btn.dataset.provider!);
@@ -249,6 +251,18 @@ const covers = (await featuredTools(env.DB, 4)).filter((t) => t.image_key || t.i
       cooldown();
     };
 
+    // The code sign-in creates the account when the address is new; it answers with the user, so an account
+    // created within the last minute (by the server's clock, from the Date header) is a sign-up.
+    const isNewAccount = async (res: Response) => {
+      try {
+        const { user } = (await res.clone().json()) as { user?: { createdAt?: string } };
+        const now = Date.parse(res.headers.get("date") ?? "") || Date.now();
+        return Boolean(user?.createdAt) && now - Date.parse(user!.createdAt!) < 60_000;
+      } catch {
+        return false;
+      }
+    };
+
     const verify = async () => {
       clearError();
       const otp = otpInput.value.trim();
@@ -261,7 +275,7 @@ const covers = (await featuredTools(env.DB, 4)).filter((t) => t.image_key || t.i
       const res = await post("/sign-in/email-otp", { email: emailInput.value.trim(), otp }).catch(() => null);
       if (res?.ok) {
         remember("email");
-        window.location.href = next;
+        window.location.href = (await isNewAccount(res)) ? withSignupMark(next) : next;
         return;
       }
       restore();

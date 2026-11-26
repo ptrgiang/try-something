@@ -4,7 +4,7 @@
  * Ship Something. Read-only, no dependencies, works in any product repository (copy scripts/ into it).
  *
  * Checks what can be checked from code: release rules (S), and whether analytics (V) and payments (R) are
- * wired the standard way. Account-side items (Polar token, PostHog key for Ship) are listed as reminders.
+ * wired the standard way. Account-side items (GitHub and Polar read access for Ship) are listed as reminders.
  * Exit code 1 when a MUST rule fails.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -19,13 +19,12 @@ const read = (p) => (existsSync(p) ? readFileSync(p, "utf8") : null);
 function sourceFiles(dir = ".", out = []) {
   for (const name of readdirSync(dir)) {
     if (["node_modules", ".git", "dist", "build", ".wrangler", ".svelte-kit", ".astro", "coverage", ".next"].includes(name)) continue;
-    // Forward slashes on every OS, so the scripts/ exclusions below also hold on Windows.
-    const p = join(dir, name).replace(/\\/g, "/");
-    if (p === "scripts/ship-check.mjs") continue; // its own patterns would match themselves
+    const p = join(dir, name);
+    if (p.split("\\").join("/") === "scripts/ship-check.mjs") continue; // its own patterns would match themselves
     const st = statSync(p);
     if (st.isDirectory()) sourceFiles(p, out);
     else if ([".ts", ".tsx", ".js", ".mjs", ".jsx", ".svelte", ".astro", ".html", ".json", ".jsonc", ".toml", ".py", ".vue"].includes(extname(name)) && st.size < 512_000)
-      out.push(p);
+      out.push(p.split("\\").join("/")); // forward slashes on Windows too, so path filters work
   }
   return out;
 }
@@ -48,19 +47,34 @@ if (pkg && changelog && pkg.version !== "0.0.0") {
 const releaseWired = grep(/ship-release\.mjs|ship:release/).filter((f) => !f.includes("ship-check.mjs") && !f.endsWith("ship-release.mjs"));
 add("S7", "MUST", releaseWired.length > 0, "the production deploy runs scripts/ship-release.mjs", "append `&& node scripts/ship-release.mjs` to the production deploy command");
 
-// --- Visitors (PostHog)
-const posthog = grep(/posthog|SHIP_ANALYTICS/i).filter((f) => !f.includes("scripts/"));
-add("V1", "MUST", posthog.length > 0, "PostHog is loaded (ship-analytics.js or posthog-js)");
-add("V2", "MUST", grep(/product_id|productId:\s*["']/).some((f) => posthog.includes(f) || /SHIP_ANALYTICS/.test(readFileSync(f, "utf8"))), "product_id is registered on every event");
-add("V3", "MUST", grep(/ft_utm_|ship-analytics/).length > 0, "first-touch (ft_utm_*) and last-touch (utm_*) UTMs are captured");
-add("V5", "MUST", grep(/identified_only|ship-analytics/).length > 0, "person_profiles: identified_only (no anonymous person profiles)");
+// --- Visitors (Ship Track)
+const tagFiles = grep(/ship\.trysometh\.ing\/t\.js|ship\.track\.src/).filter((f) => !f.includes("scripts/"));
+add("V1", "MUST", tagFiles.length > 0, "the Ship Track tag is on the pages (t.js)", '<script defer src="https://ship.trysometh.ing/t.js" data-product="<id>"></script>');
+add("V1", "MUST", tagFiles.some((f) => /data-product/.test(readFileSync(f, "utf8"))), "the tag carries data-product=<ship id>");
+const cspFiles = grep(/script-src|scriptSrc/).filter((f) => !f.includes("scripts/"));
+add(
+  "V2",
+  "MUST",
+  cspFiles.every((f) => /ship\.trysometh\.ing/.test(readFileSync(f, "utf8"))),
+  cspFiles.length ? "the CSP allows ship.trysometh.ing (script-src and connect-src)" : "no CSP found (nothing to allow)",
+  `add https://ship.trysometh.ing to script-src and connect-src in: ${cspFiles.join(", ")}`,
+);
+// Privacy pages: by file name, or by content that renders one (a "Privacy" heading or title).
+const privacy = files.filter((f) => !f.startsWith("scripts/") && (/privacy|legal/i.test(f) || />\s*Privacy\s*</.test(readFileSync(f, "utf8"))));
+add(
+  "V3",
+  privacy.length ? "MUST" : "SHOULD",
+  privacy.some((f) => /Ship Track/i.test(readFileSync(f, "utf8"))),
+  privacy.length ? "the privacy page mentions Ship Track" : "no privacy page found",
+  "say visits are counted by Ship Track: no cookies or storage, no IP kept, a daily-changing hash, aggregates only",
+);
 
 // --- Revenue (Polar), only when the product sells
 const sells = grep(/polar\.sh|@polar-sh|POLAR_ACCESS_TOKEN/i).length > 0;
 if (sells) {
-  add("R2", "MUST", grep(/posthog_distinct_id/).length > 0 && grep(/pricing_stage/).length > 0, "checkout metadata has product_id, pricing_stage, posthog_distinct_id, utm_*, ft_utm_*");
+  add("R2", "MUST", grep(/ft_utm_|ship\.attribution\(/).length > 0 && grep(/pricing_stage/).length > 0, "checkout metadata has product_id, pricing_stage, utm_*, ft_utm_* (ship.attribution())");
   add("R3", "MUST", grep(/webhook-signature|validateEvent|verifyStandardWebhook|standardwebhooks/i).length > 0, "fulfilment comes from a verified Polar webhook");
-  add("R7", "SHOULD", grep(/purchase_completed/).length > 0, "purchase_completed is captured server-side from the webhook");
+  add("R7", "SHOULD", grep(/checkout_started/).length > 0, "ship.track(\"checkout_started\") when checkout opens");
 } else {
   add("R1", "INFO", true, "no Polar code found: revenue will show as Not connected until the product sells through Polar");
 }
@@ -75,7 +89,6 @@ for (const r of results) {
 console.log(`
 Also needed outside the code (owner, in each service):
   - GitHub: Ship Something's read-only token can read this repository (S8)
-  - PostHog: a personal API key with Query Read for Ship Something (V6)
   - Polar: an orders:read Organization Access Token and a webhook to https://ship.trysometh.ing/api/webhooks/polar/<product id> (R5)
 `);
 if (failed) {

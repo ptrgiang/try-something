@@ -7,11 +7,7 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 ### Added
 
 - Releases follow the Ship Standard: each version in this changelog starts with a one-line summary that becomes the GitHub Release title (`v0.3.1: Edit published listings`). `npm run ship -- minor "Summary"` cuts a version on `main`, the production deploy publishes its release with `scripts/ship-release.mjs`, and `npm run ship:check` checks the repository against the standard.
-- Visitor numbers for Ship Something through PostHog in privacy mode, off until `POSTHOG_PROJECT_KEY` is set. It loads through `/ingest` on our own domain (the CSP stays `'self'`), stores nothing in the browser, never forwards the visitor's IP or cookies, keeps only `utm_*` and `ref` in page addresses, and counts a visitor once a day with a salted hash of the IP. Staff, automated browsers and GPC / Do Not Track are left out. It sends `$pageview` (including in-page navigation), `try_clicked` with the tool ID, `signup_completed` and `tool_submitted`. The privacy page says so.
-
-### Changed
-
-- HTML pages without their own caching rule are sent `private, no-cache`, since they can carry the visitor's analytics ID.
+- Visit totals for the Ship Something dashboard through Ship Track: one tag on every page (left out for staff), with `https://ship.trysometh.ing` allowed in the CSP. It sets no cookies, stores nothing on the device and keeps no IP address; Try it clicks, sign-ups and submissions are counted by name only. Our own `/api/pv` counts are unchanged. The privacy page says so.
 
 ## [0.3.1] - 2026-11-26
 

@@ -3,7 +3,7 @@
   // Top level = production (trysometh.ing). Local development overrides vars in .dev.vars.
   // Resource IDs are not secrets: using them still requires Cloudflare account access.
   "name": "try-something",
-  "main": "./src/worker.ts",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "binding": "ASSETS", "directory": "./dist/client" },
@@ -44,10 +44,7 @@
     // Set to "false" and deploy to switch comments off everywhere; existing comments are kept.
     "COMMENTS_ENABLED": "true",
     // Scripted browsers aren't counted in analytics; only the e2e server turns this on (playwright.config.ts).
-    "ANALYTICS_COUNT_AUTOMATION": "false",
-    // PostHog for Ship Something's visitor numbers (privacy mode). Add the public project key as
-    // POSTHOG_PROJECT_KEY here to switch it on; until then nothing loads and /ingest is a 404.
-    "POSTHOG_HOST": "https://us.i.posthog.com"
+    "ANALYTICS_COUNT_AUTOMATION": "false"
   },
   "env": {
     // Staging: its own Worker, D1 and KV, so pull-request previews never touch production data.
@@ -79,9 +76,7 @@
         "EMAIL_FROM": "hello@trysometh.ing",
         "EMAIL_LOGIN_ENABLED": "true",
         "COMMENTS_ENABLED": "true",
-        "ANALYTICS_COUNT_AUTOMATION": "false",
-        // No POSTHOG_PROJECT_KEY on staging, so test visits never reach production numbers.
-        "POSTHOG_HOST": "https://us.i.posthog.com"
+        "ANALYTICS_COUNT_AUTOMATION": "false"
       }
     }
   }
