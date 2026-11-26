@@ -4,6 +4,8 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-26
+
 ### Added
 
 - Editors can fix a published listing at `/admin/tools/<id>` (the **Edit listing** link in `/admin/tools`): description, what to try and why (admins only, since it's the submitter's wording), category, tags and the cover image. **Use the site's share image** finds the product's own share image; a cover URL is only saved if it returns a real image, and an empty one goes back to the generated art. Each save is logged with the fields that changed and an optional note, the page shows the tool's history, and a save from a stale form is refused rather than overwriting a newer change.
@@ -260,7 +262,8 @@ The interface is design v1 (see ROADMAP.md).
 - Unit tests and Playwright end-to-end flow tests.
 - 13 editorial seed tools (links checked live; manual try QA pending).
 
-[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ptrgiang/try-something/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ptrgiang/try-something/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ptrgiang/try-something/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ptrgiang/try-something/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ptrgiang/try-something/releases/tag/v0.1.0
