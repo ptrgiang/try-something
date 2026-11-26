@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-11-19. Nothing here is a launch promise.
+Status as of 2026-11-26. Nothing here is a launch promise.
 
 The current interface is **design v1**, locked on 2026-10-22: editorial cream/coral/lavender/butter look,
 Gallery-style cards with hover actions and quick view, brand logo, cursor and scrollbar. Later changes build on it
