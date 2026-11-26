@@ -4,6 +4,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-26
+
+Ship Track visit counts and automated releases
+
 ### Added
 
 - Releases follow the Ship Standard: each version in this changelog starts with a one-line summary that becomes the GitHub Release title (`v0.3.1: Edit published listings`). `npm run ship -- minor "Summary"` cuts a version on `main`, the production deploy publishes its release with `scripts/ship-release.mjs`, and `npm run ship:check` checks the repository against the standard.
