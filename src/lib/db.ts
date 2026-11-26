@@ -1,6 +1,6 @@
 // D1 queries. Every public query filters on status = 'published'.
 
-import type { SubmissionInput, ToolUpdateInput } from "./validation";
+import type { SubmissionInput, ToolEditInput, ToolUpdateInput } from "./validation";
 import { AUTO_HIDE_REPORTS, RESURFACE_COOLDOWN_DAYS, UPDATE_WINDOW_DAYS, type CommentStatus, type SubmissionStatus } from "./moderation";
 import { MUTABLE_KINDS, NOTIFY_STATUSES, type MutableKind, type NotificationRow } from "./notifications";
 import { picksOrder, type PicksInput } from "./picks";
@@ -709,6 +709,17 @@ export async function submissionHistory(db: D1Database, submissionId: string) {
   return results;
 }
 
+export async function toolHistory(db: D1Database, toolId: string, limit = 20) {
+  const { results } = await db
+    .prepare(
+      `SELECT e.id, e.action, e.reason, e.created_at, u.name AS actor_name FROM moderation_event e LEFT JOIN "user" u ON u.id = e.actor_id
+       WHERE e.tool_id = ? ORDER BY e.created_at DESC LIMIT ?`,
+    )
+    .bind(toolId, limit)
+    .all<{ id: string; action: string; reason: string | null; created_at: string; actor_name: string | null }>();
+  return results;
+}
+
 export function auditStmt(
   db: D1Database,
   e: { submissionId?: string | null; toolId?: string | null; actorId: string | null; action: string; from: string | null; to: string | null; reason: string | null },
@@ -802,6 +813,51 @@ export async function setToolVisibility(db: D1Database, toolId: string, actorId:
     auditStmt(db, { toolId, actorId, action: hide ? "hide" : "unhide", from: tool.status, to, reason: reason || null }),
   ]);
   return true;
+}
+
+export async function getToolById(db: D1Database, id: string): Promise<ToolWithCredit | null> {
+  const row = await db.prepare(`${TOOL_SELECT} WHERE t.id = ?`).bind(id).first<Row>();
+  return row ? toTool(row) : null;
+}
+
+const EDIT_FIELDS = { tagline: "description", try_this: "what to try", why: "why", category: "category", tags: "tags", image_url: "cover" } as const;
+
+/**
+ * An editor's direct change to a listing, logged as an `edit` event naming the fields that changed.
+ * Guarded on `updated_at` so a save made from a stale form never overwrites someone else's change.
+ */
+export async function editTool(
+  db: D1Database,
+  toolId: string,
+  actorId: string,
+  seenUpdatedAt: string,
+  input: ToolEditInput,
+  note: string | null,
+): Promise<{ ok: true; changed: string[] } | { ok: false; error: string }> {
+  const tool = await db.prepare(`SELECT * FROM tool WHERE id = ?`).bind(toolId).first<Row>();
+  if (!tool) return { ok: false, error: "Tool not found." };
+  if (tool.updated_at !== seenUpdatedAt) return { ok: false, error: "This tool changed since you opened it. Reload and try again." };
+  const next = { tagline: input.tagline, try_this: input.tryThis, why: input.why, category: input.category, tags: JSON.stringify(input.tags), image_url: input.imageUrl };
+  const tagsBefore = JSON.stringify(parseJson<string[]>(tool.tags, []));
+  const changed = (Object.keys(EDIT_FIELDS) as (keyof typeof EDIT_FIELDS)[]).filter((k) =>
+    k === "tags" ? next.tags !== tagsBefore : (next[k] ?? null) !== ((tool[k] as string | null) ?? null),
+  );
+  if (!changed.length) return { ok: false, error: "Nothing changed." };
+  const now = nowIso();
+  const reason = `Edited ${changed.map((k) => EDIT_FIELDS[k]).join(", ")}.${note ? ` ${note}` : ""}`;
+  const [res] = await db.batch([
+    db
+      .prepare(`UPDATE tool SET tagline = ?, try_this = ?, why = ?, category = ?, tags = ?, image_url = ?, updated_at = ? WHERE id = ? AND updated_at = ?`)
+      .bind(next.tagline, next.try_this, next.why, next.category, next.tags, next.image_url, now, toolId, seenUpdatedAt),
+    db
+      .prepare(
+        `INSERT INTO moderation_event (id, tool_id, actor_id, action, from_status, to_status, reason, created_at)
+         SELECT ?, ?, ?, 'edit', status, status, ?, ? FROM tool WHERE id = ? AND updated_at = ?`,
+      )
+      .bind(newId(), toolId, actorId, reason, now, toolId, now),
+  ]);
+  if (!res.meta.changes) return { ok: false, error: "This tool changed since you opened it. Reload and try again." };
+  return { ok: true, changed: changed.map((k) => EDIT_FIELDS[k]) };
 }
 
 export async function uniqueSlug(db: D1Database, name: string): Promise<string> {

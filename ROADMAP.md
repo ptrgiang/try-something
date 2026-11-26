@@ -42,6 +42,7 @@ rather than replacing it.
 - [x] Report a tool or a comment; 3 reports hide a comment until a moderator decides
 - [x] Moderator screens for reports and comments, with reasons in the audit trail
 - [x] Admin screens for collections (draft → published, ordering) and featured tools
+- [x] Edit a published listing (text for admins; category, tags and cover for moderators), audited
 - [x] Role management for admins (never self-service, audited)
 - [x] Self-serve account deletion
 - [x] One account per person across Google, GitHub and email codes; Settings (`/me/settings`) for profile, sign-in methods and deletion

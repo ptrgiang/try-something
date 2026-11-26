@@ -1,7 +1,7 @@
 // Server-side validation for submission input. All user text is stored as plain text and
 // escaped on render; nothing here is ever injected as HTML.
 
-import { canonicalKey, cleanUrl, parseUserUrl, UnsafeUrlError } from "./url";
+import { assertPublicHttpUrl, canonicalKey, cleanUrl, parseUserUrl, UnsafeUrlError } from "./url";
 
 export const CATEGORIES = [
   { id: "create", label: "Create", noun: "creative tool", like: "Tools", blurb: "Draw, compose, generate and make things right in your browser." },
@@ -211,6 +211,40 @@ export function parseToolUpdate(data: Record<string, unknown>): { ok: true; valu
   if (value.note.length < 10) errors.note = "Say what changed (10+ characters).";
   if (value.tagline.length < 8) errors.tagline = "Add a one-line description (8+ characters).";
   if (value.tryThis.length < 10) errors.tryThis = "Describe what someone can try in 30 seconds.";
+  return Object.keys(errors).length ? { ok: false, errors, value } : { ok: true, value };
+}
+
+/** An editor's change to a published listing; `imageUrl` empty means "use the generated art". */
+export interface ToolEditInput {
+  tagline: string;
+  tryThis: string;
+  why: string;
+  category: string;
+  tags: string[];
+  imageUrl: string | null;
+}
+
+export function parseToolEdit(data: Record<string, unknown>): { ok: true; value: ToolEditInput } | { ok: false; errors: Record<string, string>; value: ToolEditInput } {
+  const errors: Record<string, string> = {};
+  const rawImage = plainText(data.imageUrl, 2000);
+  const value: ToolEditInput = {
+    tagline: limitedText(data.tagline, "tagline", errors),
+    tryThis: limitedText(data.tryThis, "tryThis", errors),
+    why: limitedText(data.why, "why", errors),
+    category: typeof data.category === "string" ? data.category : "",
+    tags: parseTags(data.tags),
+    imageUrl: rawImage || null,
+  };
+  if (value.tagline.length < 8) errors.tagline = "Add a one-line description (8+ characters).";
+  if (value.tryThis.length < 10) errors.tryThis = "Describe what someone can try in 30 seconds.";
+  if (!CATEGORY_IDS.includes(value.category)) errors.category = "Pick a category.";
+  if (value.imageUrl) {
+    try {
+      assertPublicHttpUrl(new URL(value.imageUrl));
+    } catch (err) {
+      errors.imageUrl = err instanceof UnsafeUrlError ? err.message : "That isn't a valid image URL.";
+    }
+  }
   return Object.keys(errors).length ? { ok: false, errors, value } : { ok: true, value };
 }
 

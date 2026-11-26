@@ -1,0 +1,168 @@
+---
+import { env } from "cloudflare:workers";
+import Base from "../../../layouts/Base.astro";
+import AdminNav from "../../../components/AdminNav.astro";
+import { editTool, getToolById, toolHistory } from "../../../lib/db";
+import { fetchImage, fetchMetadata } from "../../../lib/metadata";
+import { isModerator } from "../../../lib/moderation";
+import { CATEGORIES, parseToolEdit, plainText, TEXT_LIMITS } from "../../../lib/validation";
+
+const user = Astro.locals.user;
+const id = Astro.params.id ?? "";
+if (!user) return Astro.redirect(`/login?next=/admin/tools/${encodeURIComponent(id)}`);
+if (!isModerator(user.role)) return Astro.rewrite("/403");
+const tool = await getToolById(env.DB, id);
+if (!tool) return Astro.rewrite("/404");
+// Listing text is the submitter's voice, so only admins rewrite it; moderators fix tags, category and cover.
+const canEditText = user.role === "admin";
+
+/** Fetched through the SSRF guard: true only for a raster image the cover route could serve. */
+async function isImage(url: string): Promise<boolean> {
+  try {
+    return Boolean(await fetchImage(new URL(url), { timeoutMs: 8000 }));
+  } catch {
+    return false;
+  }
+}
+
+let values = {
+  tagline: tool.tagline,
+  tryThis: tool.try_this,
+  why: tool.why,
+  category: tool.category,
+  tags: tool.tags.join(", "),
+  imageUrl: tool.image_url ?? "",
+  note: "",
+};
+let errors: Record<string, string> = {};
+let error = "";
+let notice = Astro.url.searchParams.has("saved") ? "Saved." : "";
+let seen = tool.updated_at;
+if (Astro.request.method === "POST") {
+  const form = Object.fromEntries(await Astro.request.formData());
+  // Keep the form's version, so a save after "Use the site's share image" still detects someone else's edit.
+  seen = String(form.seen ?? "");
+  const data = canEditText ? form : { ...form, tagline: tool.tagline, tryThis: tool.try_this, why: tool.why };
+  const parsed = parseToolEdit(data);
+  values = { ...parsed.value, tags: plainText(form.tags, 200), imageUrl: parsed.value.imageUrl ?? "", note: plainText(form.note, 200) };
+  if (form.action === "share") {
+    // Only fills the field; nothing changes until the editor saves.
+    errors = {};
+    try {
+      const meta = await fetchMetadata(new URL(tool.url), { timeoutMs: 5000 });
+      if (!meta.image) error = "The site doesn't name a share image.";
+      else if (!(await isImage(meta.image))) error = `The site's share image (${meta.image}) isn't an image we can use.`;
+      else {
+        values.imageUrl = meta.image;
+        notice = "Found the site's share image. Save to use it.";
+      }
+    } catch {
+      error = "Couldn't load the site to look for a share image.";
+    }
+  } else if (!parsed.ok) {
+    errors = parsed.errors;
+    Astro.response.status = 400;
+  } else if (parsed.value.imageUrl && parsed.value.imageUrl !== tool.image_url && !(await isImage(parsed.value.imageUrl))) {
+    errors = { imageUrl: "That URL didn't return a PNG, JPEG, WebP, AVIF or GIF image." };
+    Astro.response.status = 400;
+  } else {
+    const res = await editTool(env.DB, tool.id, user.id, seen, parsed.value, values.note || null);
+    if (res.ok) return Astro.redirect(`/admin/tools/${tool.id}?saved`, 303);
+    error = res.error;
+    Astro.response.status = res.error === "Nothing changed." ? 400 : 409;
+  }
+}
+const history = await toolHistory(env.DB, tool.id);
+const described = (name: string, hint?: string) => [hint, errors[name] && `${name}-error`].filter(Boolean).join(" ") || undefined;
+---
+<Base title={`Edit ${tool.name}`} noindex>
+  <div class="page app-page review">
+    <p class="eyebrow"><a href={`/admin/tools#${tool.id}`}>Published tools</a></p>
+    <h1 class="page-title">{tool.name}</h1>
+    <AdminNav current="tools" />
+    <p>
+      <span class={`status status-${tool.status}`}>{tool.status}</span> · {tool.credit_type ?? "—"}
+      {tool.status === "published" && <> · <a href={`/tools/${tool.slug}`}>View page</a></>} · <a href={tool.url} target="_blank" rel="noopener noreferrer nofollow">Open site</a>
+    </p>
+    {notice && <p class="notice notice-success" role="status">{notice}</p>}
+    {error && <p class="form-error" role="alert">{error}</p>}
+    <div class="review-grid">
+      <section class="panel">
+        <h2 class="section-title">Listing</h2>
+        {tool.credit_type === "made" && canEditText && <p class="notice">Its maker can post an update to this text themselves. Edit it here only for a clear fix.</p>}
+        <form method="post" class="form" novalidate>
+          <input type="hidden" name="seen" value={seen} />
+          {/* Enter in a field saves, rather than pressing the first button in the form (the share-image lookup). */}
+          <button class="sr-only" name="action" value="save" tabindex="-1" aria-hidden="true">Save</button>
+          <div class="field">
+            <label for="tagline">Description</label>
+            <input id="tagline" name="tagline" type="text" required data-max={TEXT_LIMITS.tagline} value={values.tagline} readonly={!canEditText} aria-invalid={errors.tagline ? "true" : undefined} aria-describedby={described("tagline")} />
+            {errors.tagline && <p class="error" id="tagline-error">{errors.tagline}</p>}
+          </div>
+          <div class="field">
+            <label for="tryThis">What to try in 30 seconds</label>
+            <textarea id="tryThis" name="tryThis" required data-max={TEXT_LIMITS.tryThis} readonly={!canEditText} aria-invalid={errors.tryThis ? "true" : undefined} aria-describedby={described("tryThis")}>{values.tryThis}</textarea>
+            {errors.tryThis && <p class="error" id="tryThis-error">{errors.tryThis}</p>}
+          </div>
+          <div class="field">
+            <label for="why">Why it's worth trying <span class="muted">(optional)</span></label>
+            <textarea id="why" name="why" data-max={TEXT_LIMITS.why} readonly={!canEditText} aria-invalid={errors.why ? "true" : undefined} aria-describedby={described("why")}>{values.why}</textarea>
+            {errors.why && <p class="error" id="why-error">{errors.why}</p>}
+          </div>
+          {!canEditText && <p class="hint">Only admins change the listing text.</p>}
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" name="category" aria-invalid={errors.category ? "true" : undefined} aria-describedby={described("category")}>
+              {CATEGORIES.map((c) => <option value={c.id} selected={c.id === values.category}>{c.label}</option>)}
+            </select>
+            {errors.category && <p class="error" id="category-error">{errors.category}</p>}
+          </div>
+          <div class="field">
+            <label for="tags">Tags</label>
+            <input id="tags" name="tags" type="text" value={values.tags} aria-describedby="tags-hint" />
+            <p class="hint" id="tags-hint">Up to 5, separated by commas. Reuse a tag that already exists when one fits.</p>
+          </div>
+          <div class="field">
+            <label for="imageUrl">Cover image URL</label>
+            <input id="imageUrl" name="imageUrl" type="url" value={values.imageUrl} placeholder="https://…" aria-invalid={errors.imageUrl ? "true" : undefined} aria-describedby={described("imageUrl", "imageUrl-hint")} />
+            <p class="hint" id="imageUrl-hint">The product's own share image. Leave empty to use the generated illustration.{tool.image_key && " The submitter's upload is shown before this."}</p>
+            {errors.imageUrl && <p class="error" id="imageUrl-error">{errors.imageUrl}</p>}
+            <button class="btn btn-sm" name="action" value="share">Use the site's share image</button>
+          </div>
+          <div class="field">
+            <label for="note">Note for the history <span class="muted">(optional)</span></label>
+            <input id="note" name="note" type="text" maxlength="200" value={values.note} />
+          </div>
+          <button class="btn btn-dark" name="action" value="save">Save changes</button>
+        </form>
+      </section>
+      <section class="panel">
+        <h2 class="section-title">Cover</h2>
+        {tool.status === "published" && (tool.image_key || tool.image_url) ? (
+          <figure class="share-preview">
+            <img src={`/media/tool/${tool.id}`} alt={`Current cover for ${tool.name}`} />
+            <figcaption class="hint">{tool.image_key ? "The submitter's upload." : <>From <code>{tool.image_url}</code>.</>}</figcaption>
+          </figure>
+        ) : (
+          <p class="muted">{tool.status === "published" ? "The generated illustration." : "Hidden tools show no cover here."}</p>
+        )}
+        <h2 class="section-title">History</h2>
+        {history.length === 0 ? (
+          <p class="muted">Nothing yet.</p>
+        ) : (
+          <ol class="timeline">
+            {history.map((e) => (
+              <li>
+                <strong>{e.action.replace("_", " ")}</strong> by {e.actor_name ?? "system"} · <time datetime={e.created_at}>{e.created_at.replace("T", " ").slice(0, 16)}</time>
+                {e.reason && <div class="muted">“{e.reason}”</div>}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
+  </div>
+</Base>
+<script>
+  import "../../../scripts/char-count";
+</script>

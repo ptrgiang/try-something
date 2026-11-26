@@ -4,6 +4,11 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+
+- Editors can fix a published listing at `/admin/tools/<id>` (the **Edit listing** link in `/admin/tools`): description, what to try and why (admins only, since it's the submitter's wording), category, tags and the cover image. **Use the site's share image** finds the product's own share image; a cover URL is only saved if it returns a real image, and an empty one goes back to the generated art. Each save is logged with the fields that changed and an optional note, the page shows the tool's history, and a save from a stale form is refused rather than overwriting a newer change.
+- Unhiding a tool in `/admin/tools` takes an optional note for the history.
+
 ## [0.3.0] - 2026-11-19
 
 ### Added

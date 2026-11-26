@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIST_TITLE_MAX, parseList, parseTags, parseToolUpdate, plainText, slugify, TEXT_LIMITS, validateSubmission } from "../../src/lib/validation";
+import { LIST_TITLE_MAX, parseList, parseTags, parseToolEdit, parseToolUpdate, plainText, slugify, TEXT_LIMITS, validateSubmission } from "../../src/lib/validation";
 
 const good = {
   origin: "found",
@@ -97,5 +97,30 @@ describe("parseList", () => {
     expect(parseList({ title: "x".repeat(LIST_TITLE_MAX) }).ok).toBe(true);
     expect(parseList({ title: "x".repeat(LIST_TITLE_MAX + 1) }).ok).toBe(false);
     expect(parseList({ title: "ok", description: "y".repeat(281) }).ok).toBe(false);
+  });
+});
+
+describe("parseToolEdit", () => {
+  const edit = { tagline: "Draw with friends in the browser.", tryThis: "Sketch a cat and share the link.", why: "", category: "create", tags: "Drawing, #sketch, drawing", imageUrl: "" };
+
+  it("cleans tags and treats an empty cover as the generated art", () => {
+    const res = parseToolEdit(edit);
+    expect(res.ok).toBe(true);
+    expect(res.value.tags).toEqual(["drawing", "sketch"]);
+    expect(res.value.imageUrl).toBeNull();
+  });
+
+  it("rejects an unknown category, short text and non-public cover URLs", () => {
+    const res = parseToolEdit({ ...edit, category: "nope", tagline: "short", imageUrl: "http://example.com/a.png" });
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(Object.keys(res.errors).sort()).toEqual(["category", "imageUrl", "tagline"]);
+    expect(parseToolEdit({ ...edit, imageUrl: "https://127.0.0.1/a.png" }).ok).toBe(false);
+    expect(parseToolEdit({ ...edit, imageUrl: "not a url" }).ok).toBe(false);
+  });
+
+  it("accepts an https share image", () => {
+    const res = parseToolEdit({ ...edit, imageUrl: "https://example.com/og.png" });
+    expect(res.ok && res.value.imageUrl).toBe("https://example.com/og.png");
   });
 });
