@@ -22,7 +22,7 @@ const updateNotice = { sent: "Update sent. An editor will review it before it sh
     <p class="eyebrow">Your account</p>
     <h1 class="page-title">My submissions</h1>
     {justSubmitted && subs.some((s) => s.id === justSubmitted) && (
-      <div class="notice notice-success notice-sticker submit-body" role="status" data-ship-event="tool_submitted" data-ship-param="submitted">
+      <div class="notice notice-success notice-sticker submit-body" role="status" data-ship-event="tool_submitted">
         <Sticker name="plane" size="sm" />
         <p>Thanks! Your submission is <strong>pending review</strong>. An editor will check the link and the 30-second try before it goes live. You'll see the status here.</p>
       </div>

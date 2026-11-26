@@ -209,24 +209,16 @@ const shipTrack = !isModerator(user?.role);
     <ConfirmDialog />
     <PageView path={trackPath} />
     <script>
-      // One-time Ship Track events marked by the page that follows them. The marking parameter is
-      // dropped from the address, so a reload doesn't count the event again.
+      // Ship Track events counted on the page that follows them. The sign-up mark is ours alone, so it is
+      // dropped from the address and a reload doesn't count it again.
       import { SIGNUP_PARAM, shipTrack } from "../scripts/ship-track";
       const url = new URL(location.href);
-      const done: string[] = [];
       if (url.searchParams.has(SIGNUP_PARAM)) {
         shipTrack("signup");
-        done.push(SIGNUP_PARAM);
-      }
-      const marked = document.querySelector<HTMLElement>("[data-ship-event='tool_submitted']");
-      if (marked) {
-        shipTrack("tool_submitted");
-        if (marked.dataset.shipParam) done.push(marked.dataset.shipParam);
-      }
-      if (done.length) {
-        done.forEach((p) => url.searchParams.delete(p));
+        url.searchParams.delete(SIGNUP_PARAM);
         history.replaceState(history.state, "", url.pathname + url.search + url.hash);
       }
+      if (document.querySelector("[data-ship-event='tool_submitted']")) shipTrack("tool_submitted");
     </script>
     <script>
       const openMenus = () => document.querySelectorAll<HTMLDetailsElement>("details[data-menu][open]");
