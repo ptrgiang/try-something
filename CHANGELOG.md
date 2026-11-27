@@ -4,6 +4,10 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-27
+
+Checked facts on tool pages, fewer thin tag pages
+
 ### Added
 
 - Checked facts on tool pages: editors record what a tool costs (free, free with paid extras, paid), whether it needs an account, and its open-source repository, in the **Checked facts** part of `/admin/tools/<id>` (moderators too). The page shows an **At a glance** box with the date they were checked, adds them to the page description, and marks free tools as free in its structured data. A fact nobody checked stays empty and is never shown.
