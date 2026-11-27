@@ -27,14 +27,14 @@
     "ship:check": "node scripts/ship-check.mjs"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.4.1",
+    "@astrojs/cloudflare": "^14.4.9",
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource/caveat": "^5.3.0",
     "@fontsource/fraunces": "5.3.0",
     "@fontsource/manrope": "5.3.0",
     "@resvg/resvg-wasm": "2.6.2",
-    "astro": "^7.4.2",
+    "astro": "^7.4.13",
     "better-auth": "^1.7.12",
     "satori": "0.30.0"
   },
