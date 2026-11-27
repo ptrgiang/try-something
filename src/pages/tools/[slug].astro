@@ -11,9 +11,9 @@ import Comments from "../../components/Comments.astro";
 import FollowButton from "../../components/FollowButton.astro";
 import ListPicker from "../../components/ListPicker.astro";
 import { collectionsForTool, countComments, getPublishedTool, isFollowing, listComments, publishedUpdates, relatedTools, topDays } from "../../lib/db";
-import { CATEGORIES } from "../../lib/validation";
+import { CATEGORIES, factsSentence, TOOL_ACCOUNTS, TOOL_PRICES } from "../../lib/validation";
 import { displayHost, outboundUrl } from "../../lib/url";
-import { crumbsLd, SITE, TITLE_MAX, toolPageLd, type LdNode } from "../../lib/seo";
+import { crumbsLd, SITE, toolPageLd, toolTitle, type LdNode } from "../../lib/seo";
 import { toolCard } from "../../lib/og";
 
 const tool = await getPublishedTool(env.DB, Astro.params.slug ?? "");
@@ -42,6 +42,12 @@ const byline =
       : null;
 const host = displayHost(tool.url);
 const cover = toolImageSrc(tool);
+const freeToUse = tool.price === "free" || tool.price === "freemium";
+const facts: { label: string; value: string }[] = [
+  { label: "Price", value: TOOL_PRICES.find((p) => p.id === tool.price)?.label ?? "" },
+  { label: "Account", value: TOOL_ACCOUNTS.find((a) => a.id === tool.account)?.label ?? "" },
+].filter((f) => f.value);
+const source = tool.source_url ? new URL(tool.source_url) : null;
 const jsonLd: LdNode[] = [
   {
     "@type": "WebApplication",
@@ -53,6 +59,7 @@ const jsonLd: LdNode[] = [
     operatingSystem: "Web browser",
     ...(cover ? { image: new URL(cover, SITE).toString() } : {}),
     ...(tool.maker_name ? { creator: { "@type": "Organization", name: tool.maker_name } } : {}),
+    ...(freeToUse ? { isAccessibleForFree: true, offers: { "@type": "Offer", price: 0, priceCurrency: "USD" } } : {}),
   },
   crumbsLd([
     { name: "Explore", path: "/explore" },
@@ -60,12 +67,9 @@ const jsonLd: LdNode[] = [
     { name: tool.name, path: `/tools/${tool.slug}` },
   ]),
 ];
-// "Name: tagline" while it fits a search result title, else what kind of tool it is.
-const pageTitle =
-  tool.name.length + tool.tagline.length < TITLE_MAX - 2
-    ? `${tool.name}: ${tool.tagline.replace(/\.$/, "")}`
-    : `${tool.name}: ${category?.noun ?? "web tool"} to try in 30 seconds`;
-const pageDescription = `${tool.tagline} Try it: ${tool.try_this}${tool.maker_name ? ` Made by ${tool.maker_name}.` : ""}`;
+const pageTitle = toolTitle(tool.name, tool.tagline, category?.noun ?? "web tool", tool.price === "free");
+const factLine = factsSentence(tool.price, tool.account);
+const pageDescription = `${tool.tagline}${factLine ? ` ${factLine}` : ""} Try it: ${tool.try_this}${tool.maker_name ? ` Made by ${tool.maker_name}.` : ""}`;
 jsonLd.push(
   toolPageLd({ path: `/tools/${tool.slug}`, name: pageTitle, description: pageDescription, published: tool.published_at, modified: tool.updated_at, about: `${SITE}/tools/${tool.slug}#app` }),
 );
@@ -111,6 +115,17 @@ jsonLd.push(
         <button type="button" class="btn btn-lg" data-share={`/tools/${tool.slug}`} data-share-title={tool.name}><Icon name="share" /><span>Share</span></button>
         <a class="btn btn-lg" href={`/surprise?from=${tool.slug}`} rel="nofollow"><Icon name="shuffle" />Another one</a>
       </div>
+      {(facts.length > 0 || source) && (
+        <div class="tool-facts">
+          <h2 class="section-title">At a glance</h2>
+          <dl>
+            {facts.map((f) => <div><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+            {source && <div><dt>Source code</dt><dd><a href={source.toString()} target="_blank" rel="noopener noreferrer">Open source on {source.hostname.replace(/^www\./, "")}</a></dd></div>}
+            <div><dt>Runs in</dt><dd>Your web browser, nothing to install</dd></div>
+          </dl>
+          {tool.facts_checked_at && <p class="muted">Checked on {host} on <time datetime={tool.facts_checked_at}>{dayLabel(tool.facts_checked_at.slice(0, 10))}</time>.</p>}
+        </div>
+      )}
       {tool.why && (
         <div>
           <h2 class="section-title">Why it's worth trying</h2>

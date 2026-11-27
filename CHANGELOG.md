@@ -4,6 +4,15 @@ All notable changes are documented here. Format: [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Added
+
+- Checked facts on tool pages: editors record what a tool costs (free, free with paid extras, paid), whether it needs an account, and its open-source repository, in the **Checked facts** part of `/admin/tools/<id>` (moderators too). The page shows an **At a glance** box with the date they were checked, adds them to the page description, and marks free tools as free in its structured data. A fact nobody checked stays empty and is never shown.
+
+### Changed
+
+- Tag pages need at least 5 tools to be indexed and listed in the sitemap (was 2). Two and three-tool tag pages were a third of the indexed site and repeated the category and collection lists.
+- Tool page titles drop words before they would run past a search result line, and say "free" only for tools checked as free.
+
 ## [0.4.0] - 2026-11-26
 
 Ship Track visit counts and automated releases

@@ -1,6 +1,6 @@
 // D1 queries. Every public query filters on status = 'published'.
 
-import type { SubmissionInput, ToolEditInput, ToolUpdateInput } from "./validation";
+import type { SubmissionInput, ToolAccount, ToolEditInput, ToolPrice, ToolUpdateInput } from "./validation";
 import { AUTO_HIDE_REPORTS, RESURFACE_COOLDOWN_DAYS, UPDATE_WINDOW_DAYS, type CommentStatus, type SubmissionStatus } from "./moderation";
 import { MUTABLE_KINDS, NOTIFY_STATUSES, type MutableKind, type NotificationRow } from "./notifications";
 import { picksOrder, type PicksInput } from "./picks";
@@ -42,6 +42,11 @@ export interface Tool {
   updated_at: string;
   /** Set when a moderator resurfaces the tool for a meaningful update. */
   refreshed_at: string | null;
+  /** Checked on the tool's own site by an editor; "" means nobody checked, so the page says nothing. */
+  price: ToolPrice | "";
+  account: ToolAccount | "";
+  source_url: string;
+  facts_checked_at: string | null;
 }
 
 export interface ToolWithCredit extends Tool {
@@ -462,8 +467,11 @@ export async function setTagInfo(db: D1Database, tag: string, info: { title: str
   await db.batch([write, auditStmt(db, { actorId, action: "tag_description", from: null, to: null, reason: `#${tag}: ${said}`.slice(0, 600) })]);
 }
 
-/** A tag page with fewer tools than this is thin: kept out of the sitemap and noindexed. */
-export const TAG_INDEX_MIN = 2;
+/**
+ * A tag page with fewer tools than this is thin: kept out of the sitemap and noindexed. Two and three-tool pages
+ * were a third of the indexed site and repeated the category and collection lists, which hurts the whole site.
+ */
+export const TAG_INDEX_MIN = 5;
 
 export async function sitemapEntries(db: D1Database) {
   const tools = await db
@@ -820,7 +828,18 @@ export async function getToolById(db: D1Database, id: string): Promise<ToolWithC
   return row ? toTool(row) : null;
 }
 
-const EDIT_FIELDS = { tagline: "description", try_this: "what to try", why: "why", category: "category", tags: "tags", image_url: "cover" } as const;
+const EDIT_FIELDS = {
+  tagline: "description",
+  try_this: "what to try",
+  why: "why",
+  category: "category",
+  tags: "tags",
+  image_url: "cover",
+  price: "price",
+  account: "account",
+  source_url: "source code",
+} as const;
+const FACT_FIELDS: readonly string[] = ["price", "account", "source_url"];
 
 /**
  * An editor's direct change to a listing, logged as an `edit` event naming the fields that changed.
@@ -837,7 +856,17 @@ export async function editTool(
   const tool = await db.prepare(`SELECT * FROM tool WHERE id = ?`).bind(toolId).first<Row>();
   if (!tool) return { ok: false, error: "Tool not found." };
   if (tool.updated_at !== seenUpdatedAt) return { ok: false, error: "This tool changed since you opened it. Reload and try again." };
-  const next = { tagline: input.tagline, try_this: input.tryThis, why: input.why, category: input.category, tags: JSON.stringify(input.tags), image_url: input.imageUrl };
+  const next = {
+    tagline: input.tagline,
+    try_this: input.tryThis,
+    why: input.why,
+    category: input.category,
+    tags: JSON.stringify(input.tags),
+    image_url: input.imageUrl,
+    price: input.price,
+    account: input.account,
+    source_url: input.sourceUrl,
+  };
   const tagsBefore = JSON.stringify(parseJson<string[]>(tool.tags, []));
   const changed = (Object.keys(EDIT_FIELDS) as (keyof typeof EDIT_FIELDS)[]).filter((k) =>
     k === "tags" ? next.tags !== tagsBefore : (next[k] ?? null) !== ((tool[k] as string | null) ?? null),
@@ -845,10 +874,16 @@ export async function editTool(
   if (!changed.length) return { ok: false, error: "Nothing changed." };
   const now = nowIso();
   const reason = `Edited ${changed.map((k) => EDIT_FIELDS[k]).join(", ")}.${note ? ` ${note}` : ""}`;
+  // Saving facts is the editor saying they just checked them, so the date moves; clearing them all unsets it.
+  const anyFact = Boolean(next.price || next.account || next.source_url);
+  const checkedAt = changed.some((k) => FACT_FIELDS.includes(k)) ? (anyFact ? now : null) : ((tool.facts_checked_at as string | null) ?? null);
   const [res] = await db.batch([
     db
-      .prepare(`UPDATE tool SET tagline = ?, try_this = ?, why = ?, category = ?, tags = ?, image_url = ?, updated_at = ? WHERE id = ? AND updated_at = ?`)
-      .bind(next.tagline, next.try_this, next.why, next.category, next.tags, next.image_url, now, toolId, seenUpdatedAt),
+      .prepare(
+        `UPDATE tool SET tagline = ?, try_this = ?, why = ?, category = ?, tags = ?, image_url = ?, price = ?, account = ?, source_url = ?,
+           facts_checked_at = ?, updated_at = ? WHERE id = ? AND updated_at = ?`,
+      )
+      .bind(next.tagline, next.try_this, next.why, next.category, next.tags, next.image_url, next.price, next.account, next.source_url, checkedAt, now, toolId, seenUpdatedAt),
     db
       .prepare(
         `INSERT INTO moderation_event (id, tool_id, actor_id, action, from_status, to_status, reason, created_at)

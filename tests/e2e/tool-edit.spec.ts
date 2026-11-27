@@ -15,7 +15,8 @@ test.afterAll(() => {
   const q = (s: string | null) => (s === null ? "NULL" : `'${s.replace(/'/g, "''")}'`);
   sql(`
     UPDATE tool SET tagline = ${q(original.tagline)}, tags = ${q(original.tags)}, category = ${q(original.category)},
-      image_url = ${q(original.image_url)}, updated_at = ${q(original.updated_at)} WHERE id = '${TOOL}';
+      image_url = ${q(original.image_url)}, price = '', account = '', source_url = '', facts_checked_at = NULL,
+      updated_at = ${q(original.updated_at)} WHERE id = '${TOOL}';
     DELETE FROM moderation_event WHERE tool_id = '${TOOL}' AND action = 'edit';
     DELETE FROM "user" WHERE id IN ('e2e-edit-admin', 'e2e-edit-mod');
   `);
@@ -71,6 +72,41 @@ test("a moderator can change tags and category but not the text", async ({ page 
   await expect(page.getByRole("status")).toHaveText("Saved.");
   const row = sqlJson<{ tagline: string; category: string }>(`SELECT tagline, category FROM tool WHERE id = '${TOOL}'`)[0];
   expect(row).toEqual({ tagline: "Paint and sketch in your browser, no install.", category: "design" });
+});
+
+test("checked facts show on the tool page and in its description", async ({ page }) => {
+  await asUser(page, await createUser("e2e-edit-mod", "Mo Derator", "moderator"));
+  await page.goto(`/admin/tools/${TOOL}`);
+  await page.getByLabel("Source code").fill("https://example.com/owner/repo");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.locator("#sourceUrl-error")).toContainText("repository");
+
+  await page.locator("select#price").selectOption("free");
+  await page.locator("select#account").selectOption("none");
+  await page.getByLabel("Source code").fill("https://github.com/owner/kleki");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.locator(".timeline li").first()).toContainText("Edited price, account, source code.");
+
+  await page.goto("/tools/kleki");
+  const facts = page.locator(".tool-facts");
+  await expect(facts.locator("dd")).toContainText(["Free", "No account needed", "Open source on github.com"]);
+  await expect(facts.getByRole("link", { name: "Open source on github.com" })).toHaveAttribute("href", "https://github.com/owner/kleki");
+  await expect(facts.locator("p")).toContainText("Checked on kleki.com on");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Free, no account needed\. Try it:/);
+  const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(ld.join("")).toContain('"isAccessibleForFree":true');
+
+  // Clearing every fact hides the section again.
+  await page.goto(`/admin/tools/${TOOL}`);
+  await page.locator("select#price").selectOption("");
+  await page.locator("select#account").selectOption("");
+  await page.getByLabel("Source code").fill("");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  expect(sqlJson<{ facts_checked_at: string | null }>(`SELECT facts_checked_at FROM tool WHERE id = '${TOOL}'`)[0].facts_checked_at).toBeNull();
+  await page.goto("/tools/kleki");
+  await expect(page.locator(".tool-facts")).toHaveCount(0);
 });
 
 test("a cover URL that isn't an image is refused", async ({ page }) => {

@@ -20,7 +20,7 @@ D1 is the only source of truth. Main tables (full schema in `migrations/`):
 | Table | Purpose |
 | --- | --- |
 | `user`, `session`, `account`, `verification`, `rateLimit` | Better Auth core schema; `user.role` ∈ `user`/`moderator`/`admin` (`input:false`, set only by SQL) |
-| `tool` | Published catalog. Public queries always filter `status = 'published'`. `canonical_key` unique. |
+| `tool` | Published catalog. Public queries always filter `status = 'published'`. `canonical_key` unique. `price`, `account`, `source_url` are facts an editor checked on the tool's site (`''` = not checked, never shown), dated by `facts_checked_at`. |
 | `submission` | User submissions. Partial unique index: one open submission per `canonical_key`. |
 | `moderation_event` | Append-only history: actor, action, from/to status, reason, time |
 | `bookmark` | Saved tools per user |

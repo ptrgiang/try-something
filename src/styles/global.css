@@ -1504,6 +1504,36 @@ textarea {
   margin: 0;
   font-size: 17px;
 }
+.tool-facts dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.tool-facts dl > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.tool-facts dt {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tool-facts dd {
+  margin: 4px 0 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tool-facts > p {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+}
 .credits {
   display: grid;
   gap: 6px;
@@ -1551,6 +1581,15 @@ fieldset.field {
   font-size: 13.5px;
   color: var(--muted);
   margin-top: 4px;
+}
+.facts-fields > .hint {
+  margin: 0 0 10px;
+}
+.facts-fields legend {
+  padding: 0;
+}
+.facts-fields select + label {
+  margin-top: 12px;
 }
 .field input[type="text"],
 .field input[type="url"],

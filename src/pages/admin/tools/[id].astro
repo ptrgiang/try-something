@@ -5,7 +5,7 @@ import AdminNav from "../../../components/AdminNav.astro";
 import { editTool, getToolById, toolHistory } from "../../../lib/db";
 import { fetchImage, fetchMetadata } from "../../../lib/metadata";
 import { isModerator } from "../../../lib/moderation";
-import { CATEGORIES, parseToolEdit, plainText, TEXT_LIMITS } from "../../../lib/validation";
+import { CATEGORIES, parseToolEdit, plainText, TEXT_LIMITS, TOOL_ACCOUNTS, TOOL_PRICES } from "../../../lib/validation";
 
 const user = Astro.locals.user;
 const id = Astro.params.id ?? "";
@@ -32,6 +32,9 @@ let values = {
   category: tool.category,
   tags: tool.tags.join(", "),
   imageUrl: tool.image_url ?? "",
+  price: tool.price,
+  account: tool.account,
+  sourceUrl: tool.source_url,
   note: "",
 };
 let errors: Record<string, string> = {};
@@ -122,6 +125,23 @@ const described = (name: string, hint?: string) => [hint, errors[name] && `${nam
             <input id="tags" name="tags" type="text" value={values.tags} aria-describedby="tags-hint" />
             <p class="hint" id="tags-hint">Up to 5, separated by commas. Reuse a tag that already exists when one fits.</p>
           </div>
+          <fieldset class="field facts-fields" aria-describedby="facts-hint">
+            <legend>Checked facts</legend>
+            <p class="hint" id="facts-hint">Only what you confirmed on the tool's own site today. Leave a field on “Not checked” rather than guess; the page shows only what is set.{tool.facts_checked_at && ` Last checked ${tool.facts_checked_at.slice(0, 10)}.`}</p>
+            <label for="price">Price</label>
+            <select id="price" name="price">
+              <option value="" selected={!values.price}>Not checked</option>
+              {TOOL_PRICES.map((p) => <option value={p.id} selected={p.id === values.price}>{p.label}</option>)}
+            </select>
+            <label for="account">Account</label>
+            <select id="account" name="account">
+              <option value="" selected={!values.account}>Not checked</option>
+              {TOOL_ACCOUNTS.map((a) => <option value={a.id} selected={a.id === values.account}>{a.label}</option>)}
+            </select>
+            <label for="sourceUrl">Source code</label>
+            <input id="sourceUrl" name="sourceUrl" type="url" value={values.sourceUrl} placeholder="https://github.com/owner/repo" aria-invalid={errors.sourceUrl ? "true" : undefined} aria-describedby={described("sourceUrl")} />
+            {errors.sourceUrl && <p class="error" id="sourceUrl-error">{errors.sourceUrl}</p>}
+          </fieldset>
           <div class="field">
             <label for="imageUrl">Cover image URL</label>
             <input id="imageUrl" name="imageUrl" type="url" value={values.imageUrl} placeholder="https://…" aria-invalid={errors.imageUrl ? "true" : undefined} aria-describedby={described("imageUrl", "imageUrl-hint")} />

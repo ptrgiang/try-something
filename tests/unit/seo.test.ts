@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectionIndexLd, collectionLd, countedTitle, pageTitle, robotsTxt, tagHeading, TITLE_MAX, toolPageLd } from "../../src/lib/seo";
+import { collectionIndexLd, collectionLd, countedTitle, pageTitle, robotsTxt, tagHeading, TITLE_MAX, toolPageLd, toolTitle } from "../../src/lib/seo";
 
 const disallowed = (txt: string) => [...txt.matchAll(/^Disallow: (.+)$/gm)].map((m) => m[1]);
 const blocked = (txt: string, path: string) => disallowed(txt).some((rule) => path.startsWith(rule));
@@ -47,6 +47,20 @@ describe("countedTitle", () => {
   });
   it("never builds a title a search result would cut", () => {
     for (const len of [20, 33, 34, 35, 50, 51, 52, 60]) expect(countedTitle("x".repeat(len), 10).length).toBeLessThanOrEqual(TITLE_MAX);
+  });
+});
+
+describe("toolTitle", () => {
+  it("uses the tagline while it fits, then the kind of tool", () => {
+    expect(toolTitle("Patatap", "A keyboard sound toy.", "browser game", true)).toBe("Patatap: A keyboard sound toy");
+    const tagline = "A portable animation and sound kit you play with your keyboard.";
+    expect(toolTitle("Patatap", tagline, "browser game", false)).toBe("Patatap: browser game to try in 30 seconds");
+    expect(toolTitle("Patatap", tagline, "browser game", true)).toBe("Patatap: free browser game to try in 30 seconds");
+  });
+  it("drops words instead of running past a search result line", () => {
+    const tagline = "x".repeat(80);
+    expect(toolTitle("Hair Type Quiz by HairTypes.org", tagline, "interactive explainer", false)).toBe("Hair Type Quiz by HairTypes.org: interactive explainer");
+    for (const len of [10, 25, 30, 40, 55, 70]) expect(toolTitle("n".repeat(len), tagline, "interactive explainer", true).length).toBeLessThanOrEqual(Math.max(TITLE_MAX, len));
   });
 });
 

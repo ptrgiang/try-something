@@ -215,13 +215,65 @@ export function parseToolUpdate(data: Record<string, unknown>): { ok: true; valu
 }
 
 /** An editor's change to a published listing; `imageUrl` empty means "use the generated art". */
-export interface ToolEditInput {
+/** What a tool costs, as an editor found on its own site. Labels are what the tool page says. */
+export const TOOL_PRICES = [
+  { id: "free", label: "Free" },
+  { id: "freemium", label: "Free, with paid extras" },
+  { id: "paid", label: "Paid" },
+] as const;
+export type ToolPrice = (typeof TOOL_PRICES)[number]["id"];
+/** Whether using the tool needs an account. */
+export const TOOL_ACCOUNTS = [
+  { id: "none", label: "No account needed" },
+  { id: "optional", label: "Account optional" },
+  { id: "required", label: "Account required" },
+] as const;
+export type ToolAccount = (typeof TOOL_ACCOUNTS)[number]["id"];
+
+/** The checked facts as one sentence for a page description, e.g. "Free, no account needed."; "" when none are set. */
+export function factsSentence(price: ToolPrice | "", account: ToolAccount | ""): string {
+  const parts = [
+    { free: "free", freemium: "free with paid extras", paid: "paid", "": "" }[price],
+    { none: "no account needed", optional: "account optional", required: "account required", "": "" }[account],
+  ].filter(Boolean);
+  if (!parts.length) return "";
+  const s = parts.join(", ");
+  return `${s[0].toUpperCase()}${s.slice(1)}.`;
+}
+
+export interface ToolFacts {
+  price: ToolPrice | "";
+  account: ToolAccount | "";
+  sourceUrl: string;
+}
+
+export interface ToolEditInput extends ToolFacts {
   tagline: string;
   tryThis: string;
   why: string;
   category: string;
   tags: string[];
   imageUrl: string | null;
+}
+
+/** Hosts that serve a project's public source code; a "source" link must point at one. */
+const SOURCE_HOSTS = ["github.com", "gitlab.com", "codeberg.org", "bitbucket.org", "sr.ht", "git.sr.ht"];
+
+function parseFacts(data: Record<string, unknown>, errors: Record<string, string>): ToolFacts {
+  const price = TOOL_PRICES.find((p) => p.id === data.price)?.id ?? "";
+  const account = TOOL_ACCOUNTS.find((a) => a.id === data.account)?.id ?? "";
+  let sourceUrl = plainText(data.sourceUrl, 300);
+  if (sourceUrl) {
+    try {
+      const url = new URL(sourceUrl);
+      assertPublicHttpUrl(url);
+      if (!SOURCE_HOSTS.includes(url.hostname.replace(/^www\./, "")) || url.pathname.split("/").filter(Boolean).length < 2) throw new Error();
+      sourceUrl = url.toString();
+    } catch {
+      errors.sourceUrl = "Link the project's repository, like https://github.com/owner/repo.";
+    }
+  }
+  return { price, account, sourceUrl };
 }
 
 export function parseToolEdit(data: Record<string, unknown>): { ok: true; value: ToolEditInput } | { ok: false; errors: Record<string, string>; value: ToolEditInput } {
@@ -234,6 +286,7 @@ export function parseToolEdit(data: Record<string, unknown>): { ok: true; value:
     category: typeof data.category === "string" ? data.category : "",
     tags: parseTags(data.tags),
     imageUrl: rawImage || null,
+    ...parseFacts(data, errors),
   };
   if (value.tagline.length < 8) errors.tagline = "Add a one-line description (8+ characters).";
   if (value.tryThis.length < 10) errors.tryThis = "Describe what someone can try in 30 seconds.";

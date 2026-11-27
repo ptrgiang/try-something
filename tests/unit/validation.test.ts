@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIST_TITLE_MAX, parseList, parseTags, parseToolEdit, parseToolUpdate, plainText, slugify, TEXT_LIMITS, validateSubmission } from "../../src/lib/validation";
+import { factsSentence, LIST_TITLE_MAX, parseList, parseTags, parseToolEdit, parseToolUpdate, plainText, slugify, TEXT_LIMITS, validateSubmission } from "../../src/lib/validation";
 
 const good = {
   origin: "found",
@@ -117,6 +117,25 @@ describe("parseToolEdit", () => {
     expect(Object.keys(res.errors).sort()).toEqual(["category", "imageUrl", "tagline"]);
     expect(parseToolEdit({ ...edit, imageUrl: "https://127.0.0.1/a.png" }).ok).toBe(false);
     expect(parseToolEdit({ ...edit, imageUrl: "not a url" }).ok).toBe(false);
+  });
+
+  it("keeps only known facts and a real repository link", () => {
+    const res = parseToolEdit({ ...edit, price: "freemium", account: "none", sourceUrl: "https://github.com/owner/repo" });
+    expect(res.ok && [res.value.price, res.value.account, res.value.sourceUrl]).toEqual(["freemium", "none", "https://github.com/owner/repo"]);
+    const odd = parseToolEdit({ ...edit, price: "cheap", account: "maybe" });
+    expect(odd.ok && [odd.value.price, odd.value.account, odd.value.sourceUrl]).toEqual(["", "", ""]);
+    for (const sourceUrl of ["https://example.com/owner/repo", "https://github.com/owner", "http://github.com/owner/repo", "not a url"]) {
+      const bad = parseToolEdit({ ...edit, sourceUrl });
+      expect(bad.ok, sourceUrl).toBe(false);
+      if (!bad.ok) expect(Object.keys(bad.errors)).toEqual(["sourceUrl"]);
+    }
+  });
+
+  it("says the checked facts as one sentence", () => {
+    expect(factsSentence("free", "none")).toBe("Free, no account needed.");
+    expect(factsSentence("freemium", "optional")).toBe("Free with paid extras, account optional.");
+    expect(factsSentence("", "required")).toBe("Account required.");
+    expect(factsSentence("", "")).toBe("");
   });
 
   it("accepts an https share image", () => {

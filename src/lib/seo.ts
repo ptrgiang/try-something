@@ -44,6 +44,16 @@ export function countedTitle(heading: string, count: number): string {
   return options.find((t) => t.length <= TITLE_MAX) ?? heading;
 }
 
+/**
+ * Title for a tool page: "Name: tagline" while it fits a search result, else what kind of tool it is, saying
+ * "free" only when an editor checked it, and losing words before the title would be cut off.
+ */
+export function toolTitle(name: string, tagline: string, noun: string, free: boolean): string {
+  const kind = `${free ? "free " : ""}${noun}`;
+  const options = [`${name}: ${tagline.replace(/\.$/, "")}`, `${name}: ${kind} to try in 30 seconds`, `${name}: ${kind}`, `${name}: ${noun}`];
+  return options.find((t) => t.length <= TITLE_MAX) ?? name;
+}
+
 const ACRONYMS = new Set(["3d", "ai", "api", "css", "html", "json", "pdf", "svg", "ui", "ux"]);
 
 /** Heading for a tag page no editor has titled: "open-source" becomes "Open source tools". */
